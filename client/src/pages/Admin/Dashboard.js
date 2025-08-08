@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   CurrencyDollarIcon, 
   ShoppingBagIcon, 
@@ -10,7 +11,11 @@ import {
   StarIcon,
   ClockIcon,
   CheckCircleIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  PlusIcon,
+  ChartBarIcon,
+  TicketIcon,
+  PhotoIcon
 } from '@heroicons/react/24/outline';
 import { motion } from 'framer-motion';
 
@@ -19,11 +24,20 @@ const Dashboard = () => {
     totalRevenue: 0,
     totalOrders: 0,
     totalUsers: 0,
-    totalProducts: 0
+    totalProducts: 0,
+    pendingOrders: 0,
+    activeCoupons: 0,
+    activeBanners: 0
   });
   const [recentOrders, setRecentOrders] = useState([]);
   const [topProducts, setTopProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [quickStats, setQuickStats] = useState({
+    todayRevenue: 0,
+    todayOrders: 0,
+    conversionRate: 0,
+    averageOrderValue: 0
+  });
 
   useEffect(() => {
     // Simulate loading data
@@ -32,7 +46,17 @@ const Dashboard = () => {
         totalRevenue: 125430,
         totalOrders: 1247,
         totalUsers: 8923,
-        totalProducts: 156
+        totalProducts: 156,
+        pendingOrders: 23,
+        activeCoupons: 8,
+        activeBanners: 3
+      });
+      
+      setQuickStats({
+        todayRevenue: 2847.50,
+        todayOrders: 12,
+        conversionRate: 3.2,
+        averageOrderValue: 237.29
       });
       
       setRecentOrders([
@@ -329,19 +353,23 @@ const Dashboard = () => {
         variants={itemVariants}
       >
         <h3 className="text-xl font-display font-bold text-[#1E1E1E] mb-4">Quick Actions</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button className="flex items-center justify-center p-4 bg-gradient-to-r from-[#6C7A59] to-[#5A6A4A] text-white rounded-xl hover:shadow-lg transition-all duration-200 transform hover:scale-105">
-            <CubeIcon className="h-5 w-5 mr-2" />
-            Add New Product
-          </button>
-          <button className="flex items-center justify-center p-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 transform hover:scale-105">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Link to="/admin/products" className="flex items-center justify-center p-4 bg-gradient-to-r from-[#6C7A59] to-[#5A6A4A] text-white rounded-xl hover:shadow-lg transition-all duration-200 transform hover:scale-105">
+            <PlusIcon className="h-5 w-5 mr-2" />
+            Add Product
+          </Link>
+          <Link to="/admin/orders" className="flex items-center justify-center p-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 transform hover:scale-105">
             <ShoppingBagIcon className="h-5 w-5 mr-2" />
-            View All Orders
-          </button>
-          <button className="flex items-center justify-center p-4 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 transform hover:scale-105">
-            <UsersIcon className="h-5 w-5 mr-2" />
-            Manage Users
-          </button>
+            View Orders
+          </Link>
+          <Link to="/admin/coupons" className="flex items-center justify-center p-4 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 transform hover:scale-105">
+            <TicketIcon className="h-5 w-5 mr-2" />
+            Manage Coupons
+          </Link>
+          <Link to="/admin/banners" className="flex items-center justify-center p-4 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl hover:shadow-lg transition-all duration-200 transform hover:scale-105">
+            <PhotoIcon className="h-5 w-5 mr-2" />
+            Manage Banners
+          </Link>
         </div>
       </motion.div>
     </motion.div>

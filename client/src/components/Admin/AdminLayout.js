@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Bars3Icon, 
@@ -13,16 +13,41 @@ import {
   ChartBarIcon,
   Cog6ToothIcon,
   ArrowRightOnRectangleIcon,
-  SparklesIcon
+  SparklesIcon,
+  ClockIcon
 } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
 
 const AdminLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Update time every minute
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const getGreeting = () => {
+    const hour = currentTime.getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
+  const formatTime = () => {
+    return currentTime.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
 
   const handleLogout = () => {
     logout();
@@ -231,11 +256,17 @@ const AdminLayout = ({ children }) => {
             </div>
 
             <div className="flex items-center space-x-4">
-              <div className="hidden sm:flex items-center space-x-2 text-sm text-gray-600">
-                <span>Welcome back,</span>
-                <span className="font-semibold text-[#1E1E1E]">
-                  {user?.firstName} {user?.lastName}
-                </span>
+              <div className="hidden sm:flex items-center space-x-3 text-sm">
+                <div className="flex items-center space-x-2 text-gray-600">
+                  <ClockIcon className="h-4 w-4" />
+                  <span>{formatTime()}</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-gray-600">{getGreeting()},</span>
+                  <span className="font-semibold text-[#1E1E1E]">
+                    {user?.firstName} {user?.lastName}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
