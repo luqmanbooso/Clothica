@@ -20,6 +20,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { useWishlist } from '../../contexts/WishlistContext';
+import LoyaltyBadge from '../Loyalty/LoyaltyBadge';
 
 const Header = () => {
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
@@ -71,7 +72,7 @@ const Header = () => {
   return (
     <>
       {/* Top Banner */}
-      {showTopBanner && (
+      {!isAdmin && showTopBanner && (
         <div className="bg-gradient-to-r from-[#6C7A59] via-[#5A6A4A] to-[#D6BFAF] text-white text-sm py-2 relative">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -133,20 +134,21 @@ const Header = () => {
             </Link>
 
             {/* Desktop Navigation */}
-            <nav className="hidden lg:flex items-center space-x-8">
-              {/* Shop Dropdown */}
-              <div className="relative group">
-                <button className={`relative px-4 py-2 font-medium transition-all duration-200 flex items-center space-x-1 ${
-                  isActive('/shop') 
-                    ? 'text-[#6C7A59]' 
-                    : 'text-gray-700 hover:text-[#6C7A59]'
-                }`}>
-                  <span>Shop</span>
-                  <ChevronDownIcon className="w-4 h-4 transition-transform group-hover:rotate-180" />
-                  {isActive('/shop') && (
-                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#6C7A59] to-[#D6BFAF]"></div>
-                  )}
-                </button>
+            {!isAdmin && (
+              <nav className="hidden lg:flex items-center space-x-6">
+                {/* Shop Dropdown */}
+                <div className="relative group">
+                  <button className={`relative px-3 py-2 font-medium transition-all duration-200 flex items-center space-x-1 ${
+                    isActive('/shop') 
+                      ? 'text-[#6C7A59]' 
+                      : 'text-gray-700 hover:text-[#6C7A59]'
+                  }`}>
+                    <span>Shop</span>
+                    <ChevronDownIcon className="w-4 h-4 transition-transform group-hover:rotate-180" />
+                    {isActive('/shop') && (
+                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#6C7A59] to-[#D6BFAF]"></div>
+                    )}
+                  </button>
                 
                 {/* Shop Dropdown Menu */}
                 <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
@@ -219,8 +221,22 @@ const Header = () => {
               </div>
 
               <Link 
+                to="/about" 
+                className={`relative px-3 py-2 font-medium transition-all duration-200 ${
+                  isActive('/about') 
+                    ? 'text-[#6C7A59]' 
+                    : 'text-gray-700 hover:text-[#6C7A59]'
+                }`}
+              >
+                About
+                {isActive('/about') && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#6C7A59] to-[#D6BFAF]"></div>
+                )}
+              </Link>
+
+              <Link 
                 to="/contact" 
-                className={`relative px-4 py-2 font-medium transition-all duration-200 ${
+                className={`relative px-3 py-2 font-medium transition-all duration-200 ${
                   isActive('/contact') 
                     ? 'text-[#6C7A59]' 
                     : 'text-gray-700 hover:text-[#6C7A59]'
@@ -232,9 +248,11 @@ const Header = () => {
                 )}
               </Link>
             </nav>
+            )}
 
             {/* Search Bar */}
-            <div className="hidden lg:flex flex-1 max-w-md mx-8">
+            {!isAdmin && (
+              <div className="hidden lg:flex flex-1 max-w-md mx-8">
               <form onSubmit={handleSearch} className="w-full">
                 <div className="relative group">
                   <input
@@ -269,16 +287,23 @@ const Header = () => {
                 </div>
               </form>
             </div>
+            )}
 
             {/* User Actions */}
             <div className="flex items-center space-x-4">
+              {/* Loyalty Badge */}
+              {!isAdmin && <LoyaltyBadge />}
+              
               {/* Search Icon for Mobile */}
-              <button className="lg:hidden text-gray-700 hover:text-[#6C7A59] transition-colors">
-                <MagnifyingGlassIcon className="w-6 h-6" />
-              </button>
+              {!isAdmin && (
+                <button className="lg:hidden text-gray-700 hover:text-[#6C7A59] transition-colors">
+                  <MagnifyingGlassIcon className="w-6 h-6" />
+                </button>
+              )}
 
               {/* Wishlist */}
-              <Link to="/wishlist" className="relative group">
+              {!isAdmin && (
+                <Link to="/wishlist" className="relative group">
                 <div className="p-2 rounded-xl group-hover:bg-gray-50 transition-all duration-200">
                   {wishlistCount > 0 ? (
                     <HeartSolid className="w-6 h-6 text-red-500" />
@@ -292,9 +317,11 @@ const Header = () => {
                   )}
                 </div>
               </Link>
+              )}
 
               {/* Cart */}
-              <Link to="/cart" className="relative group">
+              {!isAdmin && (
+                <Link to="/cart" className="relative group">
                 <div className="p-2 rounded-xl group-hover:bg-gray-50 transition-all duration-200">
                   {cartCount > 0 ? (
                     <ShoppingBagSolid className="w-6 h-6 text-[#6C7A59]" />
@@ -308,6 +335,7 @@ const Header = () => {
                   )}
                 </div>
               </Link>
+              )}
 
               {/* User Menu */}
               {isAuthenticated ? (
@@ -329,7 +357,7 @@ const Header = () => {
                         <span>Orders</span>
                       </Link>
                       {isAdmin && (
-                        <Link to="/admin" className="flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-gray-50 text-gray-700 hover:text-[#6C7A59] transition-colors">
+                        <Link to="/admin/dashboard" className="flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-gray-50 text-gray-700 hover:text-[#6C7A59] transition-colors">
                           <StarIcon className="w-5 h-5" />
                           <span>Admin Panel</span>
                         </Link>
@@ -354,22 +382,24 @@ const Header = () => {
               )}
 
               {/* Mobile Menu Button */}
-              <button
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="lg:hidden p-2 rounded-xl hover:bg-gray-50 transition-all duration-200"
-              >
-                {isMobileMenuOpen ? (
-                  <XMarkIcon className="w-6 h-6 text-gray-700" />
-                ) : (
-                  <Bars3Icon className="w-6 h-6 text-gray-700" />
-                )}
-              </button>
+              {!isAdmin && (
+                <button
+                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                  className="lg:hidden p-2 rounded-xl hover:bg-gray-50 transition-all duration-200"
+                >
+                  {isMobileMenuOpen ? (
+                    <XMarkIcon className="w-6 h-6 text-gray-700" />
+                  ) : (
+                    <Bars3Icon className="w-6 h-6 text-gray-700" />
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </div>
 
         {/* Mobile Menu */}
-        {isMobileMenuOpen && (
+        {!isAdmin && isMobileMenuOpen && (
           <div className="lg:hidden bg-white border-t border-gray-100">
             <div className="px-4 py-6 space-y-4">
               {/* Mobile Search */}

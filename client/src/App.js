@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import { WishlistProvider } from './contexts/WishlistContext';
+import { LoyaltyProvider } from './contexts/LoyaltyContext';
 
 // Layout Components
 import Header from './components/Layout/Header';
@@ -18,6 +19,7 @@ import Wishlist from './pages/Wishlist';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Contact from './pages/Contact';
+import About from './pages/About';
 import Profile from './pages/Profile';
 import Orders from './pages/Orders';
 
@@ -35,89 +37,105 @@ import Settings from './pages/Admin/Settings';
 // Protected Route Component
 import ProtectedRoute from './components/Auth/ProtectedRoute';
 import AdminRoute from './components/Auth/AdminRoute';
+import ClientRoute from './components/Auth/ClientRoute';
 
 function App() {
   return (
     <AuthProvider>
       <CartProvider>
         <WishlistProvider>
-          <div className="App">
+          <LoyaltyProvider>
+            <div className="App">
             <Routes>
                 {/* Public Routes */}
                 <Route path="/" element={
-                  <>
+                  <ClientRoute>
                     <Header />
                     <Home />
                     <Footer />
-                  </>
+                  </ClientRoute>
                 } />
                 
                 <Route path="/shop" element={
-                  <>
+                  <ClientRoute>
                     <Header />
                     <Shop />
                     <Footer />
-                  </>
+                  </ClientRoute>
                 } />
                 
                 <Route path="/product/:id" element={
-                  <>
+                  <ClientRoute>
                     <Header />
                     <ProductDetail />
                     <Footer />
-                  </>
+                  </ClientRoute>
                 } />
                 
                 <Route path="/cart" element={
-                  <>
+                  <ClientRoute>
                     <Header />
                     <Cart />
                     <Footer />
-                  </>
+                  </ClientRoute>
                 } />
                 
                 <Route path="/wishlist" element={
-                  <ProtectedRoute>
-                    <Header />
-                    <Wishlist />
-                    <Footer />
-                  </ProtectedRoute>
+                  <ClientRoute>
+                    <ProtectedRoute>
+                      <Header />
+                      <Wishlist />
+                      <Footer />
+                    </ProtectedRoute>
+                  </ClientRoute>
                 } />
                 
                 <Route path="/login" element={
-                  <>
+                  <ClientRoute>
                     <Login />
-                  </>
+                  </ClientRoute>
                 } />
                 
                 <Route path="/register" element={
-                  <>
+                  <ClientRoute>
                     <Register />
-                  </>
+                  </ClientRoute>
                 } />
                 
                 <Route path="/contact" element={
-                  <>
+                  <ClientRoute>
                     <Header />
                     <Contact />
                     <Footer />
-                  </>
+                  </ClientRoute>
+                } />
+                
+                <Route path="/about" element={
+                  <ClientRoute>
+                    <Header />
+                    <About />
+                    <Footer />
+                  </ClientRoute>
                 } />
                 
                 <Route path="/profile" element={
-                  <ProtectedRoute>
-                    <Header />
-                    <Profile />
-                    <Footer />
-                  </ProtectedRoute>
+                  <ClientRoute>
+                    <ProtectedRoute>
+                      <Header />
+                      <Profile />
+                      <Footer />
+                    </ProtectedRoute>
+                  </ClientRoute>
                 } />
                 
                 <Route path="/orders" element={
-                  <ProtectedRoute>
-                    <Header />
-                    <Orders />
-                    <Footer />
-                  </ProtectedRoute>
+                  <ClientRoute>
+                    <ProtectedRoute>
+                      <Header />
+                      <Orders />
+                      <Footer />
+                    </ProtectedRoute>
+                  </ClientRoute>
                 } />
 
                 {/* Admin Routes */}
@@ -194,9 +212,10 @@ function App() {
                 } />
               </Routes>
             </div>
-          </WishlistProvider>
-        </CartProvider>
-      </AuthProvider>
+          </LoyaltyProvider>
+        </WishlistProvider>
+      </CartProvider>
+    </AuthProvider>
     );
   }
 
