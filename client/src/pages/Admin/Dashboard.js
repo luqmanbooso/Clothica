@@ -1,310 +1,351 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { FiUsers, FiPackage, FiShoppingCart, FiDollarSign, FiTrendingUp, FiEye, FiEyeOff } from 'react-icons/fi';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
-import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
-import axios from 'axios';
-import toast from 'react-hot-toast';
-import { useAuth } from '../../contexts/AuthContext';
+import { 
+  CurrencyDollarIcon, 
+  ShoppingBagIcon, 
+  UsersIcon, 
+  CubeIcon,
+  ArrowTrendingUpIcon,
+  ArrowTrendingDownIcon,
+  EyeIcon,
+  StarIcon,
+  ClockIcon,
+  CheckCircleIcon,
+  ExclamationTriangleIcon
+} from '@heroicons/react/24/outline';
+import { motion } from 'framer-motion';
 
-const AdminDashboard = () => {
-  const [dashboardData, setDashboardData] = useState({
-    stats: {
-      totalUsers: 0,
-      totalProducts: 0,
-      totalOrders: 0,
-      totalRevenue: 0,
-      monthlyRevenue: []
-    },
-    recentOrders: []
+const Dashboard = () => {
+  const [stats, setStats] = useState({
+    totalRevenue: 0,
+    totalOrders: 0,
+    totalUsers: 0,
+    totalProducts: 0
   });
+  const [recentOrders, setRecentOrders] = useState([]);
+  const [topProducts, setTopProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showRevenue, setShowRevenue] = useState(true);
-  const { user } = useAuth();
 
   useEffect(() => {
-    fetchDashboardStats();
-  }, []);
+    // Simulate loading data
+    setTimeout(() => {
+      setStats({
+        totalRevenue: 125430,
+        totalOrders: 1247,
+        totalUsers: 8923,
+        totalProducts: 156
+      });
+      
+      setRecentOrders([
+        {
+          id: '#ORD-001',
+          customer: 'John Doe',
+          amount: 299.99,
+          status: 'completed',
+          date: '2024-01-15'
+        },
+        {
+          id: '#ORD-002',
+          customer: 'Jane Smith',
+          amount: 149.50,
+          status: 'pending',
+          date: '2024-01-14'
+        },
+        {
+          id: '#ORD-003',
+          customer: 'Mike Johnson',
+          amount: 89.99,
+          status: 'processing',
+          date: '2024-01-14'
+        },
+        {
+          id: '#ORD-004',
+          customer: 'Sarah Wilson',
+          amount: 199.99,
+          status: 'completed',
+          date: '2024-01-13'
+        }
+      ]);
 
-  const fetchDashboardStats = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get('/api/admin/dashboard');
-      setDashboardData(response.data);
-    } catch (error) {
-      console.error('Error fetching dashboard stats:', error);
-      toast.error('Failed to load dashboard data');
-    } finally {
+      setTopProducts([
+        {
+          id: 1,
+          name: 'Premium Cotton T-Shirt',
+          sales: 234,
+          revenue: 11700,
+          rating: 4.8
+        },
+        {
+          id: 2,
+          name: 'Denim Jeans Classic',
+          sales: 189,
+          revenue: 9450,
+          rating: 4.6
+        },
+        {
+          id: 3,
+          name: 'Casual Sneakers',
+          sales: 156,
+          revenue: 7800,
+          rating: 4.7
+        },
+        {
+          id: 4,
+          name: 'Summer Dress',
+          sales: 142,
+          revenue: 7100,
+          rating: 4.5
+        }
+      ]);
+
       setLoading(false);
-    }
-  };
+    }, 1000);
+  }, []);
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'pending': return 'text-yellow-600 bg-yellow-100';
-      case 'processing': return 'text-blue-600 bg-blue-100';
-      case 'shipped': return 'text-purple-600 bg-purple-100';
-      case 'delivered': return 'text-green-600 bg-green-100';
-      case 'cancelled': return 'text-red-600 bg-red-100';
-      case 'refunded': return 'text-gray-600 bg-gray-100';
-      default: return 'text-gray-600 bg-gray-100';
+      case 'completed':
+        return 'bg-green-100 text-green-800';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'processing':
+        return 'bg-blue-100 text-blue-800';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount);
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'completed':
+        return <CheckCircleIcon className="h-4 w-4" />;
+      case 'pending':
+        return <ClockIcon className="h-4 w-4" />;
+      case 'processing':
+        return <ExclamationTriangleIcon className="h-4 w-4" />;
+      default:
+        return <ClockIcon className="h-4 w-4" />;
+    }
   };
 
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        duration: 0.6,
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.5 }
+    }
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#6C7A59]"></div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">
-          Admin Dashboard
-        </h1>
-        <p className="mt-2 text-gray-600">
-          Welcome back, {user?.name}! Here's what's happening with your store.
-        </p>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-xl shadow-lg p-6">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="space-y-8"
+    >
+      {/* Stats Cards */}
+      <motion.div 
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+        variants={itemVariants}
+      >
+        <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Total Users</p>
-              <p className="text-2xl font-bold text-gray-900">{dashboardData.stats.totalUsers.toLocaleString()}</p>
-            </div>
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <FiUsers className="h-6 w-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Products</p>
-              <p className="text-2xl font-bold text-gray-900">{dashboardData.stats.totalProducts.toLocaleString()}</p>
-            </div>
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <FiPackage className="h-6 w-6 text-green-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Orders</p>
-              <p className="text-2xl font-bold text-gray-900">{dashboardData.stats.totalOrders.toLocaleString()}</p>
-            </div>
-            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-              <FiShoppingCart className="h-6 w-6 text-purple-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Revenue</p>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(dashboardData.stats.totalRevenue)}</p>
-            </div>
-            <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-              <FiDollarSign className="h-6 w-6 text-yellow-600" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        {/* Revenue Chart */}
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">Revenue Trend</h2>
-            <button
-              onClick={() => setShowRevenue(!showRevenue)}
-              className="flex items-center space-x-2 text-sm text-gray-600 hover:text-gray-900"
-            >
-              {showRevenue ? <FiEyeOff className="h-4 w-4" /> : <FiEye className="h-4 w-4" />}
-              <span>{showRevenue ? 'Hide' : 'Show'}</span>
-            </button>
-          </div>
-          {showRevenue && (
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={dashboardData.stats.monthlyRevenue}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="_id" 
-                  tickFormatter={(value) => format(new Date(value), 'MMM dd')}
-                />
-                <YAxis />
-                <Tooltip 
-                  formatter={(value) => [formatCurrency(value), 'Revenue']}
-                  labelFormatter={(value) => format(new Date(value), 'MMM dd, yyyy')}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="revenue" 
-                  stroke="#3B82F6" 
-                  strokeWidth={2}
-                  dot={{ fill: '#3B82F6', strokeWidth: 2, r: 4 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-
-        {/* Orders Chart */}
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Orders by Status</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={[
-              { name: 'Pending', value: dashboardData.recentOrders.filter(o => o.status === 'pending').length },
-              { name: 'Processing', value: dashboardData.recentOrders.filter(o => o.status === 'processing').length },
-              { name: 'Shipped', value: dashboardData.recentOrders.filter(o => o.status === 'shipped').length },
-              { name: 'Delivered', value: dashboardData.recentOrders.filter(o => o.status === 'delivered').length },
-              { name: 'Cancelled', value: dashboardData.recentOrders.filter(o => o.status === 'cancelled').length }
-            ]}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="value" fill="#8B5CF6" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Quick Actions & Recent Orders */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">
-            Quick Actions
-          </h2>
-          <div className="grid grid-cols-2 gap-4">
-            <Link
-              to="/admin/products"
-              className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
-            >
-              <FiPackage className="h-6 w-6 text-blue-600 mb-2" />
-              <h3 className="font-semibold text-gray-900">Manage Products</h3>
-              <p className="text-sm text-gray-600">Add, edit, or remove products</p>
-            </Link>
-            
-            <Link
-              to="/admin/orders"
-              className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
-            >
-              <FiShoppingCart className="h-6 w-6 text-blue-600 mb-2" />
-              <h3 className="font-semibold text-gray-900">View Orders</h3>
-              <p className="text-sm text-gray-600">Process and track orders</p>
-            </Link>
-            
-            <Link
-              to="/admin/users"
-              className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
-            >
-              <FiUsers className="h-6 w-6 text-blue-600 mb-2" />
-              <h3 className="font-semibold text-gray-900">Manage Users</h3>
-              <p className="text-sm text-gray-600">View and manage customers</p>
-            </Link>
-            
-            <div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
-              <FiTrendingUp className="h-6 w-6 text-gray-600 mb-2" />
-              <h3 className="font-semibold text-gray-900">Analytics</h3>
-              <p className="text-sm text-gray-600">View detailed reports</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">
-            Recent Orders
-          </h2>
-          <div className="space-y-4">
-            {dashboardData.recentOrders.slice(0, 5).map((order) => (
-              <div key={order._id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900">
-                    {order.user?.name || 'Unknown User'}
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    {formatCurrency(order.total)} • {format(new Date(order.createdAt), 'MMM dd, yyyy')}
-                  </p>
+              <p className="text-sm font-medium text-gray-600">Total Revenue</p>
+              <p className="text-3xl font-display font-bold text-[#1E1E1E]">
+                ${stats.totalRevenue.toLocaleString()}
+              </p>
+                              <div className="flex items-center mt-2">
+                  <ArrowTrendingUpIcon className="h-4 w-4 text-green-500 mr-1" />
+                  <span className="text-sm text-green-600 font-medium">+12.5%</span>
+                  <span className="text-sm text-gray-500 ml-1">from last month</span>
                 </div>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
-                  {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                </span>
-              </div>
-            ))}
-            {dashboardData.recentOrders.length === 0 && (
-              <p className="text-gray-500 text-center py-4">No recent orders</p>
-            )}
+            </div>
+            <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center">
+              <CurrencyDollarIcon className="h-6 w-6 text-white" />
+            </div>
           </div>
         </div>
+
+        <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total Orders</p>
+              <p className="text-3xl font-display font-bold text-[#1E1E1E]">
+                {stats.totalOrders.toLocaleString()}
+              </p>
+                              <div className="flex items-center mt-2">
+                  <ArrowTrendingUpIcon className="h-4 w-4 text-green-500 mr-1" />
+                  <span className="text-sm text-green-600 font-medium">+8.2%</span>
+                  <span className="text-sm text-gray-500 ml-1">from last month</span>
+                </div>
+            </div>
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center">
+              <ShoppingBagIcon className="h-6 w-6 text-white" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total Users</p>
+              <p className="text-3xl font-display font-bold text-[#1E1E1E]">
+                {stats.totalUsers.toLocaleString()}
+              </p>
+                              <div className="flex items-center mt-2">
+                  <ArrowTrendingUpIcon className="h-4 w-4 text-green-500 mr-1" />
+                  <span className="text-sm text-green-600 font-medium">+15.3%</span>
+                  <span className="text-sm text-gray-500 ml-1">from last month</span>
+                </div>
+            </div>
+            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+              <UsersIcon className="h-6 w-6 text-white" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total Products</p>
+              <p className="text-3xl font-display font-bold text-[#1E1E1E]">
+                {stats.totalProducts}
+              </p>
+                              <div className="flex items-center mt-2">
+                  <ArrowTrendingUpIcon className="h-4 w-4 text-green-500 mr-1" />
+                  <span className="text-sm text-green-600 font-medium">+5.7%</span>
+                  <span className="text-sm text-gray-500 ml-1">from last month</span>
+                </div>
+            </div>
+            <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center">
+              <CubeIcon className="h-6 w-6 text-white" />
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Charts and Tables */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Recent Orders */}
+        <motion.div 
+          className="bg-white rounded-2xl shadow-lg border border-gray-100"
+          variants={itemVariants}
+        >
+          <div className="p-6 border-b border-gray-100">
+            <h3 className="text-xl font-display font-bold text-[#1E1E1E]">Recent Orders</h3>
+            <p className="text-sm text-gray-600 mt-1">Latest orders from your customers</p>
+          </div>
+          <div className="p-6">
+            <div className="space-y-4">
+              {recentOrders.map((order, index) => (
+                <div key={order.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-10 h-10 bg-gradient-to-br from-[#6C7A59] to-[#D6BFAF] rounded-lg flex items-center justify-center">
+                      <ShoppingBagIcon className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-[#1E1E1E]">{order.customer}</p>
+                      <p className="text-sm text-gray-600">{order.id}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-[#1E1E1E]">${order.amount}</p>
+                    <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
+                      {getStatusIcon(order.status)}
+                      <span className="ml-1 capitalize">{order.status}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Top Products */}
+        <motion.div 
+          className="bg-white rounded-2xl shadow-lg border border-gray-100"
+          variants={itemVariants}
+        >
+          <div className="p-6 border-b border-gray-100">
+            <h3 className="text-xl font-display font-bold text-[#1E1E1E]">Top Products</h3>
+            <p className="text-sm text-gray-600 mt-1">Best performing products this month</p>
+          </div>
+          <div className="p-6">
+            <div className="space-y-4">
+              {topProducts.map((product, index) => (
+                <div key={product.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-10 h-10 bg-gradient-to-br from-[#6C7A59] to-[#D6BFAF] rounded-lg flex items-center justify-center">
+                      <CubeIcon className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-[#1E1E1E]">{product.name}</p>
+                      <div className="flex items-center space-x-2">
+                        <div className="flex items-center">
+                          <StarIcon className="h-4 w-4 text-yellow-400" />
+                          <span className="text-sm text-gray-600 ml-1">{product.rating}</span>
+                        </div>
+                        <span className="text-sm text-gray-600">•</span>
+                        <span className="text-sm text-gray-600">{product.sales} sales</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-[#1E1E1E]">${product.revenue}</p>
+                    <p className="text-sm text-gray-600">Revenue</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
       </div>
 
-      {/* Recent Activity */}
-      <div className="bg-white rounded-xl shadow-lg p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">
-          Recent Activity
-        </h2>
-        <div className="space-y-4">
-          <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg">
-            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-              <FiUsers className="h-4 w-4 text-blue-600" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm text-gray-900">
-                <span className="font-medium">New user registered</span>
-              </p>
-              <p className="text-xs text-gray-600">2 minutes ago</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg">
-            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-              <FiShoppingCart className="h-4 w-4 text-green-600" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm text-gray-900">
-                <span className="font-medium">New order received</span>
-              </p>
-              <p className="text-xs text-gray-600">15 minutes ago</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-3 p-3 bg-purple-50 rounded-lg">
-            <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-              <FiPackage className="h-4 w-4 text-purple-600" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm text-gray-900">
-                <span className="font-medium">Product inventory updated</span>
-              </p>
-              <p className="text-xs text-gray-600">1 hour ago</p>
-            </div>
-          </div>
+      {/* Quick Actions */}
+      <motion.div 
+        className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6"
+        variants={itemVariants}
+      >
+        <h3 className="text-xl font-display font-bold text-[#1E1E1E] mb-4">Quick Actions</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <button className="flex items-center justify-center p-4 bg-gradient-to-r from-[#6C7A59] to-[#5A6A4A] text-white rounded-xl hover:shadow-lg transition-all duration-200 transform hover:scale-105">
+            <CubeIcon className="h-5 w-5 mr-2" />
+            Add New Product
+          </button>
+          <button className="flex items-center justify-center p-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 transform hover:scale-105">
+            <ShoppingBagIcon className="h-5 w-5 mr-2" />
+            View All Orders
+          </button>
+          <button className="flex items-center justify-center p-4 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 transform hover:scale-105">
+            <UsersIcon className="h-5 w-5 mr-2" />
+            Manage Users
+          </button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };
 
-export default AdminDashboard; 
+export default Dashboard; 

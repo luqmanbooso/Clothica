@@ -1,17 +1,57 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { FiSearch, FiShoppingCart, FiHeart, FiUser, FiMenu, FiX } from 'react-icons/fi';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { 
+  MagnifyingGlassIcon, 
+  ShoppingBagIcon, 
+  HeartIcon, 
+  UserIcon, 
+  Bars3Icon, 
+  XMarkIcon,
+  SparklesIcon,
+  StarIcon,
+  TruckIcon,
+  ShieldCheckIcon,
+  ChevronDownIcon
+} from '@heroicons/react/24/outline';
+import { 
+  ShoppingBagIcon as ShoppingBagSolid,
+  HeartIcon as HeartSolid
+} from '@heroicons/react/24/solid';
 import { useAuth } from '../../contexts/AuthContext';
+import { useCart } from '../../contexts/CartContext';
+import { useWishlist } from '../../contexts/WishlistContext';
 
-const Header = ({ user, isAuthenticated, isAdmin, cartCount, wishlistCount, onMobileMenuToggle }) => {
-  const { logout } = useAuth();
+const Header = () => {
+  const { user, isAuthenticated, isAdmin, logout } = useAuth();
+  const { getCartCount } = useCart();
+  const { wishlist } = useWishlist();
   const navigate = useNavigate();
+  const location = useLocation();
+  
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  const [showTopBanner, setShowTopBanner] = useState(true);
+
+  const cartCount = getCartCount();
+  const wishlistCount = wishlist.length;
+
+  // Handle scroll effect
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       navigate(`/shop?search=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchQuery('');
     }
   };
 
@@ -20,136 +60,414 @@ const Header = ({ user, isAuthenticated, isAdmin, cartCount, wishlistCount, onMo
     navigate('/');
   };
 
-  return (
-    <header className="bg-white shadow-soft sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-accent-500 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-lg">C</span>
-            </div>
-            <span className="text-xl font-display font-bold text-gradient">Clothica</span>
-          </Link>
+  const handleCloseBanner = () => {
+    setShowTopBanner(false);
+  };
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
-            <Link to="/" className="text-secondary-700 hover:text-primary-500 font-medium transition-colors">
-              Home
-            </Link>
-            <Link to="/shop" className="text-secondary-700 hover:text-primary-500 font-medium transition-colors">
-              Shop
-            </Link>
-            <div className="relative group">
-              <button className="text-secondary-700 hover:text-primary-500 font-medium transition-colors">
-                Categories
-              </button>
-              <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-lg shadow-large opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                <div className="py-2">
-                  <Link to="/shop?category=men" className="block px-4 py-2 text-sm text-secondary-700 hover:bg-secondary-50">
-                    Men's Clothing
-                  </Link>
-                  <Link to="/shop?category=women" className="block px-4 py-2 text-sm text-secondary-700 hover:bg-secondary-50">
-                    Women's Clothing
-                  </Link>
-                  <Link to="/shop?category=kids" className="block px-4 py-2 text-sm text-secondary-700 hover:bg-secondary-50">
-                    Kids' Clothing
-                  </Link>
-                  <Link to="/shop?category=accessories" className="block px-4 py-2 text-sm text-secondary-700 hover:bg-secondary-50">
-                    Accessories
-                  </Link>
-                  <Link to="/shop?category=shoes" className="block px-4 py-2 text-sm text-secondary-700 hover:bg-secondary-50">
-                    Shoes
-                  </Link>
-                </div>
+  const isActive = (path) => location.pathname === path;
+
+
+
+  return (
+    <>
+      {/* Top Banner */}
+      {showTopBanner && (
+        <div className="bg-gradient-to-r from-[#6C7A59] via-[#5A6A4A] to-[#D6BFAF] text-white text-sm py-2 relative">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <TruckIcon className="w-4 h-4" />
+                <span>Free shipping on orders over $50</span>
+              </div>
+              <div className="hidden sm:flex items-center space-x-2">
+                <ShieldCheckIcon className="w-4 h-4" />
+                <span>30-day returns</span>
+              </div>
+              <div className="hidden md:flex items-center space-x-2">
+                <StarIcon className="w-4 h-4" />
+                <span>Premium quality</span>
               </div>
             </div>
-          </nav>
+            <div className="flex items-center space-x-4 text-xs">
+              <Link to="/contact" className="hover:text-[#D6BFAF] transition-colors">Contact</Link>
+              <Link to="/shipping" className="hover:text-[#D6BFAF] transition-colors">Shipping</Link>
+              <Link to="/terms" className="hover:text-[#D6BFAF] transition-colors">Terms</Link>
+            </div>
+          </div>
+          
+          {/* Close Button */}
+          <button
+            onClick={handleCloseBanner}
+            className="absolute right-4 top-1/2 transform -translate-y-1/2 p-1 hover:bg-white/20 rounded-full transition-colors"
+            aria-label="Close banner"
+          >
+            <XMarkIcon className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
-          {/* Search Bar */}
-          <div className="hidden lg:flex flex-1 max-w-md mx-8">
-            <form onSubmit={handleSearch} className="w-full">
+      {/* Main Header */}
+      <header className={`sticky top-0 z-50 transition-all duration-300 ${
+        isScrolled 
+          ? 'bg-white/95 backdrop-blur-md shadow-lg border-b border-gray-100' 
+          : 'bg-white'
+      }`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-20">
+            {/* Logo */}
+            <Link to="/" className="flex items-center space-x-3 group">
               <div className="relative">
+                <div className="w-12 h-12 bg-gradient-to-br from-[#6C7A59] to-[#D6BFAF] rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-105">
+                  <span className="text-white font-bold text-xl">C</span>
+                </div>
+                <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-[#D6BFAF] to-[#6C7A59] rounded-full flex items-center justify-center">
+                  <SparklesIcon className="w-2 h-2 text-white" />
+                </div>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-2xl font-display font-bold bg-gradient-to-r from-[#6C7A59] to-[#D6BFAF] bg-clip-text text-transparent">
+                  Clothica
+                </span>
+                <span className="text-xs text-gray-500 -mt-1">Premium Fashion</span>
+              </div>
+            </Link>
+
+            {/* Desktop Navigation */}
+            <nav className="hidden lg:flex items-center space-x-8">
+              {/* Shop Dropdown */}
+              <div className="relative group">
+                <button className={`relative px-4 py-2 font-medium transition-all duration-200 flex items-center space-x-1 ${
+                  isActive('/shop') 
+                    ? 'text-[#6C7A59]' 
+                    : 'text-gray-700 hover:text-[#6C7A59]'
+                }`}>
+                  <span>Shop</span>
+                  <ChevronDownIcon className="w-4 h-4 transition-transform group-hover:rotate-180" />
+                  {isActive('/shop') && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#6C7A59] to-[#D6BFAF]"></div>
+                  )}
+                </button>
+                
+                {/* Shop Dropdown Menu */}
+                <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                  <div className="p-4">
+                    <div className="mb-4">
+                      <Link 
+                        to="/shop" 
+                        className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div>
+                            <div className="font-semibold text-gray-900">All Products</div>
+                            <div className="text-sm text-gray-500">8 products</div>
+                          </div>
+                        </div>
+                      </Link>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Link 
+                        to="/shop?category=mens" 
+                        className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div>
+                            <div className="font-semibold text-gray-900">Men's Fashion</div>
+                            <div className="text-sm text-gray-500">3 products</div>
+                          </div>
+                        </div>
+                      </Link>
+                      
+                      <Link 
+                        to="/shop?category=womens" 
+                        className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div>
+                            <div className="font-semibold text-gray-900">Women's Fashion</div>
+                            <div className="text-sm text-gray-500">1 product</div>
+                          </div>
+                        </div>
+                      </Link>
+                      
+                      <Link 
+                        to="/shop?category=accessories" 
+                        className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div>
+                            <div className="font-semibold text-gray-900">Accessories</div>
+                            <div className="text-sm text-gray-500">2 products</div>
+                          </div>
+                        </div>
+                      </Link>
+                      
+                      <Link 
+                        to="/shop?category=footwear" 
+                        className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div>
+                            <div className="font-semibold text-gray-900">Footwear</div>
+                            <div className="text-sm text-gray-500">1 product</div>
+                          </div>
+                        </div>
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <Link 
+                to="/contact" 
+                className={`relative px-4 py-2 font-medium transition-all duration-200 ${
+                  isActive('/contact') 
+                    ? 'text-[#6C7A59]' 
+                    : 'text-gray-700 hover:text-[#6C7A59]'
+                }`}
+              >
+                Contact
+                {isActive('/contact') && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#6C7A59] to-[#D6BFAF]"></div>
+                )}
+              </Link>
+            </nav>
+
+            {/* Search Bar */}
+            <div className="hidden lg:flex flex-1 max-w-md mx-8">
+              <form onSubmit={handleSearch} className="w-full">
+                <div className="relative group">
+                  <input
+                    type="text"
+                    placeholder="Search for products, brands, and more..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onFocus={() => setIsSearchFocused(true)}
+                    onBlur={() => setIsSearchFocused(false)}
+                    className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent transition-all duration-200 group-hover:border-[#6C7A59]"
+                  />
+                  <MagnifyingGlassIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  {isSearchFocused && (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 p-4">
+                      <div className="text-sm text-gray-500">Popular searches:</div>
+                      <div className="mt-2 space-y-2">
+                        {['Summer dresses', 'Denim jackets', 'Sneakers', 'Accessories'].map((term) => (
+                          <button
+                            key={term}
+                            onClick={() => {
+                              setSearchQuery(term);
+                              navigate(`/shop?search=${encodeURIComponent(term)}`);
+                            }}
+                            className="block w-full text-left px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700 hover:text-[#6C7A59] transition-colors"
+                          >
+                            {term}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </form>
+            </div>
+
+            {/* User Actions */}
+            <div className="flex items-center space-x-4">
+              {/* Search Icon for Mobile */}
+              <button className="lg:hidden text-gray-700 hover:text-[#6C7A59] transition-colors">
+                <MagnifyingGlassIcon className="w-6 h-6" />
+              </button>
+
+              {/* Wishlist */}
+              <Link to="/wishlist" className="relative group">
+                <div className="p-2 rounded-xl group-hover:bg-gray-50 transition-all duration-200">
+                  {wishlistCount > 0 ? (
+                    <HeartSolid className="w-6 h-6 text-red-500" />
+                  ) : (
+                    <HeartIcon className="w-6 h-6 text-gray-700 group-hover:text-red-500 transition-colors" />
+                  )}
+                  {wishlistCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
+                      {wishlistCount}
+                    </span>
+                  )}
+                </div>
+              </Link>
+
+              {/* Cart */}
+              <Link to="/cart" className="relative group">
+                <div className="p-2 rounded-xl group-hover:bg-gray-50 transition-all duration-200">
+                  {cartCount > 0 ? (
+                    <ShoppingBagSolid className="w-6 h-6 text-[#6C7A59]" />
+                  ) : (
+                    <ShoppingBagIcon className="w-6 h-6 text-gray-700 group-hover:text-[#6C7A59] transition-colors" />
+                  )}
+                  {cartCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-[#6C7A59] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
+                      {cartCount}
+                    </span>
+                  )}
+                </div>
+              </Link>
+
+              {/* User Menu */}
+              {isAuthenticated ? (
+                <div className="relative group">
+                  <button className="flex items-center space-x-2 p-2 rounded-xl group-hover:bg-gray-50 transition-all duration-200">
+                    <div className="w-8 h-8 bg-gradient-to-r from-[#6C7A59] to-[#D6BFAF] rounded-full flex items-center justify-center">
+                      <UserIcon className="w-4 h-4 text-white" />
+                    </div>
+                    <span className="hidden sm:block font-medium text-gray-700">{user?.name}</span>
+                  </button>
+                  <div className="absolute top-full right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                    <div className="p-2">
+                      <Link to="/profile" className="flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-gray-50 text-gray-700 hover:text-[#6C7A59] transition-colors">
+                        <UserIcon className="w-5 h-5" />
+                        <span>Profile</span>
+                      </Link>
+                      <Link to="/orders" className="flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-gray-50 text-gray-700 hover:text-[#6C7A59] transition-colors">
+                        <ShoppingBagIcon className="w-5 h-5" />
+                        <span>Orders</span>
+                      </Link>
+                      {isAdmin && (
+                        <Link to="/admin" className="flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-gray-50 text-gray-700 hover:text-[#6C7A59] transition-colors">
+                          <StarIcon className="w-5 h-5" />
+                          <span>Admin Panel</span>
+                        </Link>
+                      )}
+                      <div className="border-t border-gray-100 my-2"></div>
+                      <button
+                        onClick={handleLogout}
+                        className="flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-red-50 text-red-600 w-full text-left transition-colors"
+                      >
+                        <span>Logout</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <Link 
+                  to="/login" 
+                  className="bg-gradient-to-r from-[#6C7A59] to-[#D6BFAF] text-white px-6 py-2 rounded-xl font-medium hover:from-[#5A6A4A] hover:to-[#C4B09F] transition-all duration-200 shadow-lg hover:shadow-xl"
+                >
+                  Sign In
+                </Link>
+              )}
+
+              {/* Mobile Menu Button */}
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="lg:hidden p-2 rounded-xl hover:bg-gray-50 transition-all duration-200"
+              >
+                {isMobileMenuOpen ? (
+                  <XMarkIcon className="w-6 h-6 text-gray-700" />
+                ) : (
+                  <Bars3Icon className="w-6 h-6 text-gray-700" />
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile Menu */}
+        {isMobileMenuOpen && (
+          <div className="lg:hidden bg-white border-t border-gray-100">
+            <div className="px-4 py-6 space-y-4">
+              {/* Mobile Search */}
+              <form onSubmit={handleSearch} className="relative">
                 <input
                   type="text"
                   placeholder="Search products..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6C7A59]"
                 />
-                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-secondary-400" />
-              </div>
-            </form>
-          </div>
+                <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              </form>
 
-          {/* User Actions */}
-          <div className="flex items-center space-x-4">
-            {/* Search Icon for Mobile */}
-            <button className="lg:hidden text-secondary-700 hover:text-primary-500">
-              <FiSearch className="w-5 h-5" />
-            </button>
-
-            {/* Wishlist */}
-            <Link to="/wishlist" className="relative text-secondary-700 hover:text-primary-500 transition-colors">
-              <FiHeart className="w-5 h-5" />
-              {wishlistCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-accent-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  {wishlistCount}
-                </span>
-              )}
-            </Link>
-
-            {/* Cart */}
-            <Link to="/cart" className="relative text-secondary-700 hover:text-primary-500 transition-colors">
-              <FiShoppingCart className="w-5 h-5" />
-              {cartCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-primary-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  {cartCount}
-                </span>
-              )}
-            </Link>
-
-            {/* User Menu */}
-            {isAuthenticated ? (
-              <div className="relative group">
-                <button className="flex items-center space-x-2 text-secondary-700 hover:text-primary-500 transition-colors">
-                  <FiUser className="w-5 h-5" />
-                  <span className="hidden sm:block font-medium">{user?.name}</span>
-                </button>
-                <div className="absolute top-full right-0 mt-2 w-48 bg-white rounded-lg shadow-large opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                  <div className="py-2">
-                    <Link to="/profile" className="block px-4 py-2 text-sm text-secondary-700 hover:bg-secondary-50">
-                      Profile
-                    </Link>
-                    <Link to="/orders" className="block px-4 py-2 text-sm text-secondary-700 hover:bg-secondary-50">
-                      Orders
-                    </Link>
-                    <button
-                      onClick={handleLogout}
-                      className="block w-full text-left px-4 py-2 text-sm text-error-600 hover:bg-error-50"
-                    >
-                      Logout
-                    </button>
-                  </div>
+              {/* Mobile Navigation */}
+              <nav className="space-y-2">
+                {/* Mobile Shop Categories */}
+                <div>
+                  <div className="px-4 py-2 text-sm font-semibold text-gray-500 uppercase tracking-wider">Shop Categories</div>
+                  <Link 
+                    to="/shop" 
+                    className="block px-4 py-3 rounded-xl transition-colors text-gray-700 hover:bg-gray-50"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div>
+                        <div className="font-medium">All Products</div>
+                        <div className="text-sm text-gray-500">8 products</div>
+                      </div>
+                    </div>
+                  </Link>
+                  <Link 
+                    to="/shop?category=mens" 
+                    className="block px-4 py-3 rounded-xl transition-colors text-gray-700 hover:bg-gray-50"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div>
+                        <div className="font-medium">Men's Fashion</div>
+                        <div className="text-sm text-gray-500">3 products</div>
+                      </div>
+                    </div>
+                  </Link>
+                  <Link 
+                    to="/shop?category=womens" 
+                    className="block px-4 py-3 rounded-xl transition-colors text-gray-700 hover:bg-gray-50"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div>
+                        <div className="font-medium">Women's Fashion</div>
+                        <div className="text-sm text-gray-500">1 product</div>
+                      </div>
+                    </div>
+                  </Link>
+                  <Link 
+                    to="/shop?category=accessories" 
+                    className="block px-4 py-3 rounded-xl transition-colors text-gray-700 hover:bg-gray-50"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div>
+                        <div className="font-medium">Accessories</div>
+                        <div className="text-sm text-gray-500">2 products</div>
+                      </div>
+                    </div>
+                  </Link>
+                  <Link 
+                    to="/shop?category=footwear" 
+                    className="block px-4 py-3 rounded-xl transition-colors text-gray-700 hover:bg-gray-50"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div>
+                        <div className="font-medium">Footwear</div>
+                        <div className="text-sm text-gray-500">1 product</div>
+                      </div>
+                    </div>
+                  </Link>
                 </div>
-              </div>
-            ) : (
-              <Link to="/login" className="btn-primary">
-                Sign In
-              </Link>
-            )}
+                
+                <Link 
+                  to="/contact" 
+                  className={`block px-4 py-3 rounded-xl transition-colors ${
+                    isActive('/contact') ? 'bg-indigo-50 text-indigo-600' : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Contact
+                </Link>
+              </nav>
 
-            {/* Mobile Menu Button */}
-            <button
-              onClick={onMobileMenuToggle}
-              className="md:hidden text-secondary-700 hover:text-primary-500"
-            >
-              <FiMenu className="w-6 h-6" />
-            </button>
+
+            </div>
           </div>
-        </div>
-      </div>
-    </header>
+        )}
+      </header>
+    </>
   );
 };
 
