@@ -207,7 +207,7 @@ const Shop = () => {
       setProducts(fallbackProducts);
       setLoading(false);
       console.log('Loading finished, products state:', products);
-    };
+  };
 
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({
@@ -423,7 +423,7 @@ const Shop = () => {
               </div>
             </Link>
           ))}
-        </div>
+            </div>
 
         {/* Filters and Sort */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
@@ -445,7 +445,7 @@ const Shop = () => {
 
               {/* Price Range Filter */}
               <div className="relative">
-                <select
+              <select
                   value={filters.priceRange}
                   onChange={(e) => handleFilterChange('priceRange', e.target.value)}
                   className="appearance-none px-4 py-2 border border-gray-300 rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#6C7A59] focus:border-[#6C7A59]"
@@ -453,9 +453,9 @@ const Shop = () => {
                   {priceRanges.map(range => (
                     <option key={range.id} value={range.id}>
                       {range.name}
-                    </option>
-                  ))}
-                </select>
+                  </option>
+                ))}
+              </select>
           </div>
 
               {/* Sort By */}

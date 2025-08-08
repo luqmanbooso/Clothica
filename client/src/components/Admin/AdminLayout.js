@@ -280,7 +280,7 @@ const AdminLayout = ({ children }) => {
           animate="visible"
         >
           <motion.div variants={itemVariants}>
-            {children}
+        {children}
           </motion.div>
         </motion.main>
       </div>

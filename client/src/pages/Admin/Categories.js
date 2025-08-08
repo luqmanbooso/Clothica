@@ -242,11 +242,11 @@ const Categories = () => {
         className="flex flex-col sm:flex-row sm:items-center sm:justify-between"
         variants={itemVariants}
       >
-        <div>
+          <div>
           <h1 className="text-2xl font-display font-bold text-[#1E1E1E]">Categories</h1>
           <p className="text-gray-600 mt-1">Manage your product categories and subcategories</p>
-        </div>
-        <button
+          </div>
+          <button
           onClick={handleAddCategory}
           className="mt-4 sm:mt-0 flex items-center px-4 py-2 bg-gradient-to-r from-[#6C7A59] to-[#5A6A4A] text-white rounded-xl hover:shadow-lg transition-all duration-200"
         >
@@ -354,49 +354,49 @@ const Categories = () => {
                       className="p-2 text-gray-600 hover:text-red-600 transition-colors"
                     >
                       <TrashIcon className="h-5 w-5" />
-                    </button>
-                  </div>
-                </div>
+          </button>
+        </div>
+      </div>
 
                 {/* Subcategories */}
                 {category.children && category.children.length > 0 && expandedCategories.has(category.id) && (
                   <div className="mt-4 ml-8 space-y-3">
                     {category.children.map((subcategory) => (
                       <div key={subcategory.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-3">
                           <div className="w-8 h-8 bg-gradient-to-br from-[#6C7A59] to-[#D6BFAF] rounded-lg flex items-center justify-center">
                             <TagIcon className="h-4 w-4 text-white" />
-                          </div>
-                          <div>
+                </div>
+                <div>
                             <h5 className="font-medium text-[#1E1E1E]">{subcategory.name}</h5>
                             <p className="text-sm text-gray-600">{subcategory.description}</p>
                             <div className="flex items-center text-sm text-gray-600 mt-1">
                               <CubeIcon className="h-4 w-4 mr-1" />
                               {subcategory.productCount} products
                             </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <button
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
                             onClick={() => handleEditCategory(subcategory)}
                             className="p-1 text-gray-600 hover:text-blue-600 transition-colors"
                           >
                             <PencilIcon className="h-4 w-4" />
-                          </button>
-                          <button
+                </button>
+                <button
                             onClick={() => handleDeleteCategory(subcategory.id)}
                             className="p-1 text-gray-600 hover:text-red-600 transition-colors"
                           >
                             <TrashIcon className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
+                </button>
+              </div>
+            </div>
                     ))}
                   </div>
                 )}
-              </div>
-            ))}
           </div>
+        ))}
+      </div>
         </div>
       </motion.div>
 
@@ -410,31 +410,31 @@ const Categories = () => {
             className="bg-white rounded-2xl p-6 w-full max-w-md mx-4"
           >
             <h3 className="text-xl font-display font-bold text-[#1E1E1E] mb-4">
-              {editingCategory ? 'Edit Category' : 'Add New Category'}
-            </h3>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
+                {editingCategory ? 'Edit Category' : 'Add New Category'}
+              </h3>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
-                <input
-                  type="text"
-                  value={formData.name}
+        <input
+          type="text"
+          value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
                   className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
-                  required
-                />
-              </div>
-              <div>
+          required
+        />
+      </div>
+      <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                <textarea
-                  value={formData.description}
+        <textarea
+          value={formData.description}
                   onChange={(e) => setFormData({...formData, description: e.target.value})}
                   className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
                   rows="3"
-                />
-              </div>
-              <div>
+        />
+      </div>
+        <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Parent Category</label>
-                <select
+          <select
                   value={formData.parentId}
                   onChange={(e) => setFormData({...formData, parentId: e.target.value})}
                   className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
@@ -443,18 +443,18 @@ const Categories = () => {
                   {getParentCategories().map(cat => (
                     <option key={cat.id} value={cat.id}>{cat.name}</option>
                   ))}
-                </select>
-              </div>
-              <div>
+          </select>
+        </div>
+      <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Image URL</label>
-                <input
+        <input
                   type="url"
                   value={formData.image}
                   onChange={(e) => setFormData({...formData, image: e.target.value})}
                   className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
                   placeholder="https://example.com/image.jpg"
-                />
-              </div>
+        />
+      </div>
               <div className="flex items-center space-x-4">
                 <label className="flex items-center">
                   <input
@@ -464,8 +464,8 @@ const Categories = () => {
                     className="rounded border-gray-300 text-[#6C7A59] focus:ring-[#6C7A59]"
                   />
                   <span className="ml-2 text-sm text-gray-700">Active</span>
-                </label>
-              </div>
+        </label>
+      </div>
               <div className="flex space-x-3 pt-4">
                 <button
                   type="submit"
@@ -473,15 +473,15 @@ const Categories = () => {
                 >
                   {editingCategory ? 'Update' : 'Create'}
                 </button>
-                <button
-                  type="button"
+        <button
+          type="button"
                   onClick={() => setShowAddModal(false)}
                   className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-xl hover:bg-gray-300 transition-all duration-200"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
           </motion.div>
         </div>
       )}

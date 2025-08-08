@@ -180,7 +180,7 @@ const Orders = () => {
         <div>
           <h1 className="text-3xl font-display font-bold text-[#1E1E1E]">Orders</h1>
           <p className="text-gray-600 mt-1">Manage and track customer orders</p>
-        </div>
+      </div>
       </motion.div>
 
       {/* Filters and Search */}
@@ -190,15 +190,15 @@ const Orders = () => {
       >
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {/* Search */}
-          <div className="relative">
+            <div className="relative">
             <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <input
-              type="text"
+              <input
+                type="text"
               placeholder="Search orders..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6C7A59] focus:border-[#6C7A59] transition-all duration-200"
-            />
+              />
           </div>
 
           {/* Status Filter */}
@@ -218,7 +218,7 @@ const Orders = () => {
 
           {/* Sort */}
           <div>
-            <select
+                      <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6C7A59] focus:border-[#6C7A59] transition-all duration-200"
@@ -226,10 +226,10 @@ const Orders = () => {
               {sortOptions.map(option => (
                 <option key={option.value} value={option.value}>
                   Sort by {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
           {/* Results Count */}
           <div className="flex items-center justify-center md:justify-end">
@@ -255,13 +255,13 @@ const Orders = () => {
               <div className="flex items-center space-x-4">
                 <div className="w-12 h-12 bg-gradient-to-br from-[#6C7A59] to-[#D6BFAF] rounded-xl flex items-center justify-center">
                   <ShoppingBagIcon className="h-6 w-6 text-white" />
-                </div>
-                <div>
+              </div>
+              <div>
                   <h3 className="font-semibold text-[#1E1E1E]">{order.customer}</h3>
                   <p className="text-sm text-gray-600">{order.email}</p>
                   <p className="text-sm text-gray-500">{order.id}</p>
-                </div>
               </div>
+            </div>
 
               <div className="text-right">
                 <p className="text-lg font-bold text-[#1E1E1E]">${order.total}</p>
@@ -273,9 +273,9 @@ const Orders = () => {
                 <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
                   {getStatusIcon(order.status)}
                   <span className="ml-1 capitalize">{order.status}</span>
-                </div>
+          </div>
                 <p className="text-sm text-gray-500 mt-1">{order.date}</p>
-              </div>
+      </div>
 
               <div className="flex space-x-2">
                 <button className="flex items-center justify-center px-3 py-2 bg-[#6C7A59] text-white rounded-lg hover:bg-[#5A6A4A] transition-colors">
@@ -302,15 +302,15 @@ const Orders = () => {
           <p className="text-gray-600 mb-4">
             Try adjusting your search or filter criteria
           </p>
-          <button
-            onClick={() => {
+                <button
+                  onClick={() => {
               setSearchTerm('');
               setSelectedStatus('all');
-            }}
+                  }}
             className="px-4 py-2 bg-[#6C7A59] text-white rounded-xl hover:bg-[#5A6A4A] transition-colors"
-          >
+                >
             Clear Filters
-          </button>
+                </button>
         </motion.div>
       )}
 
@@ -326,7 +326,7 @@ const Orders = () => {
               <p className="text-2xl font-display font-bold text-[#1E1E1E]">
                 {orders.length}
               </p>
-            </div>
+              </div>
             <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center">
               <ShoppingBagIcon className="h-6 w-6 text-white" />
             </div>
@@ -340,26 +340,26 @@ const Orders = () => {
               <p className="text-2xl font-display font-bold text-[#1E1E1E]">
                 {orders.filter(o => o.status === 'completed').length}
               </p>
-            </div>
+        </div>
             <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center">
               <CheckCircleIcon className="h-6 w-6 text-white" />
-            </div>
-          </div>
         </div>
+        </div>
+      </div>
 
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
           <div className="flex items-center justify-between">
-            <div>
+      <div>
               <p className="text-sm font-medium text-gray-600">Pending</p>
               <p className="text-2xl font-display font-bold text-[#1E1E1E]">
                 {orders.filter(o => o.status === 'pending').length}
-              </p>
-            </div>
+                </p>
+              </div>
             <div className="w-12 h-12 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl flex items-center justify-center">
               <ClockIcon className="h-6 w-6 text-white" />
-            </div>
           </div>
         </div>
+      </div>
 
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
           <div className="flex items-center justify-between">
@@ -372,8 +372,8 @@ const Orders = () => {
             <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
               <CurrencyDollarIcon className="h-6 w-6 text-white" />
             </div>
-          </div>
-        </div>
+      </div>
+    </div>
       </motion.div>
     </motion.div>
   );
