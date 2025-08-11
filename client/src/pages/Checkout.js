@@ -2,16 +2,20 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LockClosedIcon, CreditCardIcon, BuildingOfficeIcon, TruckIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
+import { useCart } from '../contexts/CartContext';
+import axios from 'axios';
+import toast from 'react-hot-toast';
 
 const Checkout = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { cart, getCartTotal, clearCart } = useCart();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     // Shipping Information
-    firstName: user?.firstName || '',
-    lastName: user?.lastName || '',
+    firstName: user?.firstName || user?.name?.split(' ')[0] || '',
+    lastName: user?.lastName || user?.name?.split(' ').slice(1).join(' ') || '',
     email: user?.email || '',
     phone: '',
     address: '',
@@ -38,31 +42,7 @@ const Checkout = () => {
   const [errors, setErrors] = useState({});
   const [paymentMethod, setPaymentMethod] = useState('card');
 
-  // Mock order data
-  const orderItems = [
-    {
-      id: 1,
-      name: "Premium Cotton T-Shirt",
-      price: 29.99,
-      originalPrice: 39.99,
-      image: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-      size: "M",
-      color: "Black",
-      quantity: 2
-    },
-    {
-      id: 2,
-      name: "Classic Denim Jeans",
-      price: 79.99,
-      originalPrice: 99.99,
-      image: "https://images.unsplash.com/photo-1542272604-787c3835535d?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-      size: "32",
-      color: "Blue",
-      quantity: 1
-    }
-  ];
-
-  const subtotal = orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const subtotal = getCartTotal();
   const shipping = 5.99;
   const tax = subtotal * 0.08; // 8% tax
   const total = subtotal + shipping + tax;
@@ -134,18 +114,62 @@ const Checkout = () => {
     setLoading(true);
     
     try {
-      // Simulate order processing
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Create order object
+      const orderData = {
+        items: cart.map(item => ({
+          product: item.product._id,
+          quantity: item.quantity,
+          size: item.size,
+          color: item.color,
+          price: item.price
+        })),
+        shipping: {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          phone: formData.phone,
+          address: formData.address,
+          city: formData.city,
+          state: formData.state,
+          zipCode: formData.zipCode,
+          country: formData.country
+        },
+        payment: {
+          method: paymentMethod,
+          cardNumber: formData.cardNumber ? formData.cardNumber.slice(-4) : '',
+          cardName: formData.cardName
+        },
+        billing: formData.sameAsShipping ? null : {
+          address: formData.billingAddress,
+          city: formData.billingCity,
+          state: formData.billingState,
+          zipCode: formData.billingZipCode,
+          country: formData.billingCountry
+        },
+        subtotal,
+        shipping: shipping,
+        tax,
+        total
+      };
+
+      // Submit order to backend
+      const response = await axios.post('/api/orders', orderData);
+      
+      // Clear cart after successful order
+      clearCart();
       
       // Redirect to success page
       navigate('/order-success', { 
         state: { 
-          orderId: 'ORD-' + Date.now(),
+          orderId: response.data._id,
           total: total
         }
       });
+      
+      toast.success('Order placed successfully!');
     } catch (error) {
       console.error('Order submission error:', error);
+      toast.error('Failed to place order. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -623,16 +647,16 @@ const Checkout = () => {
                 
                 {/* Order Items */}
                 <div className="space-y-4 mb-6">
-                  {orderItems.map((item) => (
-                    <div key={item.id} className="flex items-center space-x-3">
+                  {cart.map((item) => (
+                    <div key={item.product._id} className="flex items-center space-x-3">
                       <img
-                        src={item.image}
-                        alt={item.name}
+                        src={item.product.images[0] || 'https://via.placeholder.com/50'}
+                        alt={item.product.name}
                         className="w-12 h-12 object-cover rounded-lg"
                       />
                       <div className="flex-1 min-w-0">
                         <h3 className="text-sm font-medium text-gray-900 truncate">
-                          {item.name}
+                          {item.product.name}
                         </h3>
                         <p className="text-xs text-gray-500">
                           {item.size} • {item.color} • Qty: {item.quantity}

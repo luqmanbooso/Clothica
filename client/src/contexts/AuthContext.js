@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
-import toast from 'react-hot-toast';
 
 const AuthContext = createContext();
 
@@ -14,108 +13,292 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [authError, setAuthError] = useState(null);
 
-  // Set up axios defaults
+  // Initialize axios defaults
   useEffect(() => {
+    const token = localStorage.getItem('token');
     if (token) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      checkAuthStatus();
     } else {
-      delete axios.defaults.headers.common['Authorization'];
-    }
-  }, [token]);
-
-  // Check if user is authenticated on mount
-  useEffect(() => {
-    const checkAuth = async () => {
-      if (token) {
-        try {
-          const response = await axios.get('/api/auth/me');
-          setUser(response.data);
-        } catch (error) {
-          console.error('Auth check failed:', error);
-          logout();
-        }
-      }
       setLoading(false);
-    };
+    }
+  }, []);
 
-    checkAuth();
-  }, [token]);
-
-  const login = async (email, password) => {
+  const checkAuthStatus = async () => {
     try {
-      const response = await axios.post('/api/auth/login', { email, password });
-      const { token: newToken, user: userData } = response.data;
-      
-      setToken(newToken);
-      setUser(userData);
-      localStorage.setItem('token', newToken);
-      
-      // Check if user is admin and redirect accordingly
-      if (userData.role === 'admin') {
-        toast.success('Welcome back, Admin!');
-        return { success: true, isAdmin: true };
-      } else {
-        toast.success('Login successful!');
-        return { success: true, isAdmin: false };
-      }
+      const response = await axios.get('/api/auth/me');
+      setUser(response.data);
+      setIsAuthenticated(true);
+      setIsAdmin(response.data.role === 'admin');
     } catch (error) {
-      const message = error.response?.data?.message || 'Login failed';
-      toast.error(message);
+      console.error('Auth check failed:', error);
+      logout();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const register = async (userData) => {
+    try {
+      setAuthError(null);
+      const response = await axios.post('/api/auth/register', userData);
+      
+      const { token, user: newUser, message } = response.data;
+      
+      // Store token
+      localStorage.setItem('token', token);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      // Set user state
+      setUser(newUser);
+      setIsAuthenticated(true);
+      setIsAdmin(newUser.role === 'admin');
+      
+      return { success: true, message };
+    } catch (error) {
+      const message = error.response?.data?.message || 'Registration failed';
+      setAuthError(message);
       return { success: false, message };
     }
   };
 
-  const register = async (name, email, password) => {
+  const login = async (credentials) => {
     try {
-      const response = await axios.post('/api/auth/register', { name, email, password });
-      const { token: newToken, user: userData } = response.data;
+      setAuthError(null);
+      const response = await axios.post('/api/auth/login', credentials);
       
-      setToken(newToken);
+      const { token, user: userData } = response.data;
+      
+      // Store token
+      localStorage.setItem('token', token);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      // Set user state
       setUser(userData);
-      localStorage.setItem('token', newToken);
+      setIsAuthenticated(true);
+      setIsAdmin(userData.role === 'admin');
       
-      toast.success('Registration successful!');
       return { success: true };
     } catch (error) {
-      const message = error.response?.data?.message || 'Registration failed';
-      toast.error(message);
+      const message = error.response?.data?.message || 'Login failed';
+      setAuthError(message);
+      return { success: false, message };
+    }
+  };
+
+  const googleSignup = async (idToken) => {
+    try {
+      setAuthError(null);
+      const response = await axios.post('/api/auth/google/signup', { idToken });
+      
+      const { token, user: userData, requiresProfileCompletion } = response.data;
+      
+      // Store token
+      localStorage.setItem('token', token);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      // Set user state
+      setUser(userData);
+      setIsAuthenticated(true);
+      setIsAdmin(userData.role === 'admin');
+      
+      return { success: true, requiresProfileCompletion };
+    } catch (error) {
+      const message = error.response?.data?.message || 'Google signup failed';
+      setAuthError(message);
+      return { success: false, message };
+    }
+  };
+
+  const googleLogin = async (idToken) => {
+    try {
+      setAuthError(null);
+      const response = await axios.post('/api/auth/google/login', { idToken });
+      
+      const { token, user: userData, requiresProfileCompletion } = response.data;
+      
+      // Store token
+      localStorage.setItem('token', token);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      // Set user state
+      setUser(userData);
+      setIsAuthenticated(true);
+      setIsAdmin(userData.role === 'admin');
+      
+      return { success: true, requiresProfileCompletion };
+    } catch (error) {
+      const message = error.response?.data?.message || 'Google login failed';
+      setAuthError(message);
       return { success: false, message };
     }
   };
 
   const logout = () => {
-    setUser(null);
-    setToken(null);
     localStorage.removeItem('token');
     delete axios.defaults.headers.common['Authorization'];
-    toast.success('Logged out successfully');
+    setUser(null);
+    setIsAuthenticated(false);
+    setIsAdmin(false);
+    setAuthError(null);
   };
 
   const updateProfile = async (profileData) => {
     try {
+      setAuthError(null);
       const response = await axios.put('/api/auth/profile', profileData);
-      setUser(response.data);
-      toast.success('Profile updated successfully!');
-      return { success: true };
+      
+      setUser(response.data.user);
+      return { success: true, message: response.data.message };
     } catch (error) {
       const message = error.response?.data?.message || 'Profile update failed';
-      toast.error(message);
+      setAuthError(message);
+      return { success: false, message };
+    }
+  };
+
+  const changePassword = async (passwordData) => {
+    try {
+      setAuthError(null);
+      const response = await axios.put('/api/auth/change-password', passwordData);
+      return { success: true, message: response.data.message };
+    } catch (error) {
+      const message = error.response?.data?.message || 'Password change failed';
+      setAuthError(message);
+      return { success: false, message };
+    }
+  };
+
+  const sendOTP = async (phone) => {
+    try {
+      setAuthError(null);
+      const response = await axios.post('/api/auth/send-otp', { phone });
+      return { success: true, message: response.data.message };
+    } catch (error) {
+      const message = error.response?.data?.message || 'Failed to send OTP';
+      setAuthError(message);
+      return { success: false, message };
+    }
+  };
+
+  const verifyOTP = async (otp) => {
+    try {
+      setAuthError(null);
+      const response = await axios.post('/api/auth/verify-otp', { otp });
+      
+      // Update user state to reflect phone verification
+      if (response.data.message === 'Phone verified successfully!') {
+        setUser(prev => ({ ...prev, isPhoneVerified: true }));
+      }
+      
+      return { success: true, message: response.data.message };
+    } catch (error) {
+      const message = error.response?.data?.message || 'OTP verification failed';
+      setAuthError(message);
+      return { success: false, message };
+    }
+  };
+
+  const resendVerification = async (email) => {
+    try {
+      setAuthError(null);
+      const response = await axios.post('/api/auth/resend-verification', { email });
+      return { success: true, message: response.data.message };
+    } catch (error) {
+      const message = error.response?.data?.message || 'Failed to resend verification';
+      setAuthError(message);
+      return { success: false, message };
+    }
+  };
+
+  const verifyEmail = async (token) => {
+    try {
+      setAuthError(null);
+      const response = await axios.post('/api/auth/verify-email', { token });
+      
+      // Update user state to reflect email verification
+      if (response.data.message === 'Email verified successfully!') {
+        setUser(prev => ({ ...prev, isEmailVerified: true }));
+      }
+      
+      return { success: true, message: response.data.message };
+    } catch (error) {
+      const message = error.response?.data?.message || 'Email verification failed';
+      setAuthError(message);
+      return { success: false, message };
+    }
+  };
+
+  const forgotPassword = async (email) => {
+    try {
+      setAuthError(null);
+      const response = await axios.post('/api/auth/forgot-password', { email });
+      return { success: true, message: response.data.message };
+    } catch (error) {
+      const message = error.response?.data?.message || 'Failed to process password reset request';
+      setAuthError(message);
+      return { success: false, message };
+    }
+  };
+
+  const resetPassword = async (token, password) => {
+    try {
+      setAuthError(null);
+      const response = await axios.post('/api/auth/reset-password', { token, password });
+      return { success: true, message: response.data.message };
+    } catch (error) {
+      const message = error.response?.data?.message || 'Password reset failed';
+      setAuthError(message);
+      return { success: false, message };
+    }
+  };
+
+  const clearError = () => {
+    setAuthError(null);
+  };
+
+  const completeProfile = async (profileData) => {
+    try {
+      setAuthError(null);
+      const response = await axios.put('/api/auth/complete-profile', profileData);
+      
+      // Update user state
+      setUser(response.data.user);
+      
+      return { success: true, message: response.data.message, requiresPhoneVerification: response.data.requiresPhoneVerification };
+    } catch (error) {
+      const message = error.response?.data?.message || 'Profile completion failed';
+      setAuthError(message);
       return { success: false, message };
     }
   };
 
   const value = {
     user,
+    isAuthenticated,
+    isAdmin,
     loading,
-    login,
+    authError,
     register,
+    login,
+    googleSignup,
+    googleLogin,
     logout,
     updateProfile,
-    isAuthenticated: !!user,
-    isAdmin: user?.role === 'admin'
+    completeProfile,
+    changePassword,
+    sendOTP,
+    verifyOTP,
+    resendVerification,
+    verifyEmail,
+    forgotPassword,
+    resetPassword,
+    clearError
   };
 
   return (
@@ -123,4 +306,4 @@ export const AuthProvider = ({ children }) => {
       {children}
     </AuthContext.Provider>
   );
-}; 
+};

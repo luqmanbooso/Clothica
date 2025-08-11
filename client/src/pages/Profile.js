@@ -135,6 +135,39 @@ const Profile = () => {
           </p>
         </div>
 
+        {/* Profile Completion Banner for Google Users */}
+        {user?.isGoogleAccount && !user?.profileComplete && (
+          <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6">
+            <div className="flex items-start space-x-4">
+              <div className="flex-shrink-0">
+                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-medium text-blue-900 mb-2">
+                  Complete Your Profile
+                </h3>
+                <p className="text-blue-700 mb-4">
+                  Welcome to Clothica! To complete your profile and start shopping, please add your phone number and shipping address.
+                </p>
+                <div className="flex items-center space-x-4 text-sm text-blue-600">
+                  <div className="flex items-center space-x-2">
+                    <div className={`w-3 h-3 rounded-full ${user?.phone ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                    <span>Phone Number</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className={`w-3 h-3 rounded-full ${user?.addresses && user.addresses.length > 0 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                    <span>Shipping Address</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Profile Information */}
           <div className="lg:col-span-2">
@@ -183,6 +216,11 @@ const Profile = () => {
                   <div>
                     <label className="block text-sm font-medium text-secondary-700 mb-2">
                       Full Name
+                      {user?.googleProvided?.name && (
+                        <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          Google Provided
+                        </span>
+                      )}
                     </label>
                     <div className="relative">
                       <FiUser className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-secondary-400" />
@@ -191,16 +229,26 @@ const Profile = () => {
                         name="name"
                         value={formData.name}
                         onChange={handleChange}
-                        disabled={!editMode}
-                        className="input-field pl-10 disabled:bg-secondary-50"
-                        placeholder="Full Name"
+                        disabled={!editMode || user?.googleProvided?.name}
+                        className={`input-field pl-10 ${!editMode || user?.googleProvided?.name ? 'disabled:bg-secondary-50' : ''}`}
+                        placeholder={user?.googleProvided?.name ? "Name from Google account" : "Full Name"}
                       />
                     </div>
+                    {user?.googleProvided?.name && (
+                      <p className="mt-1 text-xs text-secondary-500">
+                        Name provided by Google account and cannot be changed
+                      </p>
+                    )}
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-secondary-700 mb-2">
                       Email
+                      {user?.googleProvided?.email && (
+                        <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          Google Provided
+                        </span>
+                      )}
                     </label>
                     <div className="relative">
                       <FiMail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-secondary-400" />
@@ -209,16 +257,26 @@ const Profile = () => {
                         name="email"
                         value={formData.email}
                         onChange={handleChange}
-                        disabled={!editMode}
-                        className="input-field pl-10 disabled:bg-secondary-50"
-                        placeholder="Email Address"
+                        disabled={!editMode || user?.googleProvided?.email}
+                        className={`input-field pl-10 ${!editMode || user?.googleProvided?.email ? 'disabled:bg-secondary-50' : ''}`}
+                        placeholder={user?.googleProvided?.email ? "Email from Google account" : "Email Address"}
                       />
                     </div>
+                    {user?.googleProvided?.email && (
+                      <p className="mt-1 text-xs text-secondary-500">
+                        Email provided by Google account and cannot be changed
+                      </p>
+                    )}
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-secondary-700 mb-2">
                       Phone Number
+                      {user?.googleProvided?.phone && (
+                        <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          Google Provided
+                        </span>
+                      )}
                     </label>
                     <div className="relative">
                       <FiPhone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-secondary-400" />
@@ -227,11 +285,16 @@ const Profile = () => {
                         name="phone"
                         value={formData.phone}
                         onChange={handleChange}
-                        disabled={!editMode}
-                        className="input-field pl-10 disabled:bg-secondary-50"
-                        placeholder="Phone Number"
+                        disabled={!editMode || user?.googleProvided?.phone}
+                        className={`input-field pl-10 ${!editMode || user?.googleProvided?.phone ? 'disabled:bg-secondary-50' : ''}`}
+                        placeholder={user?.googleProvided?.phone ? "Phone number from Google account" : "Phone Number"}
                       />
                     </div>
+                    {user?.googleProvided?.phone && (
+                      <p className="mt-1 text-xs text-secondary-500">
+                        Phone number provided by Google account and cannot be changed
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -284,6 +347,37 @@ const Profile = () => {
               </h2>
               
               <div className="space-y-4">
+                {/* Profile Completion Progress */}
+                {user?.isGoogleAccount && (
+                  <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-blue-900">Profile Completion</span>
+                      <span className="text-sm text-blue-600">
+                        {user?.profileComplete ? '100%' : 'Incomplete'}
+                      </span>
+                    </div>
+                    <div className="w-full bg-blue-200 rounded-full h-2 mb-2">
+                      <div 
+                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                        style={{ 
+                          width: `${user?.profileComplete ? 100 : 
+                            ((user?.phone ? 50 : 0) + (user?.addresses && user.addresses.length > 0 ? 50 : 0))}%` 
+                        }}
+                      ></div>
+                    </div>
+                    <div className="text-xs text-blue-600 space-y-1">
+                      <div className="flex items-center space-x-2">
+                        <div className={`w-2 h-2 rounded-full ${user?.phone ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                        <span>Phone Number</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className={`w-2 h-2 rounded-full ${user?.addresses && user.addresses.length > 0 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                        <span>Shipping Address</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between p-3 bg-secondary-50 rounded-lg">
                   <span className="text-sm text-secondary-600">Account Type</span>
                   <span className="text-sm font-medium text-secondary-900 capitalize">

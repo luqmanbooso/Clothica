@@ -61,6 +61,42 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Get category counts
+router.get('/categories', async (req, res) => {
+  try {
+    const categories = ['men', 'women', 'kids', 'accessories', 'shoes', 'bags'];
+    const categoryCounts = {};
+    
+    for (const category of categories) {
+      const count = await Product.countDocuments({ 
+        category, 
+        isActive: true 
+      });
+      categoryCounts[category] = count;
+    }
+    
+    res.json(categoryCounts);
+  } catch (error) {
+    console.error('Error fetching category counts:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get featured products
+router.get('/featured/featured', async (req, res) => {
+  try {
+    const featuredProducts = await Product.find({ 
+      isFeatured: true, 
+      isActive: true 
+    }).limit(8);
+    
+    res.json(featuredProducts);
+  } catch (error) {
+    console.error('Error fetching featured products:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Get single product
 router.get('/:id', async (req, res) => {
   try {

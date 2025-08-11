@@ -2,58 +2,66 @@ import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { StarIcon, ShoppingBagIcon, HeartIcon, EyeIcon, FunnelIcon, Squares2X2Icon, ListBulletIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
+import axios from 'axios';
+import { useWishlist } from '../contexts/WishlistContext';
+import { useCart } from '../contexts/CartContext';
+import toast from 'react-hot-toast';
 
 const Shop = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [products, setProducts] = useState(null);
+  const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+  const [viewMode, setViewMode] = useState('grid');
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
-    category: '',
+    category: searchParams.get('category') || '',
     priceRange: '',
     rating: '',
     sortBy: 'newest'
   });
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const { addToWishlist, isInWishlist } = useWishlist();
+  const { addToCart } = useCart();
 
   // Static categories - no CRUD needed
-  const categories = [
+  const [categories, setCategories] = useState([
     { 
       id: 'all', 
       name: 'All Products', 
       icon: '🛍️',
       color: 'from-indigo-500 to-purple-500',
-      count: 8
+      count: 0
     },
     { 
       id: 'mens', 
       name: "Men's Fashion", 
       icon: '👔',
       color: 'from-blue-500 to-cyan-500',
-      count: 3
+      count: 0
     },
     { 
       id: 'womens', 
       name: "Women's Fashion", 
       icon: '👗',
       color: 'from-pink-500 to-rose-500',
-      count: 1
+      count: 0
     },
     { 
       id: 'accessories', 
       name: 'Accessories', 
       icon: '👜',
       color: 'from-yellow-500 to-orange-500',
-      count: 2
+      count: 0
     },
     { 
       id: 'footwear', 
       name: 'Footwear', 
       icon: '👟',
       color: 'from-green-500 to-emerald-500',
-      count: 1
+      count: 0
     }
-  ];
+  ]);
 
   const priceRanges = [
     { id: 'all', name: 'All Prices' },
@@ -73,6 +81,7 @@ const Shop = () => {
 
   useEffect(() => {
     loadProducts();
+    updateCategoryCounts();
   }, []);
 
   useEffect(() => {
@@ -81,23 +90,76 @@ const Shop = () => {
     }
   }, [filters]);
 
+  useEffect(() => {
+    const category = searchParams.get('category');
+    if (category) {
+      setFilters(prev => ({ ...prev, category }));
+    }
+  }, [searchParams]);
+
   const loadProducts = async () => {
     setLoading(true);
-    console.log('Loading products...');
-    
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Use fallback products since there's no backend API
-    const fallbackProducts = [
+    try {
+      const params = {
+        page: currentPage,
+        limit: 12,
+        ...filters
+      };
+
+      // Add search query if present
+      const search = searchParams.get('search');
+      if (search) {
+        params.search = search;
+      }
+
+      // Add price range filtering
+      if (filters.priceRange && filters.priceRange !== 'all') {
+        const [min, max] = filters.priceRange.split('-');
+        if (min) params.minPrice = min;
+        if (max) params.maxPrice = max;
+      }
+
+      // Add sorting
+      if (filters.sortBy !== 'newest') {
+        switch (filters.sortBy) {
+          case 'price-low':
+            params.sort = 'price';
+            params.order = 'asc';
+            break;
+          case 'price-high':
+            params.sort = 'price';
+            params.order = 'desc';
+            break;
+          case 'rating':
+            params.sort = 'rating';
+            params.order = 'desc';
+            break;
+          case 'popular':
+            params.sort = 'numReviews';
+            params.order = 'desc';
+            break;
+          default:
+            params.sort = 'createdAt';
+            params.order = 'desc';
+        }
+      }
+
+      const response = await axios.get('/api/products', { params });
+      setProducts(response.data.products);
+      setTotalProducts(response.data.total);
+    } catch (error) {
+      console.error('Error loading products:', error);
+      toast.error('Failed to load products');
+      // Fallback to sample data
+      setProducts([
         {
-          id: 1,
+          _id: 1,
           name: "Premium Cotton T-Shirt",
           price: 29.99,
           originalPrice: 39.99,
           image: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
           rating: 4.5,
-          reviews: 128,
+          numReviews: 128,
           category: "mens",
           isNew: true,
           discount: 25,
@@ -105,13 +167,13 @@ const Shop = () => {
           sizes: ['S', 'M', 'L', 'XL']
         },
         {
-          id: 2,
+          _id: 2,
           name: "Classic Denim Jeans",
           price: 79.99,
           originalPrice: 99.99,
           image: "https://images.unsplash.com/photo-1542272604-787c3835535d?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
           rating: 4.8,
-          reviews: 256,
+          numReviews: 256,
           category: "mens",
           isNew: false,
           discount: 20,
@@ -119,13 +181,13 @@ const Shop = () => {
           sizes: ['30', '32', '34', '36']
         },
         {
-          id: 3,
+          _id: 3,
           name: "Summer Dress Collection",
           price: 59.99,
           originalPrice: 79.99,
           image: "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
           rating: 4.6,
-          reviews: 189,
+          numReviews: 189,
           category: "womens",
           isNew: true,
           discount: 25,
@@ -133,13 +195,13 @@ const Shop = () => {
           sizes: ['XS', 'S', 'M', 'L']
         },
         {
-          id: 4,
+          _id: 4,
           name: "Casual Sneakers",
           price: 89.99,
           originalPrice: 119.99,
           image: "https://images.unsplash.com/photo-1549298916-b41d501d3772?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
           rating: 4.7,
-          reviews: 342,
+          numReviews: 342,
           category: "footwear",
           isNew: false,
           discount: 25,
@@ -147,13 +209,13 @@ const Shop = () => {
           sizes: ['7', '8', '9', '10', '11']
         },
         {
-          id: 5,
+          _id: 5,
           name: "Leather Handbag",
           price: 129.99,
           originalPrice: 159.99,
           image: "https://images.unsplash.com/photo-1523170335258-f5ed11844a49?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
           rating: 4.9,
-          reviews: 89,
+          numReviews: 89,
           category: "accessories",
           isNew: true,
           discount: 19,
@@ -161,13 +223,13 @@ const Shop = () => {
           sizes: ['One Size']
         },
         {
-          id: 6,
+          _id: 6,
           name: "Formal Shirt",
           price: 49.99,
           originalPrice: 69.99,
           image: "https://images.unsplash.com/photo-1516257984-b1b4f7074865?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
           rating: 4.4,
-          reviews: 156,
+          numReviews: 156,
           category: "mens",
           isNew: false,
           discount: 29,
@@ -175,13 +237,13 @@ const Shop = () => {
           sizes: ['S', 'M', 'L', 'XL']
         },
         {
-          id: 7,
+          _id: 7,
           name: "Designer Sunglasses",
           price: 89.99,
           originalPrice: 129.99,
           image: "https://images.unsplash.com/photo-1511499767150-a48a237f0083?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
           rating: 4.3,
-          reviews: 78,
+          numReviews: 78,
           category: "accessories",
           isNew: true,
           discount: 31,
@@ -189,24 +251,38 @@ const Shop = () => {
           sizes: ['One Size']
         },
         {
-          id: 8,
+          _id: 8,
           name: "Athletic Shorts",
           price: 34.99,
           originalPrice: 49.99,
           image: "https://images.unsplash.com/photo-1544966503-7cc5ac882d5f?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
           rating: 4.6,
-          reviews: 203,
+          numReviews: 203,
           category: "mens",
           isNew: false,
           discount: 30,
           colors: ['Black', 'Gray', 'Blue'],
           sizes: ['S', 'M', 'L', 'XL']
         }
-      ];
-      console.log('Setting fallback products:', fallbackProducts);
-      setProducts(fallbackProducts);
+      ]);
+    } finally {
       setLoading(false);
-      console.log('Loading finished, products state:', products);
+    }
+  };
+
+  const updateCategoryCounts = async () => {
+    try {
+      const response = await axios.get('/api/products/categories');
+      const categoryCounts = response.data;
+      
+      setCategories(prev => prev.map(cat => ({
+        ...cat,
+        count: categoryCounts[cat.id] || 0
+      })));
+    } catch (error) {
+      console.error('Error loading category counts:', error);
+      // Keep the default counts if API fails
+    }
   };
 
   const handleFilterChange = (key, value) => {
@@ -214,6 +290,7 @@ const Shop = () => {
       ...prev,
       [key]: value
     }));
+    setCurrentPage(1);
   };
 
   const clearFilters = () => {
@@ -223,6 +300,15 @@ const Shop = () => {
       rating: '',
       sortBy: 'newest'
     });
+    setCurrentPage(1);
+  };
+
+  const handleAddToWishlist = (product) => {
+    addToWishlist(product);
+  };
+
+  const handleAddToCart = (product) => {
+    addToCart(product, 1);
   };
 
   const renderStars = (rating) => {
@@ -277,7 +363,7 @@ const Shop = () => {
           <button className="p-2 bg-white/90 backdrop-blur-sm rounded-full hover:bg-white transition-colors">
             <HeartIcon className="h-5 w-5 text-gray-600" />
           </button>
-          <Link to={`/product/${product.id}`} className="p-2 bg-white/90 backdrop-blur-sm rounded-full hover:bg-white transition-colors">
+          <Link to={`/product/${product._id}`} className="p-2 bg-white/90 backdrop-blur-sm rounded-full hover:bg-white transition-colors">
             <EyeIcon className="h-5 w-5 text-gray-600" />
           </Link>
         </div>
@@ -293,7 +379,7 @@ const Shop = () => {
 
       {/* Product Info */}
       <div className="mt-4">
-        <Link to={`/product/${product.id}`} className="block">
+        <Link to={`/product/${product._id}`} className="block">
           <h3 className="font-semibold text-gray-900 mb-1 group-hover:text-[#6C7A59] transition-colors">
             {product.name}
           </h3>
@@ -312,7 +398,7 @@ const Shop = () => {
           <div className="flex items-center">
             {renderStars(product.rating)}
             <span className="ml-1 text-sm text-gray-500">
-              ({product.reviews})
+              ({product.numReviews})
             </span>
           </div>
         </div>
@@ -353,7 +439,7 @@ const Shop = () => {
 
         {/* Product Details */}
         <div className="flex-1">
-          <Link to={`/product/${product.id}`} className="block">
+          <Link to={`/product/${product._id}`} className="block">
             <h3 className="font-semibold text-gray-900 mb-2 group-hover:text-[#6C7A59] transition-colors">
               {product.name}
             </h3>
@@ -362,7 +448,7 @@ const Shop = () => {
           <div className="flex items-center mb-2">
             {renderStars(product.rating)}
             <span className="ml-2 text-sm text-gray-500">
-              ({product.reviews} reviews)
+              ({product.numReviews} reviews)
             </span>
           </div>
 
@@ -548,9 +634,9 @@ const Shop = () => {
             }`}>
             {(Array.isArray(products) ? products : []).map(product => (
               viewMode === 'grid' ? (
-                <ProductCard key={product.id} product={product} />
+                <ProductCard key={product._id} product={product} />
               ) : (
-                <ProductListItem key={product.id} product={product} />
+                <ProductListItem key={product._id} product={product} />
               )
               ))}
             </div>

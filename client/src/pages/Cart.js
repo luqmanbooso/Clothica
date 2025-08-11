@@ -2,38 +2,15 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { TrashIcon, MinusIcon, PlusIcon, ArrowRightIcon, TruckIcon, ShieldCheckIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { useCart } from '../contexts/CartContext';
+import { useWishlist } from '../contexts/WishlistContext';
+import toast from 'react-hot-toast';
 
 const Cart = () => {
-  const { cart, updateQuantity, removeFromCart, clearCart } = useCart();
+  const { cart, updateQuantity, removeFromCart, clearCart, getCartTotal } = useCart();
+  const { addToWishlist, isInWishlist } = useWishlist();
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [shippingMethod, setShippingMethod] = useState('standard');
-
-  // Mock cart data for demonstration
-  const cartItems = [
-    {
-      id: 1,
-      name: "Premium Cotton T-Shirt",
-      price: 29.99,
-      originalPrice: 39.99,
-      image: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-      size: "M",
-      color: "Black",
-      quantity: 2,
-      stock: 10
-    },
-    {
-      id: 2,
-      name: "Classic Denim Jeans",
-      price: 79.99,
-      originalPrice: 99.99,
-      image: "https://images.unsplash.com/photo-1542272604-787c3835535d?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-      size: "32",
-      color: "Blue",
-      quantity: 1,
-      stock: 5
-    }
-  ];
 
   const shippingMethods = [
     {
@@ -59,35 +36,42 @@ const Cart = () => {
     }
   ];
 
-  const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const subtotal = getCartTotal();
   const shipping = shippingMethods.find(m => m.id === shippingMethod)?.price || 0;
   const discount = appliedCoupon ? subtotal * 0.1 : 0; // 10% discount
   const total = subtotal + shipping - discount;
 
-  const handleQuantityChange = (itemId, newQuantity) => {
+  const handleQuantityChange = (index, newQuantity) => {
     if (newQuantity >= 1 && newQuantity <= 10) {
-      updateQuantity(itemId, newQuantity);
+      updateQuantity(index, newQuantity);
     }
   };
 
-  const handleRemoveItem = (itemId) => {
-    removeFromCart(itemId);
+  const handleRemoveItem = (index) => {
+    removeFromCart(index);
+  };
+
+  const handleAddToWishlist = (product) => {
+    addToWishlist(product);
+    toast.success(`${product.name} added to wishlist!`);
   };
 
   const handleApplyCoupon = () => {
     if (couponCode.toLowerCase() === 'save10') {
       setAppliedCoupon({ code: couponCode, discount: 0.1 });
       setCouponCode('');
+      toast.success('Coupon applied successfully!');
     } else {
-      alert('Invalid coupon code');
+      toast.error('Invalid coupon code');
     }
   };
 
   const handleRemoveCoupon = () => {
     setAppliedCoupon(null);
+    toast.success('Coupon removed');
   };
 
-  if (cartItems.length === 0) {
+  if (cart.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center max-w-md mx-auto px-4">
@@ -120,7 +104,7 @@ const Cart = () => {
         <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Shopping Cart</h1>
             <p className="text-gray-600">
-              {cartItems.length} item{cartItems.length !== 1 ? 's' : ''} in your cart
+              {cart.length} item{cart.length !== 1 ? 's' : ''} in your cart
           </p>
         </div>
 
@@ -133,14 +117,14 @@ const Cart = () => {
               </div>
               
                 <div className="divide-y divide-gray-200">
-                  {cartItems.map((item) => (
-                    <div key={item.id} className="p-6">
+                  {cart.map((item, index) => (
+                    <div key={index} className="p-6">
                     <div className="flex items-center space-x-4">
                       {/* Product Image */}
                       <div className="flex-shrink-0">
                         <img
-                            src={item.image}
-                            alt={item.name}
+                            src={item.product.image}
+                            alt={item.product.name}
                           className="w-20 h-20 object-cover rounded-lg"
                         />
                       </div>
@@ -150,11 +134,11 @@ const Cart = () => {
                         <div className="flex items-start justify-between">
                             <div>
                               <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                                {item.name}
+                                {item.product.name}
                             </h3>
                               <div className="flex items-center space-x-4 text-sm text-gray-600">
-                                <span>Size: {item.size}</span>
-                                <span>Color: {item.color}</span>
+                                <span>Size: {item.size || 'One Size'}</span>
+                                <span>Color: {item.color || 'Default'}</span>
                             </div>
                           </div>
                           
@@ -164,9 +148,9 @@ const Cart = () => {
                                 <span className="text-lg font-bold text-gray-900">
                                   ${(item.price * item.quantity).toFixed(2)}
                                 </span>
-                                {item.originalPrice && (
+                                {item.product.originalPrice && (
                                   <span className="text-sm text-gray-500 line-through">
-                                    ${(item.originalPrice * item.quantity).toFixed(2)}
+                                    ${(item.product.originalPrice * item.quantity).toFixed(2)}
                                   </span>
                                 )}
                               </div>
@@ -180,7 +164,7 @@ const Cart = () => {
                         <div className="flex items-center justify-between mt-4">
                             <div className="flex items-center space-x-3">
                             <button
-                                onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
+                                onClick={() => handleQuantityChange(index, item.quantity - 1)}
                                 disabled={item.quantity <= 1}
                                 className="w-8 h-8 border border-gray-300 rounded-lg flex items-center justify-center hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
@@ -192,25 +176,42 @@ const Cart = () => {
                             </span>
                               
                             <button
-                                onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
-                                disabled={item.quantity >= item.stock}
+                                onClick={() => handleQuantityChange(index, item.quantity + 1)}
+                                disabled={item.quantity >= 10}
                                 className="w-8 h-8 border border-gray-300 rounded-lg flex items-center justify-center hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <PlusIcon className="h-4 w-4" />
                             </button>
                               
                               <span className="text-sm text-gray-500">
-                                {item.stock} available
+                                Max 10
                               </span>
                           </div>
                           
-                          {/* Remove Button */}
-                          <button
-                              onClick={() => handleRemoveItem(item.id)}
+                          {/* Action Buttons */}
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => handleAddToWishlist(item.product)}
+                              className={`p-2 rounded-lg transition-colors ${
+                                isInWishlist(item.product._id) 
+                                  ? 'bg-red-100 text-red-600' 
+                                  : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                              }`}
+                              title="Add to Wishlist"
+                            >
+                              <svg className="w-5 h-5" fill={isInWishlist(item.product._id) ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                              </svg>
+                            </button>
+                            
+                            <button
+                              onClick={() => handleRemoveItem(index)}
                               className="text-red-600 hover:text-red-700 transition-colors"
-                          >
+                              title="Remove Item"
+                            >
                               <TrashIcon className="h-5 w-5" />
-                          </button>
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>

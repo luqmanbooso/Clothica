@@ -1,110 +1,162 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { EnvelopeIcon, ExclamationCircleIcon, CheckCircleIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { EnvelopeIcon, ArrowLeftIcon, CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { useAuth } from '../contexts/AuthContext';
+import toast from 'react-hot-toast';
 
 const ForgotPassword = () => {
+  const { forgotPassword, authError, clearError } = useAuth();
   const [email, setEmail] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState({});
-  const [showSuccess, setShowSuccess] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const validateForm = () => {
-    const newErrors = {};
-
-    if (!email) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = 'Please enter a valid email address';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleChange = (e) => {
-    const { value } = e.target;
-    setEmail(value);
-    
-    // Clear error when user starts typing
-    if (errors.email) {
-      setErrors(prev => ({
-        ...prev,
-        email: ''
-      }));
-    }
-  };
+  // Clear auth errors when component mounts
+  useEffect(() => {
+    clearError();
+  }, [clearError]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!validateForm()) return;
+    if (!email) {
+      toast.error('Please enter your email address');
+      return;
+    }
 
-    setIsLoading(true);
-    setErrors({});
-    
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
+    setLoading(true);
+
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      setShowSuccess(true);
-      setIsSubmitted(true);
-      
-      // Reset form
-      setEmail('');
-      
+      const result = await forgotPassword(email);
+      if (result.success) {
+        setIsSubmitted(true);
+        toast.success('Password reset email sent successfully!');
+      } else {
+        toast.error(result.message);
+      }
     } catch (error) {
-      setErrors({
-        general: 'Failed to send reset email. Please try again.'
-      });
+      toast.error('An unexpected error occurred');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        {/* Header */}
-        <div className="text-center">
-          <div className="mx-auto h-16 w-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center mb-6">
-            <EnvelopeIcon className="h-8 w-8 text-white" />
+  if (isSubmitted) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8">
+          <div className="text-center">
+            <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100">
+              <CheckCircleIcon className="h-8 w-8 text-green-600" />
+            </div>
+            <h2 className="mt-6 text-3xl font-bold text-gray-900">
+              Check Your Email
+            </h2>
+            <p className="mt-2 text-sm text-gray-600">
+              We've sent a password reset link to <strong>{email}</strong>
+            </p>
           </div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">Reset your password</h2>
-          <p className="text-gray-600">
-            {isSubmitted 
-              ? "Check your email for reset instructions"
-              : "Enter your email address and we'll send you a link to reset your password"
-            }
+
+          <div className="bg-white rounded-2xl shadow-xl p-8">
+            <div className="text-center space-y-4">
+              <p className="text-sm text-gray-600">
+                Click the link in the email to reset your password. The link will expire in 1 hour.
+              </p>
+              
+              <div className="space-y-3">
+                <button
+                  onClick={() => setIsSubmitted(false)}
+                  className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-gradient-to-r from-[#6C7A59] to-[#D6BFAF] hover:from-[#5A6A4A] hover:to-[#C4B09F] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#6C7A59] transition-all duration-200"
+                >
+                  Send Another Email
+                </button>
+                
+                <Link
+                  to="/login"
+                  className="w-full flex justify-center py-3 px-4 border border-gray-300 rounded-xl shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#6C7A59] transition-colors"
+                >
+                  Back to Login
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-center">
+            <p className="text-sm text-gray-600">
+              Didn't receive the email? Check your spam folder or{' '}
+              <button
+                onClick={() => setIsSubmitted(false)}
+                className="font-medium text-[#6C7A59] hover:text-[#5A6A4A] transition-colors"
+              >
+                try again
+              </button>
+            </p>
+          </div>
+
+          {/* Additional Help */}
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <CheckCircleIcon className="h-5 w-5 text-blue-400" />
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-blue-800">
+                  Need Help?
+                </h3>
+                <div className="mt-2 text-sm text-blue-700">
+                  <p>
+                    If you're still having trouble, contact our support team at{' '}
+                    <a href="mailto:support@clothica.com" className="font-medium underline">
+                      support@clothica.com
+                    </a>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        <div className="text-center">
+          <Link
+            to="/login"
+            className="inline-flex items-center text-[#6C7A59] hover:text-[#5A6A4A] mb-4 transition-colors"
+          >
+            <ArrowLeftIcon className="h-4 w-4 mr-2" />
+            Back to Login
+          </Link>
+          
+          <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-gradient-to-br from-[#6C7A59] to-[#D6BFAF]">
+            <span className="text-white font-bold text-2xl">C</span>
+          </div>
+          
+          <h2 className="mt-6 text-3xl font-bold text-gray-900">
+            Forgot Your Password?
+          </h2>
+          <p className="mt-2 text-sm text-gray-600">
+            Enter your email address and we'll send you a link to reset your password.
           </p>
         </div>
 
-        {/* Success Message */}
-        {showSuccess && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center">
-            <CheckCircleIcon className="h-5 w-5 text-green-500 mr-3" />
-            <span className="text-green-800 font-medium">
-              Reset link sent! Check your email for instructions.
-            </span>
-          </div>
-        )}
-
-        {/* Error Message */}
-        {errors.general && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center">
-            <ExclamationCircleIcon className="h-5 w-5 text-red-500 mr-3" />
-            <span className="text-red-800">{errors.general}</span>
-          </div>
-        )}
-
-        {/* Form */}
-        {!isSubmitted && (
-          <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+        <div className="bg-white rounded-2xl shadow-xl p-8">
+          <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                 Email Address
               </label>
               <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <EnvelopeIcon className="h-5 w-5 text-gray-400" />
+                </div>
                 <input
                   id="email"
                   name="email"
@@ -112,34 +164,28 @@ const ForgotPassword = () => {
                   autoComplete="email"
                   required
                   value={email}
-                  onChange={handleChange}
-                  className={`appearance-none relative block w-full px-4 py-3 pl-12 border rounded-lg placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 ${
-                    errors.email ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300'
-                  }`}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#6C7A59] focus:border-[#6C7A59] transition-colors"
                   placeholder="Enter your email address"
                 />
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <EnvelopeIcon className="h-5 w-5 text-gray-400" />
-                </div>
-                {errors.email && (
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                    <ExclamationCircleIcon className="h-5 w-5 text-red-500" />
-                  </div>
-                )}
               </div>
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-              )}
             </div>
 
-            {/* Submit Button */}
+            {/* Error Display */}
+            {authError && (
+              <div className="flex items-center space-x-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <ExclamationTriangleIcon className="h-5 w-5 text-red-500 flex-shrink-0" />
+                <p className="text-sm text-red-700">{authError}</p>
+              </div>
+            )}
+
             <div>
               <button
                 type="submit"
-                disabled={isLoading}
-                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-[1.02]"
+                disabled={loading}
+                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-[#6C7A59] to-[#D6BFAF] hover:from-[#5A6A4A] hover:to-[#C4B09F] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#6C7A59] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"
               >
-                {isLoading ? (
+                {loading ? (
                   <div className="flex items-center">
                     <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -148,35 +194,44 @@ const ForgotPassword = () => {
                     Sending...
                   </div>
                 ) : (
-                  'Send reset link'
+                  'Send Reset Link'
                 )}
               </button>
             </div>
           </form>
-        )}
-
-        {/* Back to Login */}
-        <div className="text-center">
-          <Link 
-            to="/login" 
-            className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium transition-colors"
-          >
-            <ArrowLeftIcon className="h-4 w-4 mr-2" />
-            Back to login
-          </Link>
         </div>
 
-        {/* Additional Help */}
-        {!isSubmitted && (
-          <div className="text-center">
-            <p className="text-sm text-gray-600">
-              Don't have an account?{' '}
-              <Link to="/register" className="font-medium text-blue-600 hover:text-blue-500 transition-colors">
-                Sign up for free
-              </Link>
-            </p>
+        <div className="text-center">
+          <p className="text-sm text-gray-600">
+            Remember your password?{' '}
+            <Link
+              to="/login"
+              className="font-medium text-[#6C7A59] hover:text-[#5A6A4A] transition-colors"
+            >
+              Sign in
+            </Link>
+          </p>
+        </div>
+
+        {/* Security Info */}
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <CheckCircleIcon className="h-5 w-5 text-green-400" />
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-green-800">
+                Security First
+              </h3>
+              <div className="mt-2 text-sm text-green-700">
+                <p>
+                  Your password reset link is secure and will expire in 1 hour. 
+                  We never store your password and use industry-standard encryption.
+                </p>
+              </div>
+            </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

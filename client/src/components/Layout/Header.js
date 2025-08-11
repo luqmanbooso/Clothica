@@ -21,6 +21,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { useWishlist } from '../../contexts/WishlistContext';
 import LoyaltyBadge from '../Loyalty/LoyaltyBadge';
+import axios from 'axios';
 
 const Header = () => {
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
@@ -33,6 +34,13 @@ const Header = () => {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [categoryCounts, setCategoryCounts] = useState({
+    all: 0,
+    mens: 0,
+    womens: 0,
+    accessories: 0,
+    footwear: 0
+  });
 
   const [showTopBanner, setShowTopBanner] = useState(true);
 
@@ -47,6 +55,28 @@ const Header = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Fetch category counts
+  useEffect(() => {
+    fetchCategoryCounts();
+  }, []);
+
+  const fetchCategoryCounts = async () => {
+    try {
+      const response = await axios.get('/api/products/categories');
+      setCategoryCounts(response.data);
+    } catch (error) {
+      console.error('Error fetching category counts:', error);
+      // Fallback to default counts
+      setCategoryCounts({
+        all: 8,
+        mens: 3,
+        womens: 1,
+        accessories: 2,
+        footwear: 1
+      });
+    }
+  };
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -161,7 +191,7 @@ const Header = () => {
                         <div className="flex items-center space-x-3">
                           <div>
                             <div className="font-semibold text-gray-900">All Products</div>
-                            <div className="text-sm text-gray-500">8 products</div>
+                            <div className="text-sm text-gray-500">{categoryCounts.all} products</div>
                           </div>
                         </div>
                       </Link>
@@ -175,7 +205,7 @@ const Header = () => {
                         <div className="flex items-center space-x-3">
                           <div>
                             <div className="font-semibold text-gray-900">Men's Fashion</div>
-                            <div className="text-sm text-gray-500">3 products</div>
+                            <div className="text-sm text-gray-500">{categoryCounts.mens} products</div>
                           </div>
                         </div>
                       </Link>
@@ -187,7 +217,7 @@ const Header = () => {
                         <div className="flex items-center space-x-3">
                           <div>
                             <div className="font-semibold text-gray-900">Women's Fashion</div>
-                            <div className="text-sm text-gray-500">1 product</div>
+                            <div className="text-sm text-gray-500">{categoryCounts.womens} products</div>
                           </div>
                         </div>
                       </Link>
@@ -199,7 +229,7 @@ const Header = () => {
                         <div className="flex items-center space-x-3">
                           <div>
                             <div className="font-semibold text-gray-900">Accessories</div>
-                            <div className="text-sm text-gray-500">2 products</div>
+                            <div className="text-sm text-gray-500">{categoryCounts.accessories} products</div>
                           </div>
                         </div>
                       </Link>
@@ -211,7 +241,7 @@ const Header = () => {
                         <div className="flex items-center space-x-3">
                           <div>
                             <div className="font-semibold text-gray-900">Footwear</div>
-                            <div className="text-sm text-gray-500">1 product</div>
+                            <div className="text-sm text-gray-500">{categoryCounts.footwear} products</div>
                           </div>
                         </div>
                       </Link>
