@@ -32,7 +32,7 @@ const Login = () => {
   useEffect(() => {
     if (location.state?.from) {
       // User was redirected from a protected route
-      toast.info('Please log in to continue');
+      toast('Please log in to continue', { icon: 'ℹ️' });
     }
   }, [location.state]);
 

@@ -24,6 +24,9 @@ const Profile = () => {
     country: 'United States',
     isDefault: false
   });
+  const [showOTPForm, setShowOTPForm] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -122,6 +125,42 @@ const Profile = () => {
     }
   };
 
+  const handleSendOTP = async () => {
+    if (!formData.phone) {
+      toast.error('Please enter a phone number first');
+      return;
+    }
+
+    setOtpLoading(true);
+    try {
+      const response = await axios.post('/api/auth/send-otp', { phone: formData.phone });
+      toast.success('OTP sent to your email!');
+      setShowOTPForm(true);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to send OTP');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleVerifyOTP = async () => {
+    if (!otp) {
+      toast.error('Please enter the OTP');
+      return;
+    }
+
+    try {
+      const response = await axios.post('/api/auth/verify-otp', { otp });
+      toast.success('Phone verified successfully!');
+      setShowOTPForm(false);
+      setOtp('');
+      // Refresh user data to show verified status
+      window.location.reload();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'OTP verification failed');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-secondary-50 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -151,7 +190,7 @@ const Profile = () => {
                   Complete Your Profile
                 </h3>
                 <p className="text-blue-700 mb-4">
-                  Welcome to Clothica! To complete your profile and start shopping, please add your phone number and shipping address.
+                  Welcome to Clothica! Your Google account is verified. To complete your profile and start shopping, please add your phone number (with verification) and shipping address.
                 </p>
                 <div className="flex items-center space-x-4 text-sm text-blue-600">
                   <div className="flex items-center space-x-2">
@@ -201,14 +240,21 @@ const Profile = () => {
                       </span>
                     )}
                   </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-secondary-900">
-                      {user?.name}
-                    </h3>
-                    <p className="text-secondary-600">
-                      Member since {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
-                    </p>
-                  </div>
+                                     <div>
+                     <div className="flex items-center space-x-2">
+                       <h3 className="text-lg font-semibold text-secondary-900">
+                         {user?.name}
+                       </h3>
+                       {user?.isGoogleAccount && (
+                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                           ✓ Google Verified
+                         </span>
+                       )}
+                     </div>
+                     <p className="text-secondary-600">
+                       Member since {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
+                     </p>
+                   </div>
                 </div>
 
                 {/* Form Fields */}
@@ -295,6 +341,91 @@ const Profile = () => {
                         Phone number provided by Google account and cannot be changed
                       </p>
                     )}
+                    
+                    {/* Phone Verification Section */}
+                    {editMode && formData.phone && !user?.googleProvided?.phone && (
+                      <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-blue-800">
+                            Phone Verification Status
+                          </span>
+                          <span className={`text-xs px-2 py-1 rounded-full ${
+                            user?.isPhoneVerified 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {user?.isPhoneVerified ? 'Verified' : 'Not Verified'}
+                          </span>
+                        </div>
+                        
+                        {!user?.isPhoneVerified ? (
+                          <div className="space-y-2">
+                            <p className="text-xs text-blue-700">
+                              Verify your phone number to complete your profile
+                            </p>
+                            <div className="flex space-x-2">
+                                                          <button
+                              type="button"
+                              onClick={() => handleSendOTP()}
+                              disabled={otpLoading}
+                              className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
+                            >
+                              {otpLoading ? 'Sending...' : 'Send OTP'}
+                            </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-green-700">
+                            ✓ Phone number verified successfully
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* OTP Verification Form */}
+                    {showOTPForm && (
+                      <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-yellow-800">
+                            Enter OTP
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setShowOTPForm(false)}
+                            className="text-xs text-yellow-600 hover:text-yellow-800"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            value={otp}
+                            onChange={(e) => setOtp(e.target.value)}
+                            placeholder="Enter 6-digit OTP"
+                            maxLength={6}
+                            className="w-full px-3 py-2 border border-yellow-300 rounded text-center text-lg font-mono tracking-widest focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
+                          />
+                          <div className="flex space-x-2">
+                            <button
+                              type="button"
+                              onClick={handleVerifyOTP}
+                              className="flex-1 bg-yellow-600 text-white px-3 py-2 rounded text-sm hover:bg-yellow-700 transition-colors"
+                            >
+                              Verify OTP
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleSendOTP}
+                              disabled={otpLoading}
+                              className="px-3 py-2 border border-yellow-300 text-yellow-700 rounded text-sm hover:bg-yellow-50 transition-colors disabled:opacity-50"
+                            >
+                              {otpLoading ? 'Sending...' : 'Resend'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -361,14 +492,14 @@ const Profile = () => {
                         className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                         style={{ 
                           width: `${user?.profileComplete ? 100 : 
-                            ((user?.phone ? 50 : 0) + (user?.addresses && user.addresses.length > 0 ? 50 : 0))}%` 
+                            ((user?.phone && user?.isPhoneVerified ? 50 : 0) + (user?.addresses && user.addresses.length > 0 ? 50 : 0))}%` 
                         }}
                       ></div>
                     </div>
                     <div className="text-xs text-blue-600 space-y-1">
                       <div className="flex items-center space-x-2">
-                        <div className={`w-2 h-2 rounded-full ${user?.phone ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                        <span>Phone Number</span>
+                        <div className={`w-2 h-2 rounded-full ${user?.phone && user?.isPhoneVerified ? 'bg-green-500' : user?.phone ? 'bg-yellow-500' : 'bg-gray-300'}`}></div>
+                        <span>Phone Number {user?.phone && !user?.isPhoneVerified && '(Needs Verification)'}</span>
                       </div>
                       <div className="flex items-center space-x-2">
                         <div className={`w-2 h-2 rounded-full ${user?.addresses && user.addresses.length > 0 ? 'bg-green-500' : 'bg-gray-300'}`}></div>

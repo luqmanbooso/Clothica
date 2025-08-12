@@ -2,18 +2,44 @@ const nodemailer = require('nodemailer');
 
 class EmailService {
   constructor() {
-    this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: process.env.SMTP_PORT || 587,
-      secure: false,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
-      }
-    });
+    // Check if required environment variables are set
+    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+      console.error('Email service: Missing required environment variables SMTP_USER or SMTP_PASS');
+      this.transporter = null;
+      return;
+    }
+
+    try {
+      this.transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST || 'smtp.gmail.com',
+        port: process.env.SMTP_PORT || 587,
+        secure: false,
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS
+        }
+      });
+      
+      // Test the connection
+      this.transporter.verify((error, success) => {
+        if (error) {
+          console.error('Email service: SMTP connection failed:', error);
+        } else {
+          console.log('Email service: SMTP connection established');
+        }
+      });
+    } catch (error) {
+      console.error('Email service: Failed to create transporter:', error);
+      this.transporter = null;
+    }
   }
 
   async sendEmailVerification(email, token, name) {
+    if (!this.transporter) {
+      console.error('Email service: Transporter not initialized. Check environment variables.');
+      return false;
+    }
+
     const verificationUrl = `${process.env.CLIENT_URL}/verify-email?token=${token}`;
     
     const mailOptions = {
@@ -81,6 +107,11 @@ class EmailService {
   }
 
   async sendPasswordReset(email, token, name) {
+    if (!this.transporter) {
+      console.error('Email service: Transporter not initialized. Check environment variables.');
+      return false;
+    }
+
     const resetUrl = `${process.env.CLIENT_URL}/reset-password?token=${token}`;
     
     const mailOptions = {
@@ -148,6 +179,11 @@ class EmailService {
   }
 
   async sendOTPEmail(email, otp, name) {
+    if (!this.transporter) {
+      console.error('Email service: Transporter not initialized. Check environment variables.');
+      return false;
+    }
+
     const mailOptions = {
       from: `"Clothica" <${process.env.SMTP_USER}>`,
       to: email,
@@ -200,6 +236,11 @@ class EmailService {
   }
 
   async sendWelcomeEmail(email, name) {
+    if (!this.transporter) {
+      console.error('Email service: Transporter not initialized. Check environment variables.');
+      return false;
+    }
+
     const mailOptions = {
       from: `"Clothica" <${process.env.SMTP_USER}>`,
       to: email,

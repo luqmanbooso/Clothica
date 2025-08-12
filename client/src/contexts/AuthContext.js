@@ -48,18 +48,21 @@ export const AuthProvider = ({ children }) => {
       setAuthError(null);
       const response = await axios.post('/api/auth/register', userData);
       
-      const { token, user: newUser, message } = response.data;
+      const { token, user: newUser, message, requiresOTPVerification } = response.data;
       
-      // Store token
-      localStorage.setItem('token', token);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      // Only log in user if no OTP verification is required (Google accounts)
+      if (!requiresOTPVerification && token) {
+        // Store token
+        localStorage.setItem('token', token);
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        
+        // Set user state
+        setUser(newUser);
+        setIsAuthenticated(true);
+        setIsAdmin(newUser.role === 'admin');
+      }
       
-      // Set user state
-      setUser(newUser);
-      setIsAuthenticated(true);
-      setIsAdmin(newUser.role === 'admin');
-      
-      return { success: true, message };
+      return { success: true, message, requiresOTPVerification };
     } catch (error) {
       const message = error.response?.data?.message || 'Registration failed';
       setAuthError(message);

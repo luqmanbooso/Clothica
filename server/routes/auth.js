@@ -18,8 +18,9 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 router.post('/register', [
   body('name').trim().isLength({ min: 2 }).withMessage('Name must be at least 2 characters long'),
   body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email'),
-  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
-  body('phone').optional().isMobilePhone().withMessage('Please provide a valid phone number')
+  body('password').optional().isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
+  body('phone').optional().trim().isLength({ min: 0 }).withMessage('Phone number is invalid'),
+  body('isGoogleAccount').optional().isBoolean().withMessage('isGoogleAccount must be a boolean')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -27,7 +28,7 @@ router.post('/register', [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { name, email, password, phone } = req.body;
+    const { name, email, password, phone, isGoogleAccount } = req.body;
 
     // Check if user already exists
     let user = await User.findOne({ email });
@@ -35,21 +36,62 @@ router.post('/register', [
       return res.status(400).json({ message: 'User already exists with this email' });
     }
 
+    // For Google accounts, password is not required
+    if (!isGoogleAccount && !password) {
+      return res.status(400).json({ message: 'Password is required for regular registration' });
+    }
+
     // Create new user
     user = new User({
       name,
       email,
-      password,
-      phone
+      phone,
+      isGoogleAccount: isGoogleAccount || false,
+      googleProvided: {
+        name: isGoogleAccount || false,
+        email: isGoogleAccount || false,
+        phone: false
+      }
     });
 
-    // Generate email verification token
-    const verificationToken = user.generateEmailVerificationToken();
-
-    await user.save();
-
-    // Send verification email
-    await emailService.sendEmailVerification(email, verificationToken, name);
+    // Only set password for non-Google accounts
+    if (!isGoogleAccount) {
+      user.password = password;
+      // Generate OTP for email verification
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      user.emailVerificationOTP = otp;
+      user.emailVerificationOTPExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+      await user.save();
+      // Send OTP email
+      console.log('Attempting to send OTP email to:', email);
+      console.log('OTP generated:', otp);
+      console.log('Email service instance:', !!emailService);
+      console.log('Email service methods:', Object.keys(emailService));
+      console.log('Email service transporter:', !!emailService.transporter);
+      
+      try {
+        const emailSent = await emailService.sendOTPEmail(email, otp, name);
+        console.log('Email service response:', emailSent);
+        if (!emailSent) {
+          console.error('Failed to send OTP email - emailSent returned false');
+          return res.status(500).json({ message: 'Failed to send OTP email. Please try again.' });
+        }
+        console.log('OTP email sent successfully');
+      } catch (emailError) {
+        console.error('Email service error:', emailError);
+        return res.status(500).json({ message: 'Email service error. Please try again.' });
+      }
+    } else {
+      // Google accounts are pre-verified
+      user.isEmailVerified = true;
+      await user.save();
+      // Try to send welcome email, but don't fail if email service is down
+      try {
+        await emailService.sendWelcomeEmail(email, name);
+      } catch (emailError) {
+        console.log('Welcome email failed, but continuing with Google signup:', emailError.message);
+      }
+    }
 
     // Generate JWT token
     const payload = {
@@ -66,9 +108,12 @@ router.post('/register', [
       (err, token) => {
         if (err) throw err;
         res.json({
-          token,
+          token: isGoogleAccount ? token : null, // No token until OTP verified for regular users
           user: user.getPublicProfile(),
-          message: 'Registration successful! Please check your email to verify your account.'
+          message: isGoogleAccount 
+            ? 'Google account created successfully! Welcome to Clothica!' 
+            : 'Registration successful! Please check your email for OTP verification.',
+          requiresOTPVerification: !isGoogleAccount
         });
       }
     );
@@ -679,6 +724,157 @@ router.put('/complete-profile', auth, [
   } catch (error) {
     console.error('Complete profile error:', error);
     res.status(500).json({ message: 'Server error while completing profile' });
+  }
+});
+
+// @route   POST /api/auth/verify-email-otp
+// @desc    Verify email OTP during registration
+// @access  Public
+router.post('/verify-email-otp', [
+  body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email'),
+  body('otp').isLength({ min: 6, max: 6 }).withMessage('OTP must be 6 digits')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { email, otp } = req.body;
+
+    // Find user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if OTP is valid and not expired
+    if (user.emailVerificationOTP !== otp) {
+      return res.status(400).json({ message: 'Invalid OTP' });
+    }
+
+    if (user.emailVerificationOTPExpires < new Date()) {
+      return res.status(400).json({ message: 'OTP has expired. Please request a new one.' });
+    }
+
+    // Mark email as verified
+    user.isEmailVerified = true;
+    user.emailVerificationOTP = undefined;
+    user.emailVerificationOTPExpires = undefined;
+    await user.save();
+
+    // Generate JWT token
+    const payload = {
+      user: {
+        id: user.id,
+        role: user.role
+      }
+    };
+
+    jwt.sign(
+      payload,
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' },
+      (err, token) => {
+        if (err) throw err;
+        res.json({
+          token,
+          user: user.getPublicProfile(),
+          message: 'Email verified successfully! Welcome to Clothica!'
+        });
+      }
+    );
+  } catch (error) {
+    console.error('Email OTP verification error:', error);
+    res.status(500).json({ message: 'Server error during OTP verification' });
+  }
+});
+
+// @route   POST /api/auth/resend-email-otp
+// @desc    Resend email OTP during registration
+// @access  Public
+router.post('/resend-email-otp', [
+  body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { email } = req.body;
+
+    // Find user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if user is already verified
+    if (user.isEmailVerified) {
+      return res.status(400).json({ message: 'Email is already verified' });
+    }
+
+    // Generate new OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    user.emailVerificationOTP = otp;
+    user.emailVerificationOTPExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    await user.save();
+
+    try {
+      const emailSent = await emailService.sendOTPEmail(email, otp, user.name);
+      if (!emailSent) {
+        return res.status(500).json({ message: 'Failed to send OTP email. Please try again.' });
+      }
+    } catch (emailError) {
+      console.error('Email service error:', emailError);
+      return res.status(500).json({ message: 'Email service error. Please try again.' });
+    }
+
+    res.json({ message: 'New OTP sent successfully! Please check your email.' });
+  } catch (error) {
+    console.error('Resend email OTP error:', error);
+    res.status(500).json({ message: 'Server error while resending OTP' });
+  }
+});
+
+// @route   GET /api/auth/test-email
+// @desc    Test email service (for debugging)
+// @access  Public
+router.get('/test-email', async (req, res) => {
+  try {
+    console.log('Testing email service...');
+    console.log('Email service instance:', !!emailService);
+    console.log('Email service methods:', Object.keys(emailService));
+    console.log('Email service transporter:', !!emailService.transporter);
+    console.log('Environment variables:');
+    console.log('- SMTP_HOST:', process.env.SMTP_HOST);
+    console.log('- SMTP_PORT:', process.env.SMTP_PORT);
+    console.log('- SMTP_USER:', process.env.SMTP_USER ? 'SET' : 'NOT SET');
+    console.log('- SMTP_PASS:', process.env.SMTP_PASS ? 'SET' : 'NOT SET');
+    console.log('- CLIENT_URL:', process.env.CLIENT_URL);
+    
+    if (!emailService.transporter) {
+      return res.status(500).json({ 
+        message: 'Email service not initialized',
+        error: 'Transporter is null - check environment variables'
+      });
+    }
+    
+    res.json({ 
+      message: 'Email service test completed',
+      hasTransporter: !!emailService.transporter,
+      envVars: {
+        SMTP_HOST: process.env.SMTP_HOST,
+        SMTP_PORT: process.env.SMTP_PORT,
+        SMTP_USER: process.env.SMTP_USER ? 'SET' : 'NOT SET',
+        SMTP_PASS: process.env.SMTP_PASS ? 'SET' : 'NOT SET',
+        CLIENT_URL: process.env.CLIENT_URL
+      }
+    });
+  } catch (error) {
+    console.error('Email service test error:', error);
+    res.status(500).json({ message: 'Email service test failed', error: error.message });
   }
 });
 
