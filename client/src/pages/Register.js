@@ -18,7 +18,7 @@ import axios from 'axios';
 
 const Register = () => {
   const navigate = useNavigate();
-  const { register, googleSignup, authError, clearError } = useAuth();
+  const { register, googleSignup, authError, clearError, verifyEmailOTP } = useAuth();
   
   const [formData, setFormData] = useState({
     name: '',
@@ -116,23 +116,31 @@ const Register = () => {
     setLoading(true);
 
     try {
-      if (isGoogleSignup) {
-        // For Google signup, we need to get the ID token and use googleSignup
-        // Since we don't have the ID token anymore, we'll need to handle this differently
-        // For now, let's use regular registration with Google data
-        const result = await register({
-          name: formData.name.trim(),
-          email: formData.email.trim().toLowerCase(),
-          password: formData.password,
-          phone: formData.phone.trim() || undefined,
-          isGoogleAccount: true
-        });
-        
-        if (result.success) {
-          toast.success('Google account created successfully!');
-          navigate('/');
-        } else {
-          toast.error(result.message);
+      if (isGoogleSignup && googleUserData) {
+        // For Google signup, we need to use the actual Google credential
+        try {
+          // We need to get the credential from the Google response
+          // Since we don't have the original credential, we'll need to handle this differently
+          // For now, let's create a Google account without the ID token
+          const result = await register({
+            name: formData.name.trim(),
+            email: formData.email.trim().toLowerCase(),
+            password: '', // No password for Google accounts
+            phone: formData.phone.trim() || undefined,
+            isGoogleAccount: true,
+            googleId: googleUserData.sub || 'temp-google-id', // Temporary ID
+            avatar: googleUserData.picture
+          });
+          
+          if (result.success) {
+            toast.success('Google account created successfully!');
+            navigate('/');
+          } else {
+            toast.error(result.message);
+          }
+        } catch (error) {
+          console.error('Google signup error:', error);
+          toast.error('Google signup failed. Please try again.');
         }
       } else {
         // Regular registration
@@ -202,15 +210,16 @@ const Register = () => {
 
     setOtpLoading(true);
     try {
-      const response = await axios.post('/api/auth/verify-email-otp', {
-        email: userEmail,
-        otp: otp
-      });
+      const result = await verifyEmailOTP(userEmail, otp);
       
-      toast.success('Email verified successfully! Welcome to Clothica!');
-      navigate('/');
+      if (result.success) {
+        toast.success('Email verified successfully! Welcome to Clothica!');
+        navigate('/');
+      } else {
+        toast.error(result.message);
+      }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'OTP verification failed');
+      toast.error('OTP verification failed');
     } finally {
       setOtpLoading(false);
     }
@@ -305,6 +314,7 @@ const Register = () => {
             <div>
               <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
                 Phone Number <span className="text-gray-500">(Optional)</span>
+                {isGoogleSignup && <span className="text-blue-600 ml-2">📱 Required for Google accounts</span>}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -323,76 +333,84 @@ const Register = () => {
               </div>
             </div>
 
-            {/* Password Field */}
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Password
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <LockClosedIcon className="h-5 w-5 text-gray-400" />
+            {/* Password Fields - Only show for regular registration */}
+            {!isGoogleSignup && (
+              <>
+                {/* Password Field */}
+                <div>
+                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <LockClosedIcon className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                      id="password"
+                      name="password"
+                      type={showPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      required
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      className="appearance-none block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#6C7A59] focus:border-[#6C7A59] transition-colors"
+                      placeholder="Create a password"
+                    />
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeSlashIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                      ) : (
+                        <EyeIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                      )}
+                    </button>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Must be at least 6 characters long
+                  </p>
                 </div>
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  required
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  className="appearance-none block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#6C7A59] focus:border-[#6C7A59] transition-colors"
-                  placeholder="Create a password"
-                />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <EyeSlashIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                  ) : (
-                    <EyeIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                  )}
-                </button>
-              </div>
-              <p className="mt-1 text-xs text-gray-500">
-                Must be at least 6 characters long
-              </p>
-            </div>
 
-            {/* Confirm Password Field */}
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-                Confirm Password
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <LockClosedIcon className="h-5 w-5 text-gray-400" />
+                {/* Confirm Password Field */}
+                <div>
+                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                    Confirm Password
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <LockClosedIcon className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      required
+                      value={formData.confirmPassword}
+                      onChange={handleInputChange}
+                      className="appearance-none block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#6C7A59] focus:border-[#6C7A59] transition-colors"
+                      placeholder="Confirm your password"
+                    />
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    >
+                      {showConfirmPassword ? (
+                        <EyeSlashIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                      ) : (
+                        <EyeIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                      )}
+                    </button>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Passwords must match
+                  </p>
                 </div>
-                <input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  required
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  className="appearance-none block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#6C7A59] focus:border-[#6C7A59] transition-colors"
-                  placeholder="Confirm your password"
-                />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                >
-                  {showConfirmPassword ? (
-                    <EyeSlashIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                  ) : (
-                    <EyeIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                  )}
-                </button>
-              </div>
-            </div>
+              </>
+            )}
 
             {/* Error Display */}
             {authError && (
@@ -566,27 +584,44 @@ const Register = () => {
             </div>
           </div>
 
-          {/* Google Sign-Up */}
-          <div className="mt-6">
-            {!isGoogleSignup ? (
-              <GoogleLogin
-                onSuccess={handleGoogleSuccess}
-                onError={handleGoogleError}
-                useOneTap
-                theme="outline"
-                size="large"
-                text="signup_with"
-                shape="rectangular"
-                width="100%"
-              />
-            ) : (
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-center">
-                <p className="text-sm text-blue-700">
-                  ✓ Google account verified • Complete your profile below
-                </p>
-              </div>
-            )}
-          </div>
+                      {/* Google Sign-Up */}
+            <div className="mt-6">
+              {!isGoogleSignup ? (
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={handleGoogleError}
+                  useOneTap
+                  theme="outline"
+                  size="large"
+                  text="signup_with"
+                  shape="rectangular"
+                  width="100%"
+                />
+              ) : (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-center">
+                  <p className="text-sm text-blue-700">
+                    ✓ Google account verified • Complete your profile below
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsGoogleSignup(false);
+                      setGoogleUserData(null);
+                      setFormData({
+                        name: '',
+                        email: '',
+                        password: '',
+                        confirmPassword: '',
+                        phone: ''
+                      });
+                    }}
+                    className="mt-2 text-xs text-blue-600 hover:text-blue-800 transition-colors"
+                  >
+                    ← Use Regular Registration Instead
+                  </button>
+                </div>
+              )}
+            </div>
         </div>
 
         {/* Sign In Link */}

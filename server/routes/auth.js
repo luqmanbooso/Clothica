@@ -18,9 +18,21 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 router.post('/register', [
   body('name').trim().isLength({ min: 2 }).withMessage('Name must be at least 2 characters long'),
   body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email'),
-  body('password').optional().isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
+  body('password').optional().custom((value, { req }) => {
+    // For Google accounts, password is not required
+    if (req.body.isGoogleAccount) {
+      return true; // Skip password validation for Google accounts
+    }
+    // For regular accounts, password must be at least 6 characters
+    if (!value || value.length < 6) {
+      throw new Error('Password must be at least 6 characters long');
+    }
+    return true;
+  }),
   body('phone').optional().trim().isLength({ min: 0 }).withMessage('Phone number is invalid'),
-  body('isGoogleAccount').optional().isBoolean().withMessage('isGoogleAccount must be a boolean')
+  body('isGoogleAccount').optional().isBoolean().withMessage('isGoogleAccount must be a boolean'),
+  body('googleId').optional().isString().withMessage('Google ID must be a string'),
+  body('avatar').optional().isURL().withMessage('Avatar must be a valid URL')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -28,7 +40,7 @@ router.post('/register', [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { name, email, password, phone, isGoogleAccount } = req.body;
+    const { name, email, password, phone, isGoogleAccount, googleId, avatar } = req.body;
 
     // Check if user already exists
     let user = await User.findOne({ email });
@@ -47,6 +59,8 @@ router.post('/register', [
       email,
       phone,
       isGoogleAccount: isGoogleAccount || false,
+      googleId: isGoogleAccount ? googleId : undefined,
+      avatar: isGoogleAccount ? avatar : undefined,
       googleProvided: {
         name: isGoogleAccount || false,
         email: isGoogleAccount || false,
@@ -84,10 +98,12 @@ router.post('/register', [
     } else {
       // Google accounts are pre-verified
       user.isEmailVerified = true;
+      user.isGoogleAccount = true;
       await user.save();
       // Try to send welcome email, but don't fail if email service is down
       try {
         await emailService.sendWelcomeEmail(email, name);
+        console.log('Welcome email sent successfully to:', email);
       } catch (emailError) {
         console.log('Welcome email failed, but continuing with Google signup:', emailError.message);
       }
@@ -251,7 +267,12 @@ router.post('/google/signup', async (req, res) => {
     await user.save();
 
     // Send welcome email
-    await emailService.sendWelcomeEmail(email, name);
+    try {
+      await emailService.sendWelcomeEmail(email, name);
+      console.log('Welcome email sent successfully to:', email);
+    } catch (emailError) {
+      console.log('Welcome email failed, but continuing with Google signup:', emailError.message);
+    }
 
     // Generate JWT token
     const jwtPayload = {
@@ -277,6 +298,12 @@ router.post('/google/signup', async (req, res) => {
     );
   } catch (error) {
     console.error('Google signup error:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Error details:', {
+      message: error.message,
+      name: error.name,
+      code: error.code
+    });
     res.status(500).json({ message: 'Server error during Google signup' });
   }
 });
@@ -762,6 +789,14 @@ router.post('/verify-email-otp', [
     user.emailVerificationOTP = undefined;
     user.emailVerificationOTPExpires = undefined;
     await user.save();
+
+    // Send welcome email
+    try {
+      await emailService.sendWelcomeEmail(email, user.name);
+      console.log('Welcome email sent successfully to:', email);
+    } catch (emailError) {
+      console.log('Welcome email failed, but continuing with verification:', emailError.message);
+    }
 
     // Generate JWT token
     const payload = {

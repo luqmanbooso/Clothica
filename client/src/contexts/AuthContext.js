@@ -261,6 +261,30 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const verifyEmailOTP = async (email, otp) => {
+    try {
+      setAuthError(null);
+      const response = await axios.post('/api/auth/verify-email-otp', { email, otp });
+      
+      const { token, user: newUser } = response.data;
+      
+      // Store token
+      localStorage.setItem('token', token);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      // Set user state
+      setUser(newUser);
+      setIsAuthenticated(true);
+      setIsAdmin(newUser.role === 'admin');
+      
+      return { success: true, message: response.data.message };
+    } catch (error) {
+      const message = error.response?.data?.message || 'OTP verification failed';
+      setAuthError(message);
+      return { success: false, message };
+    }
+  };
+
   const clearError = () => {
     setAuthError(null);
   };
@@ -301,6 +325,7 @@ export const AuthProvider = ({ children }) => {
     verifyEmail,
     forgotPassword,
     resetPassword,
+    verifyEmailOTP,
     clearError
   };
 
