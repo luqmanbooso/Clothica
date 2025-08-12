@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import { jwtDecode } from 'jwt-decode';
 import { 
@@ -13,12 +13,14 @@ import {
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
-import toast from 'react-hot-toast';
+import { useToast } from '../contexts/ToastContext';
 import axios from 'axios';
 
 const Register = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { register, googleSignup, authError, clearError, verifyEmailOTP } = useAuth();
+  const { success: showSuccess, error: showError, info: showInfo } = useToast();
   
   const [formData, setFormData] = useState({
     name: '',
@@ -39,6 +41,7 @@ const Register = () => {
   const [otp, setOtp] = useState('');
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpTimer, setOtpTimer] = useState(600); // 10 minutes in seconds
+  const [resendTimer, setResendTimer] = useState(0); // Timer for resending OTP
 
   // Clear auth errors when component mounts
   useEffect(() => {
@@ -58,6 +61,19 @@ const Register = () => {
     };
   }, [registrationSuccess, otpTimer]);
 
+  // Resend OTP Timer effect
+  useEffect(() => {
+    let interval;
+    if (resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer(prev => prev - 1);
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [resendTimer]);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -68,40 +84,40 @@ const Register = () => {
 
   const validateForm = () => {
     if (!formData.name.trim()) {
-      toast.error('Name is required');
+      showError('Name is required');
       return false;
     }
     
     if (!formData.email.trim()) {
-      toast.error('Email is required');
+      showError('Email is required');
       return false;
     }
     
     if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      toast.error('Please enter a valid email address');
+      showError('Please enter a valid email address');
       return false;
     }
     
     // For Google signup, password validation is not required
     if (!isGoogleSignup) {
       if (!formData.password) {
-        toast.error('Password is required');
+        showError('Password is required');
         return false;
       }
       
       if (formData.password.length < 6) {
-        toast.error('Password must be at least 6 characters long');
+        showError('Password must be at least 6 characters long');
         return false;
       }
       
       if (formData.password !== formData.confirmPassword) {
-        toast.error('Passwords do not match');
+        showError('Passwords do not match');
         return false;
       }
     }
     
     if (!agreedToTerms) {
-      toast.error('Please agree to the Terms of Service and Privacy Policy');
+      showError('Please agree to the Terms of Service and Privacy Policy');
       return false;
     }
     
@@ -133,14 +149,14 @@ const Register = () => {
           });
           
           if (result.success) {
-            toast.success('Google account created successfully!');
+            showSuccess('Google account created successfully!');
             navigate('/');
           } else {
-            toast.error(result.message);
+            showError(result.message);
           }
         } catch (error) {
           console.error('Google signup error:', error);
-          toast.error('Google signup failed. Please try again.');
+          showError('Google signup failed. Please try again.');
         }
       } else {
         // Regular registration
@@ -156,17 +172,17 @@ const Register = () => {
             setRegistrationSuccess(true);
             setUserEmail(formData.email.trim().toLowerCase());
             setOtpTimer(600); // Reset timer to 10 minutes
-            toast.success('Registration successful! Please check your email for OTP verification.');
+            showInfo('Registration successful! Please check your email for OTP verification.');
           } else {
-            toast.success(result.message);
+            showSuccess(result.message);
             navigate('/');
           }
         } else {
-          toast.error(result.message);
+          showError(result.message);
         }
       }
     } catch (error) {
-      toast.error('An unexpected error occurred');
+      showError('An unexpected error occurred');
     } finally {
       setLoading(false);
     }
@@ -192,19 +208,19 @@ const Register = () => {
         email: decoded.email
       }));
       
-      toast.success('Google account verified! Please complete your profile details.');
+      showInfo('Google account verified! Please complete your profile details.');
     } catch (error) {
-      toast.error('Google verification failed');
+      showError('Google verification failed');
     }
   };
 
   const handleGoogleError = () => {
-    toast.error('Google registration failed');
+    showError('Google registration failed');
   };
 
   const handleVerifyOTP = async () => {
     if (!otp) {
-      toast.error('Please enter the OTP');
+      showError('Please enter the OTP');
       return;
     }
 
@@ -213,15 +229,27 @@ const Register = () => {
       const result = await verifyEmailOTP(userEmail, otp);
       
       if (result.success) {
-        toast.success('Email verified successfully! Welcome to Clothica!');
+        showSuccess('Email verified successfully! Welcome to Clothica!');
         navigate('/');
       } else {
-        toast.error(result.message);
+        showError(result.message);
       }
     } catch (error) {
-      toast.error('OTP verification failed');
+      showError('OTP verification failed');
     } finally {
       setOtpLoading(false);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    if (resendTimer > 0) return;
+    
+    try {
+      await axios.post('/api/auth/resend-email-otp', { email: userEmail });
+      showSuccess('New OTP sent! Please check your email.');
+      setResendTimer(60);
+    } catch (error) {
+      showError(error.response?.data?.message || 'Failed to resend OTP');
     }
   };
 
@@ -539,19 +567,11 @@ const Register = () => {
                 <div className="text-center space-y-2">
                   <button
                     type="button"
-                    onClick={async () => {
-                      try {
-                        const response = await axios.post('/api/auth/resend-email-otp', {
-                          email: userEmail
-                        });
-                        toast.success('New OTP sent! Please check your email.');
-                      } catch (error) {
-                        toast.error(error.response?.data?.message || 'Failed to resend OTP');
-                      }
-                    }}
+                    onClick={handleResendOTP}
+                    disabled={resendTimer > 0}
                     className="text-sm text-blue-600 hover:text-blue-800 transition-colors"
                   >
-                    ↻ Resend OTP
+                    {resendTimer > 0 ? `${resendTimer}s` : '↻ Resend OTP'}
                   </button>
                   
                   <div className="block">

@@ -75,7 +75,7 @@ router.post('/register', [
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       user.emailVerificationOTP = otp;
       user.emailVerificationOTPExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-      await user.save();
+    await user.save();
       // Send OTP email
       console.log('Attempting to send OTP email to:', email);
       console.log('OTP generated:', otp);
@@ -120,7 +120,7 @@ router.post('/register', [
     jwt.sign(
       payload,
       process.env.JWT_SECRET,
-      { expiresIn: '24h' },
+      { expiresIn: '7d' },
       (err, token) => {
         if (err) throw err;
         res.json({
@@ -189,22 +189,34 @@ router.post('/login', [
 
     // Generate JWT token
     const payload = {
-      user: {
-        id: user.id,
-        role: user.role
-      }
+      userId: user.id,
+      email: user.email,
+      role: user.role
     };
 
+    // Generate access token (7 days)
     jwt.sign(
       payload,
       process.env.JWT_SECRET,
-      { expiresIn: '24h' },
+      { expiresIn: '7d' },
       (err, token) => {
         if (err) throw err;
-    res.json({
-      token,
-          user: user.getPublicProfile()
-        });
+        
+        // Generate refresh token (30 days)
+        jwt.sign(
+          payload,
+          process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET,
+          { expiresIn: '30d' },
+          (err, refreshToken) => {
+            if (err) throw err;
+            
+            res.json({
+              token,
+              refreshToken,
+              user: user.getPublicProfile()
+            });
+          }
+        );
       }
     );
   } catch (error) {
@@ -285,11 +297,11 @@ router.post('/google/signup', async (req, res) => {
     jwt.sign(
       jwtPayload,
       process.env.JWT_SECRET,
-      { expiresIn: '24h' },
+      { expiresIn: '7d' },
       (err, token) => {
         if (err) throw err;
-        res.json({
-          token,
+    res.json({
+      token,
           user: user.getPublicProfile(),
           message: 'Google account created successfully! Please complete your profile.',
           requiresProfileCompletion: true
@@ -361,7 +373,7 @@ router.post('/google/login', async (req, res) => {
     jwt.sign(
       jwtPayload,
       process.env.JWT_SECRET,
-      { expiresIn: '24h' },
+      { expiresIn: '7d' },
       (err, token) => {
         if (err) throw err;
         res.json({
@@ -809,7 +821,7 @@ router.post('/verify-email-otp', [
     jwt.sign(
       payload,
       process.env.JWT_SECRET,
-      { expiresIn: '24h' },
+      { expiresIn: '7d' },
       (err, token) => {
         if (err) throw err;
         res.json({
@@ -910,6 +922,65 @@ router.get('/test-email', async (req, res) => {
   } catch (error) {
     console.error('Email service test error:', error);
     res.status(500).json({ message: 'Email service test failed', error: error.message });
+  }
+});
+
+// @route   POST /api/auth/refresh-token
+// @desc    Refresh access token using refresh token
+// @access  Public
+router.post('/refresh-token', [
+  body('refreshToken').notEmpty().withMessage('Refresh token is required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { refreshToken } = req.body;
+
+    // Verify refresh token
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET);
+    
+    // Find user
+    const user = await User.findById(decoded.userId);
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid refresh token' });
+    }
+
+    // Check if user is active
+    if (!user.isActive) {
+      return res.status(401).json({ message: 'User account is deactivated' });
+    }
+
+    // Generate new access token
+    const payload = {
+      userId: user._id,
+      email: user.email,
+      role: user.role
+    };
+
+    jwt.sign(
+      payload,
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' },
+      (err, token) => {
+        if (err) throw err;
+        res.json({
+          token,
+          user: user.getPublicProfile()
+        });
+      }
+    );
+  } catch (error) {
+    console.error('Token refresh error:', error);
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ message: 'Invalid refresh token' });
+    }
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: 'Refresh token expired' });
+    }
+    res.status(500).json({ message: 'Server error during token refresh' });
   }
 });
 

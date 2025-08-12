@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { EnvelopeIcon, ArrowLeftIcon, CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
-import toast from 'react-hot-toast';
+import { useToast } from '../contexts/ToastContext';
 
 const ForgotPassword = () => {
   const { forgotPassword, authError, clearError } = useAuth();
+  const { success, error } = useToast();
   const [email, setEmail] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -19,12 +20,12 @@ const ForgotPassword = () => {
     e.preventDefault();
     
     if (!email) {
-      toast.error('Please enter your email address');
+      error('Please enter your email address');
       return;
     }
 
     if (!/\S+@\S+\.\S+/.test(email)) {
-      toast.error('Please enter a valid email address');
+      error('Please enter a valid email address');
       return;
     }
 
@@ -34,12 +35,12 @@ const ForgotPassword = () => {
       const result = await forgotPassword(email);
       if (result.success) {
         setIsSubmitted(true);
-        toast.success('Password reset email sent successfully!');
+        success('Password reset email sent successfully!');
       } else {
-        toast.error(result.message);
+        error(result.message);
       }
     } catch (error) {
-      toast.error('An unexpected error occurred');
+      error('An unexpected error occurred');
     } finally {
       setLoading(false);
     }

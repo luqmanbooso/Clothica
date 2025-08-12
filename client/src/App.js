@@ -5,6 +5,8 @@ import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import { WishlistProvider } from './contexts/WishlistContext';
 import { LoyaltyProvider } from './contexts/LoyaltyContext';
+import { CouponProvider } from './contexts/CouponContext';
+import { ToastProvider } from './contexts/ToastContext';
 
 // Layout Components
 import Header from './components/Layout/Header';
@@ -26,6 +28,7 @@ import About from './pages/About';
 import Profile from './pages/Profile';
 import Orders from './pages/Orders';
 import OrderSuccess from './pages/OrderSuccess';
+import Checkout from './pages/Checkout';
 
 // Admin Pages
 import Dashboard from './pages/Admin/Dashboard';
@@ -46,11 +49,13 @@ import ClientRoute from './components/Auth/ClientRoute';
 function App() {
   return (
     <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID}>
-      <AuthProvider>
-        <CartProvider>
-          <WishlistProvider>
-            <LoyaltyProvider>
-              <div className="App">
+      <ToastProvider>
+        <AuthProvider>
+          <CartProvider>
+            <WishlistProvider>
+              <LoyaltyProvider>
+                <CouponProvider>
+                  <div className="App">
               <Routes>
                   {/* Public Routes */}
                   <Route path="/" element={
@@ -82,6 +87,16 @@ function App() {
                       <Header />
                       <Cart />
                       <Footer />
+                    </ClientRoute>
+                  } />
+                  
+                  <Route path="/checkout" element={
+                    <ClientRoute>
+                      <ProtectedRoute>
+                        <Header />
+                        <Checkout />
+                        <Footer />
+                      </ProtectedRoute>
                     </ClientRoute>
                   } />
                   
@@ -234,13 +249,15 @@ function App() {
                     </AdminRoute>
                   } />
                 </Routes>
-              </div>
-            </LoyaltyProvider>
-          </WishlistProvider>
-        </CartProvider>
-      </AuthProvider>
+                                </div>
+                </CouponProvider>
+              </LoyaltyProvider>
+            </WishlistProvider>
+          </CartProvider>
+        </AuthProvider>
+      </ToastProvider>
     </GoogleOAuthProvider>
-  );
-}
+    );
+  }
 
 export default App; 

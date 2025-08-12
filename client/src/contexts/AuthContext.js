@@ -18,7 +18,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState(null);
 
-  // Initialize axios defaults
+  // Initialize axios defaults and interceptors
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -27,6 +27,42 @@ export const AuthProvider = ({ children }) => {
     } else {
       setLoading(false);
     }
+
+    // Add response interceptor to handle token refresh
+    const responseInterceptor = axios.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        const originalRequest = error.config;
+        
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          originalRequest._retry = true;
+          
+          // For now, just logout the user when token expires
+          // This prevents infinite 401 loops
+          console.log('Token expired, logging out user');
+          
+          // Show session expired message
+          if (window.location.pathname !== '/login') {
+            // Use a simple alert for now since we can't access toast context here
+            alert('Your session has expired. Please log in again.');
+          }
+          
+          logout();
+          
+          // Redirect to login page
+          window.location.href = '/login';
+          
+          return Promise.reject(error);
+        }
+        
+        return Promise.reject(error);
+      }
+    );
+
+    // Cleanup interceptor on unmount
+    return () => {
+      axios.interceptors.response.eject(responseInterceptor);
+    };
   }, []);
 
   const checkAuthStatus = async () => {
@@ -75,10 +111,13 @@ export const AuthProvider = ({ children }) => {
       setAuthError(null);
       const response = await axios.post('/api/auth/login', credentials);
       
-      const { token, user: userData } = response.data;
+      const { token, refreshToken, user: userData } = response.data;
       
-      // Store token
+      // Store tokens
       localStorage.setItem('token', token);
+      if (refreshToken) {
+        localStorage.setItem('refreshToken', refreshToken);
+      }
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       
       // Set user state
@@ -144,6 +183,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
     delete axios.defaults.headers.common['Authorization'];
     setUser(null);
     setIsAuthenticated(false);

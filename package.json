@@ -12,7 +12,9 @@
     "install-server": "npm install",
     "install-all": "npm run install-server && npm run install-client",
     "create-admin": "node server/scripts/createAdmin.js",
-    "create-products": "node server/scripts/createSampleProducts.js"
+    "create-products": "node server/scripts/createRealProducts.js",
+    "create-coupons": "node server/scripts/createRealCoupons.js",
+    "create-sample-data": "node server/scripts/createSampleProducts.js && node server/scripts/createSampleCoupons.js"
   },
   "keywords": ["ecommerce", "mern", "react", "clothing", "tailwind"],
   "author": "Clothica Team",

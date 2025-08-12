@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import toast from 'react-hot-toast';
+
 
 const CartContext = createContext();
 
@@ -46,7 +46,7 @@ export const CartProvider = ({ children }) => {
         // Update existing item
         const updatedCart = [...prevCart];
         updatedCart[existingItemIndex].quantity += quantity;
-        toast.success(`Updated quantity for ${product.name}`);
+        // Note: Toast will be handled by the component using this context
         return updatedCart;
       } else {
         // Add new item
@@ -57,7 +57,7 @@ export const CartProvider = ({ children }) => {
           color,
           price: product.price
         };
-        toast.success(`${product.name} added to cart!`);
+        // Note: Toast will be handled by the component using this context
         return [...prevCart, newItem];
       }
     });
@@ -66,7 +66,7 @@ export const CartProvider = ({ children }) => {
   const removeFromCart = (index) => {
     setCart(prevCart => {
       const updatedCart = prevCart.filter((_, i) => i !== index);
-      toast.success('Item removed from cart');
+      // Note: Toast will be handled by the component using this context
       return updatedCart;
     });
   };
@@ -86,7 +86,7 @@ export const CartProvider = ({ children }) => {
 
   const clearCart = () => {
     setCart([]);
-    toast.success('Cart cleared');
+    // Note: Toast will be handled by the component using this context
   };
 
   const getCartTotal = () => {

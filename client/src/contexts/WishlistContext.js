@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import toast from 'react-hot-toast';
 import { useAuth } from './AuthContext';
 
 const WishlistContext = createContext();
@@ -49,7 +48,7 @@ export const WishlistProvider = ({ children }) => {
       setWishlist(response.data);
     } catch (error) {
       console.error('Error loading wishlist:', error);
-      toast.error('Failed to load wishlist');
+      // Note: Toast will be handled by the component using this context
     } finally {
       setLoading(false);
     }
@@ -67,16 +66,16 @@ export const WishlistProvider = ({ children }) => {
       try {
         await axios.put(`/api/users/wishlist/${product._id}`);
         await loadWishlist();
-        toast.success(`${product.name} added to wishlist!`);
+        // Note: Toast will be handled by the component using this context
       } catch (error) {
         console.error('Error adding to wishlist:', error);
-        toast.error('Failed to add to wishlist');
+        // Note: Toast will be handled by the component using this context
       }
     } else {
       setWishlist(prev => {
         const exists = prev.find(item => item._id === product._id);
         if (!exists) {
-          toast.success(`${product.name} added to wishlist!`);
+          // Note: Toast will be handled by the component using this context
           return [...prev, product];
         }
         return prev;
@@ -89,15 +88,15 @@ export const WishlistProvider = ({ children }) => {
       try {
         await axios.put(`/api/users/wishlist/${productId}`);
         await loadWishlist();
-        toast.success('Removed from wishlist');
+        // Note: Toast will be handled by the component using this context
       } catch (error) {
         console.error('Error removing from wishlist:', error);
-        toast.error('Failed to remove from wishlist');
+        // Note: Toast will be handled by the component using this context
       }
     } else {
       setWishlist(prev => {
         const updated = prev.filter(item => item._id !== productId);
-        toast.success('Removed from wishlist');
+        // Note: Toast will be handled by the component using this context
         return updated;
       });
     }
@@ -112,7 +111,7 @@ export const WishlistProvider = ({ children }) => {
     if (!isAuthenticated) {
       localStorage.removeItem('wishlist');
     }
-    toast.success('Wishlist cleared');
+    // Note: Toast will be handled by the component using this context
   };
 
   const value = {

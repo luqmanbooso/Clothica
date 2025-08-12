@@ -9,12 +9,13 @@ import {
   ArrowLeftIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
-import toast from 'react-hot-toast';
+import { useToast } from '../contexts/ToastContext';
 
 const ResetPassword = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { resetPassword, authError, clearError } = useAuth();
+  const { success: showSuccess, error: showError } = useToast();
   
   const [formData, setFormData] = useState({
     password: '',
@@ -35,7 +36,7 @@ const ResetPassword = () => {
   // Redirect if no token
   useEffect(() => {
     if (!token) {
-      toast.error('Invalid reset link');
+      showError('Invalid reset link');
       navigate('/forgot-password');
     }
   }, [token, navigate]);
@@ -50,17 +51,17 @@ const ResetPassword = () => {
 
   const validateForm = () => {
     if (!formData.password) {
-      toast.error('Password is required');
+      showError('Password is required');
       return false;
     }
     
     if (formData.password.length < 6) {
-      toast.error('Password must be at least 6 characters long');
+      showError('Password must be at least 6 characters long');
       return false;
     }
     
     if (formData.password !== formData.confirmPassword) {
-      toast.error('Passwords do not match');
+      showError('Passwords do not match');
       return false;
     }
     
@@ -78,12 +79,12 @@ const ResetPassword = () => {
       const result = await resetPassword(token, formData.password);
       if (result.success) {
         setIsSuccess(true);
-        toast.success('Password reset successfully!');
+        showSuccess('Password reset successfully!');
       } else {
-        toast.error(result.message);
+        showError(result.message);
       }
     } catch (error) {
-      toast.error('An unexpected error occurred');
+      showError('An unexpected error occurred');
     } finally {
       setLoading(false);
     }

@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { FiUsers, FiSearch, FiEye, FiEdit, FiUserCheck, FiUserX, FiMail, FiPhone, FiCalendar, FiXCircle } from 'react-icons/fi';
 import axios from 'axios';
-import toast from 'react-hot-toast';
+import { useToast } from '../../contexts/ToastContext';
 import { format } from 'date-fns';
 
 const AdminUsers = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const { success: showSuccess, error: showError } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedRole, setSelectedRole] = useState('');
+  const [filterRole, setFilterRole] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -21,7 +25,7 @@ const AdminUsers = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, [currentPage, searchTerm, selectedRole]);
+  }, [currentPage, searchTerm, filterRole, filterStatus]);
 
   const fetchUsers = async () => {
     try {
@@ -30,7 +34,8 @@ const AdminUsers = () => {
         page: currentPage,
         limit: 10,
         search: searchTerm || undefined,
-        role: selectedRole || undefined
+        role: filterRole === 'all' ? undefined : filterRole,
+        isActive: filterStatus === 'all' ? undefined : filterStatus === 'active'
       };
 
       const response = await axios.get('/api/admin/users', { params });
@@ -38,22 +43,22 @@ const AdminUsers = () => {
       setTotalPages(response.data.pagination.pages);
     } catch (error) {
       console.error('Error fetching users:', error);
-      toast.error('Failed to load users');
+      showError('Failed to load users');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleStatusToggle = async (userId, currentStatus) => {
+  const toggleUserStatus = async (userId, currentStatus) => {
     try {
       await axios.put(`/api/admin/users/${userId}/status`, {
         isActive: !currentStatus
       });
-      toast.success('User status updated successfully');
+      showSuccess('User status updated successfully');
       fetchUsers();
     } catch (error) {
       console.error('Error updating user status:', error);
-      toast.error('Failed to update user status');
+      showError('Failed to update user status');
     }
   };
 
@@ -65,7 +70,8 @@ const AdminUsers = () => {
 
   const clearFilters = () => {
     setSearchTerm('');
-    setSelectedRole('');
+    setFilterRole('all');
+    setFilterStatus('all');
     setCurrentPage(1);
   };
 
@@ -113,16 +119,31 @@ const AdminUsers = () => {
               Role
             </label>
             <select
-              value={selectedRole}
-              onChange={(e) => setSelectedRole(e.target.value)}
+              value={filterRole}
+              onChange={(e) => setFilterRole(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="">All Roles</option>
+              <option value="all">All Roles</option>
               {roles.map(role => (
                 <option key={role.value} value={role.value}>
                   {role.label}
                 </option>
               ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Status
+            </label>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="all">All Statuses</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
             </select>
           </div>
 
@@ -138,7 +159,7 @@ const AdminUsers = () => {
               onClick={clearFilters}
               className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors"
             >
-              Clear
+              Clear Filters
             </button>
           </div>
         </form>
@@ -240,7 +261,7 @@ const AdminUsers = () => {
                         <FiEye className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() => handleStatusToggle(user._id, user.isActive)}
+                        onClick={() => toggleUserStatus(user._id, user.isActive)}
                         className={user.isActive ? "text-red-600 hover:text-red-900" : "text-green-600 hover:text-green-900"}
                         title={user.isActive ? "Deactivate User" : "Activate User"}
                       >

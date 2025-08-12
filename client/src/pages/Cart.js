@@ -1,29 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { TrashIcon, MinusIcon, PlusIcon, ArrowRightIcon, TruckIcon, ShieldCheckIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { TrashIcon, MinusIcon, PlusIcon, ArrowRightIcon, TruckIcon, ShieldCheckIcon, ArrowPathIcon, GiftIcon } from '@heroicons/react/24/outline';
 import { useCart } from '../contexts/CartContext';
 import { useWishlist } from '../contexts/WishlistContext';
-import toast from 'react-hot-toast';
+import { useCoupons } from '../contexts/CouponContext';
+import { useToast } from '../contexts/ToastContext';
 
 const Cart = () => {
   const { cart, updateQuantity, removeFromCart, clearCart, getCartTotal } = useCart();
   const { addToWishlist, isInWishlist } = useWishlist();
+  const { validateCoupon, calculateDiscount, getWelcomeCoupon, getFreeShippingCoupon } = useCoupons();
+  const { success, error, warning, info } = useToast();
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [shippingMethod, setShippingMethod] = useState('standard');
+  const [couponLoading, setCouponLoading] = useState(false);
 
   const shippingMethods = [
     {
       id: 'standard',
-      name: 'Standard Shipping',
-      price: 5.99,
+      name: 'Standard Islandwide Delivery',
+      price: 500,
       delivery: '3-5 business days',
       icon: TruckIcon
     },
     {
       id: 'express',
-      name: 'Express Shipping',
-      price: 12.99,
+      name: 'Express Delivery',
+      price: 1200,
       delivery: '1-2 business days',
       icon: TruckIcon
     },
@@ -38,8 +42,13 @@ const Cart = () => {
 
   const subtotal = getCartTotal();
   const shipping = shippingMethods.find(m => m.id === shippingMethod)?.price || 0;
-  const discount = appliedCoupon ? subtotal * 0.1 : 0; // 10% discount
-  const total = subtotal + shipping - discount;
+  
+  // Calculate discount based on applied coupon
+  const discount = appliedCoupon ? calculateDiscount(appliedCoupon, subtotal) : 0;
+  
+  // Check if free shipping applies (orders above Rs. 10,000)
+  const finalShipping = subtotal >= 10000 ? 0 : shipping;
+  const total = subtotal + finalShipping - discount;
 
   const handleQuantityChange = (index, newQuantity) => {
     if (newQuantity >= 1 && newQuantity <= 10) {
@@ -53,22 +62,36 @@ const Cart = () => {
 
   const handleAddToWishlist = (product) => {
     addToWishlist(product);
-    toast.success(`${product.name} added to wishlist!`);
+    success(`${product.name} added to wishlist!`);
   };
 
-  const handleApplyCoupon = () => {
-    if (couponCode.toLowerCase() === 'save10') {
-      setAppliedCoupon({ code: couponCode, discount: 0.1 });
-      setCouponCode('');
-      toast.success('Coupon applied successfully!');
-    } else {
-      toast.error('Invalid coupon code');
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) {
+      error('Please enter a coupon code');
+      return;
+    }
+
+    setCouponLoading(true);
+    try {
+      const result = await validateCoupon(couponCode, subtotal);
+      
+      if (result.valid) {
+        setAppliedCoupon(result.coupon);
+        setCouponCode('');
+        success(result.message);
+      } else {
+        error(result.message);
+      }
+    } catch (err) {
+      error('Failed to validate coupon');
+    } finally {
+      setCouponLoading(false);
     }
   };
 
   const handleRemoveCoupon = () => {
     setAppliedCoupon(null);
-    toast.success('Coupon removed');
+    success('Coupon removed');
   };
 
   if (cart.length === 0) {
@@ -255,7 +278,11 @@ const Cart = () => {
                         <span className="text-sm font-medium text-green-800">
                           {appliedCoupon.code} applied
                         </span>
-                        <p className="text-xs text-green-600">10% discount</p>
+                        <p className="text-xs text-green-600">
+                          {appliedCoupon.type === 'percentage' 
+                            ? `${appliedCoupon.value}% off` 
+                            : `Rs. ${appliedCoupon.value} off`}
+                        </p>
                       </div>
                       <button
                         onClick={handleRemoveCoupon}
@@ -265,21 +292,36 @@ const Cart = () => {
                       </button>
                     </div>
                   ) : (
-                    <div className="flex space-x-2">
-                      <input
-                        type="text"
-                        value={couponCode}
-                        onChange={(e) => setCouponCode(e.target.value)}
-                        placeholder="Enter coupon code"
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                      <button
-                        onClick={handleApplyCoupon}
-                        className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
-                      >
-                        Apply
-                      </button>
-                </div>
+                    <div className="space-y-3">
+                      <div className="flex space-x-2">
+                        <input
+                          type="text"
+                          value={couponCode}
+                          onChange={(e) => setCouponCode(e.target.value)}
+                          placeholder="Enter coupon code"
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                        <button
+                          onClick={handleApplyCoupon}
+                          disabled={couponLoading}
+                          className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                        >
+                          {couponLoading ? 'Applying...' : 'Apply'}
+                        </button>
+                      </div>
+                      
+                      {/* Welcome Coupon Suggestion */}
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <GiftIcon className="h-4 w-4 text-blue-600" />
+                          <span className="text-sm font-medium text-blue-800">Try these coupons:</span>
+                        </div>
+                        <div className="space-y-1 text-xs text-blue-700">
+                                                  <p><strong>WELCOME20</strong> - 20% off first order</p>
+                        <p><strong>FREESHIP100</strong> - Free shipping above Rs. 10,000</p>
+                        </div>
+                      </div>
+                    </div>
                   )}
                 </div>
 
@@ -299,12 +341,12 @@ const Cart = () => {
                         />
                         <div className="ml-3 flex-1">
                           <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-gray-900">
-                              {method.name}
-                            </span>
-                            <span className="text-sm font-medium text-gray-900">
-                              {method.price === 0 ? 'Free' : `$${method.price}`}
-                            </span>
+                                                    <span className="text-sm font-medium text-gray-900">
+                          {method.name}
+                        </span>
+                        <span className="text-sm font-medium text-gray-900">
+                          {method.price === 0 ? 'Free' : `Rs. ${method.price}`}
+                        </span>
                 </div>
                           <p className="text-xs text-gray-500">{method.delivery}</p>
                   </div>
@@ -317,27 +359,27 @@ const Cart = () => {
                 <div className="space-y-3 mb-6">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Subtotal</span>
-                    <span className="font-medium">${subtotal.toFixed(2)}</span>
+                    <span className="font-medium">Rs. {subtotal.toLocaleString()}</span>
                   </div>
                   
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Shipping</span>
                     <span className="font-medium">
-                      {shipping === 0 ? 'Free' : `$${shipping.toFixed(2)}`}
+                      {finalShipping === 0 ? 'Free' : `Rs. ${finalShipping.toLocaleString()}`}
                     </span>
                   </div>
                   
                   {appliedCoupon && (
                     <div className="flex justify-between text-sm">
                       <span className="text-green-600">Discount</span>
-                      <span className="font-medium text-green-600">-${discount.toFixed(2)}</span>
-                  </div>
-                )}
-                
+                      <span className="font-medium text-green-600">-Rs. {discount.toLocaleString()}</span>
+                    </div>
+                  )}
+                  
                   <div className="border-t border-gray-200 pt-3">
                     <div className="flex justify-between">
                       <span className="text-lg font-semibold text-gray-900">Total</span>
-                      <span className="text-lg font-bold text-gray-900">${total.toFixed(2)}</span>
+                      <span className="text-lg font-bold text-gray-900">Rs. {total.toLocaleString()}</span>
                     </div>
                     <p className="text-xs text-gray-500 mt-1">Including tax</p>
                   </div>
@@ -364,7 +406,7 @@ const Cart = () => {
                   </div>
                   <div className="flex items-center text-sm text-gray-600">
                     <TruckIcon className="h-4 w-4 mr-2" />
-                    Free shipping on orders over $50
+                    Free shipping on orders over Rs. 10,000
                   </div>
                 </div>
               </div>

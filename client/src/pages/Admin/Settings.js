@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FiSettings, FiSave, FiGlobe, FiMail, FiShield, FiCreditCard, FiTruck, FiBell } from 'react-icons/fi';
 import axios from 'axios';
-import toast from 'react-hot-toast';
+import { useToast } from '../../contexts/ToastContext';
 
 const AdminSettings = () => {
   const [settings, setSettings] = useState({
@@ -13,7 +13,9 @@ const AdminSettings = () => {
     shippingCost: 5.99
   });
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState('general');
+  const { success: showSuccess, error: showError } = useToast();
 
   useEffect(() => {
     fetchSettings();
@@ -26,22 +28,23 @@ const AdminSettings = () => {
       setSettings(response.data);
     } catch (error) {
       console.error('Error fetching settings:', error);
-      toast.error('Failed to load settings');
+      showError('Failed to load settings');
     } finally {
       setLoading(false);
     }
   };
 
   const handleSave = async () => {
+    setIsSaving(true);
+    
     try {
-      setSaving(true);
       await axios.put('/api/admin/settings', settings);
-      toast.success('Settings saved successfully');
+      showSuccess('Settings updated successfully!');
     } catch (error) {
       console.error('Error saving settings:', error);
-      toast.error('Failed to save settings');
+      showError('Failed to save settings. Please try again.');
     } finally {
-      setSaving(false);
+      setIsSaving(false);
     }
   };
 
@@ -68,11 +71,11 @@ const AdminSettings = () => {
           </div>
           <button
             onClick={handleSave}
-            disabled={saving}
+            disabled={isSaving}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors disabled:opacity-50"
           >
             <FiSave className="h-4 w-4" />
-            <span>{saving ? 'Saving...' : 'Save Settings'}</span>
+            <span>{isSaving ? 'Saving...' : 'Save Settings'}</span>
           </button>
         </div>
       </div>

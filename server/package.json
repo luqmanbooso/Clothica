@@ -7,7 +7,9 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "create-admin": "node scripts/createAdmin.js",
-    "create-products": "node scripts/createSampleProducts.js"
+    "create-products": "node scripts/createRealProducts.js",
+    "create-coupons": "node scripts/createRealCoupons.js",
+    "create-sample-data": "node scripts/createSampleProducts.js && node scripts/createSampleCoupons.js"
   },
   "dependencies": {
     "express": "^4.18.2",

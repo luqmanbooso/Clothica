@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { FiUser, FiMail, FiPhone, FiMapPin, FiEdit2, FiSave, FiX, FiPlus } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
-import toast from 'react-hot-toast';
+import { useToast } from '../contexts/ToastContext';
 
 const Profile = () => {
   const { user, updateProfile } = useAuth();
+  const { success: showSuccess, error: showError } = useToast();
   const [loading, setLoading] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState({
@@ -63,10 +64,10 @@ const Profile = () => {
     try {
       await updateProfile(formData);
       setEditMode(false);
-      toast.success('Profile updated successfully!');
+      showSuccess('Profile updated successfully!');
     } catch (error) {
       console.error('Profile update error:', error);
-      toast.error('Failed to update profile. Please try again.');
+      showError('Failed to update profile. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -74,7 +75,7 @@ const Profile = () => {
 
   const handleAddAddress = async () => {
     if (!newAddress.street || !newAddress.city || !newAddress.state || !newAddress.zipCode) {
-      toast.error('Please fill in all required fields');
+      showError('Please fill in all required fields');
       return;
     }
 
@@ -91,10 +92,10 @@ const Profile = () => {
         isDefault: false
       });
       setShowAddressForm(false);
-      toast.success('Address added successfully!');
+      showSuccess('Address added successfully!');
     } catch (error) {
       console.error('Address add error:', error);
-      toast.error('Failed to add address. Please try again.');
+      showError('Failed to add address. Please try again.');
     }
   };
 
@@ -103,10 +104,10 @@ const Profile = () => {
       const updatedAddresses = addresses.filter((_, i) => i !== index);
       await updateProfile({ addresses: updatedAddresses });
       setAddresses(updatedAddresses);
-      toast.success('Address removed successfully!');
+      showSuccess('Address removed successfully!');
     } catch (error) {
       console.error('Address remove error:', error);
-      toast.error('Failed to remove address. Please try again.');
+      showError('Failed to remove address. Please try again.');
     }
   };
 
@@ -118,26 +119,26 @@ const Profile = () => {
       }));
       await updateProfile({ addresses: updatedAddresses });
       setAddresses(updatedAddresses);
-      toast.success('Default address updated!');
+      showSuccess('Default address updated!');
     } catch (error) {
       console.error('Default address error:', error);
-      toast.error('Failed to update default address. Please try again.');
+      showError('Failed to update default address. Please try again.');
     }
   };
 
   const handleSendOTP = async () => {
     if (!formData.phone) {
-      toast.error('Please enter a phone number first');
+      showError('Please enter a phone number first');
       return;
     }
 
     setOtpLoading(true);
     try {
       const response = await axios.post('/api/auth/send-otp', { phone: formData.phone });
-      toast.success('OTP sent to your email!');
+      showSuccess('OTP sent to your email!');
       setShowOTPForm(true);
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to send OTP');
+      showError(error.response?.data?.message || 'Failed to send OTP');
     } finally {
       setOtpLoading(false);
     }
@@ -145,19 +146,19 @@ const Profile = () => {
 
   const handleVerifyOTP = async () => {
     if (!otp) {
-      toast.error('Please enter the OTP');
+      showError('Please enter the OTP');
       return;
     }
 
     try {
       const response = await axios.post('/api/auth/verify-otp', { otp });
-      toast.success('Phone verified successfully!');
+      showSuccess('Phone verified successfully!');
       setShowOTPForm(false);
       setOtp('');
       // Refresh user data to show verified status
       window.location.reload();
     } catch (error) {
-      toast.error(error.response?.data?.message || 'OTP verification failed');
+      showError(error.response?.data?.message || 'OTP verification failed');
     }
   };
 

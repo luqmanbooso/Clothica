@@ -9,12 +9,13 @@ import {
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
-import toast from 'react-hot-toast';
+import { useToast } from '../contexts/ToastContext';
 
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, googleLogin, authError, clearError } = useAuth();
+  const { success, error, info } = useToast();
   
   const [formData, setFormData] = useState({
     email: '',
@@ -32,7 +33,7 @@ const Login = () => {
   useEffect(() => {
     if (location.state?.from) {
       // User was redirected from a protected route
-      toast('Please log in to continue', { icon: 'ℹ️' });
+      info('Please log in to continue');
     }
   }, [location.state]);
 
@@ -51,14 +52,14 @@ const Login = () => {
     try {
       const result = await login(formData);
       if (result.success) {
-        toast.success('Login successful!');
+        success('Login successful!');
         const redirectTo = location.state?.from || '/';
         navigate(redirectTo, { replace: true });
       } else {
-        toast.error(result.message);
+        error(result.message);
       }
     } catch (error) {
-      toast.error('An unexpected error occurred');
+      error('An unexpected error occurred');
     } finally {
       setLoading(false);
     }
@@ -68,19 +69,19 @@ const Login = () => {
     try {
       const result = await googleLogin(credentialResponse.credential);
       if (result.success) {
-        toast.success('Google login successful!');
+        success('Google login successful!');
         const redirectTo = location.state?.from || '/';
         navigate(redirectTo, { replace: true });
       } else {
-        toast.error(result.message);
+        error(result.message);
       }
     } catch (error) {
-      toast.error('Google login failed');
+      error('Google login failed');
     }
   };
 
   const handleGoogleError = () => {
-    toast.error('Google login failed');
+    error('Google login failed');
   };
 
   return (

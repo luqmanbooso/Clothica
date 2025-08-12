@@ -20,6 +20,7 @@ const ProductDetail = () => {
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [validationErrors, setValidationErrors] = useState({});
 
   const productImages = [
     "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
@@ -178,14 +179,22 @@ const ProductDetail = () => {
   };
 
   const handleAddToCart = () => {
+    const errors = {};
+    
     if (!selectedSize) {
-      alert('Please select a size');
-      return;
+      errors.size = 'Please select a size';
     }
     if (!selectedColor) {
-      alert('Please select a color');
+      errors.color = 'Please select a color';
+    }
+    
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
       return;
     }
+    
+    // Clear validation errors
+    setValidationErrors({});
     
     const cartItem = {
       ...product,
@@ -400,12 +409,17 @@ const ProductDetail = () => {
                     ></div>
                     {selectedColor === color.name && (
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-2 h-2 bg-white rounded-full"></div>
+                        <div className="flex items-center justify-center">
+                          <div className="w-2 h-2 bg-white rounded-full"></div>
+                        </div>
                       </div>
                     )}
                   </button>
                 ))}
               </div>
+              {validationErrors.color && (
+                <p className="mt-2 text-sm text-red-600">{validationErrors.color}</p>
+              )}
             </div>
 
             {/* Size Selection */}
@@ -431,6 +445,9 @@ const ProductDetail = () => {
                   </button>
                 ))}
               </div>
+              {validationErrors.size && (
+                <p className="mt-2 text-sm text-red-600">{validationErrors.size}</p>
+              )}
             </div>
 
             {/* Quantity */}

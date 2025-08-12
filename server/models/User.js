@@ -109,6 +109,10 @@ const userSchema = new mongoose.Schema({
     phone: String,
     isDefault: Boolean
   }],
+  wishlist: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Product'
+  }],
   loyaltyPoints: {
     type: Number,
     default: 0

@@ -5,7 +5,7 @@ import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
 import axios from 'axios';
 import { useWishlist } from '../contexts/WishlistContext';
 import { useCart } from '../contexts/CartContext';
-import toast from 'react-hot-toast';
+import { useToast } from '../contexts/ToastContext';
 
 const Shop = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -23,6 +23,21 @@ const Shop = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const { addToWishlist, isInWishlist } = useWishlist();
   const { addToCart } = useCart();
+  const { success, error, warning } = useToast();
+
+  const handleAddToWishlist = (product) => {
+    addToWishlist(product);
+    if (isInWishlist(product._id)) {
+      success('Removed from wishlist');
+    } else {
+      success(`${product.name} added to wishlist!`);
+    }
+  };
+
+  const handleAddToCart = (product) => {
+    addToCart(product);
+    success(`${product.name} added to cart!`);
+  };
 
   // Static categories - no CRUD needed
   const [categories, setCategories] = useState([
@@ -34,14 +49,14 @@ const Shop = () => {
       count: 0
     },
     { 
-      id: 'mens', 
+      id: 'men', 
       name: "Men's Fashion", 
       icon: '👔',
       color: 'from-blue-500 to-cyan-500',
       count: 0
     },
     { 
-      id: 'womens', 
+      id: 'women', 
       name: "Women's Fashion", 
       icon: '👗',
       color: 'from-pink-500 to-rose-500',
@@ -55,20 +70,27 @@ const Shop = () => {
       count: 0
     },
     { 
-      id: 'footwear', 
+      id: 'shoes', 
       name: 'Footwear', 
       icon: '👟',
       color: 'from-green-500 to-emerald-500',
+      count: 0
+    },
+    { 
+      id: 'bags', 
+      name: 'Bags & Handbags', 
+      icon: '👜',
+      color: 'from-amber-500 to-orange-500',
       count: 0
     }
   ]);
 
   const priceRanges = [
     { id: 'all', name: 'All Prices' },
-    { id: '0-25', name: 'Under $25' },
-    { id: '25-50', name: '$25 - $50' },
-    { id: '50-100', name: '$50 - $100' },
-    { id: '100+', name: 'Over $100' }
+    { id: '0-1000', name: 'Under Rs. 1,000' },
+    { id: '1000-5000', name: 'Rs. 1,000 - Rs. 5,000' },
+    { id: '5000-10000', name: 'Rs. 5,000 - Rs. 10,000' },
+    { id: '10000+', name: 'Over Rs. 10,000' }
   ];
 
   const sortOptions = [
@@ -115,8 +137,8 @@ const Shop = () => {
       // Add price range filtering
       if (filters.priceRange && filters.priceRange !== 'all') {
         const [min, max] = filters.priceRange.split('-');
-        if (min) params.minPrice = min;
-        if (max) params.maxPrice = max;
+        if (min) params.minPrice = parseInt(min);
+        if (max && max !== '+') params.maxPrice = parseInt(max);
       }
 
       // Add sorting
@@ -149,122 +171,11 @@ const Shop = () => {
       setTotalProducts(response.data.total);
     } catch (error) {
       console.error('Error loading products:', error);
-      toast.error('Failed to load products');
-      // Fallback to sample data
-      setProducts([
-        {
-          _id: 1,
-          name: "Premium Cotton T-Shirt",
-          price: 29.99,
-          originalPrice: 39.99,
-          image: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-          rating: 4.5,
-          numReviews: 128,
-          category: "mens",
-          isNew: true,
-          discount: 25,
-          colors: ['Black', 'White', 'Navy'],
-          sizes: ['S', 'M', 'L', 'XL']
-        },
-        {
-          _id: 2,
-          name: "Classic Denim Jeans",
-          price: 79.99,
-          originalPrice: 99.99,
-          image: "https://images.unsplash.com/photo-1542272604-787c3835535d?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-          rating: 4.8,
-          numReviews: 256,
-          category: "mens",
-          isNew: false,
-          discount: 20,
-          colors: ['Blue', 'Black'],
-          sizes: ['30', '32', '34', '36']
-        },
-        {
-          _id: 3,
-          name: "Summer Dress Collection",
-          price: 59.99,
-          originalPrice: 79.99,
-          image: "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-          rating: 4.6,
-          numReviews: 189,
-          category: "womens",
-          isNew: true,
-          discount: 25,
-          colors: ['Pink', 'Blue', 'White'],
-          sizes: ['XS', 'S', 'M', 'L']
-        },
-        {
-          _id: 4,
-          name: "Casual Sneakers",
-          price: 89.99,
-          originalPrice: 119.99,
-          image: "https://images.unsplash.com/photo-1549298916-b41d501d3772?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-          rating: 4.7,
-          numReviews: 342,
-          category: "footwear",
-          isNew: false,
-          discount: 25,
-          colors: ['White', 'Black', 'Gray'],
-          sizes: ['7', '8', '9', '10', '11']
-        },
-        {
-          _id: 5,
-          name: "Leather Handbag",
-          price: 129.99,
-          originalPrice: 159.99,
-          image: "https://images.unsplash.com/photo-1523170335258-f5ed11844a49?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-          rating: 4.9,
-          numReviews: 89,
-          category: "accessories",
-          isNew: true,
-          discount: 19,
-          colors: ['Brown', 'Black'],
-          sizes: ['One Size']
-        },
-        {
-          _id: 6,
-          name: "Formal Shirt",
-          price: 49.99,
-          originalPrice: 69.99,
-          image: "https://images.unsplash.com/photo-1516257984-b1b4f7074865?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-          rating: 4.4,
-          numReviews: 156,
-          category: "mens",
-          isNew: false,
-          discount: 29,
-          colors: ['White', 'Blue', 'Pink'],
-          sizes: ['S', 'M', 'L', 'XL']
-        },
-        {
-          _id: 7,
-          name: "Designer Sunglasses",
-          price: 89.99,
-          originalPrice: 129.99,
-          image: "https://images.unsplash.com/photo-1511499767150-a48a237f0083?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-          rating: 4.3,
-          numReviews: 78,
-          category: "accessories",
-          isNew: true,
-          discount: 31,
-          colors: ['Black', 'Brown', 'Silver'],
-          sizes: ['One Size']
-        },
-        {
-          _id: 8,
-          name: "Athletic Shorts",
-          price: 34.99,
-          originalPrice: 49.99,
-          image: "https://images.unsplash.com/photo-1544966503-7cc5ac882d5f?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-          rating: 4.6,
-          numReviews: 203,
-          category: "mens",
-          isNew: false,
-          discount: 30,
-          colors: ['Black', 'Gray', 'Blue'],
-          sizes: ['S', 'M', 'L', 'XL']
-        }
-      ]);
+      error('Failed to load products');
+      // Fallback to empty array instead of hardcoded data
+      setProducts([]);
+      setTotalProducts(0);
+
     } finally {
       setLoading(false);
     }
@@ -303,13 +214,7 @@ const Shop = () => {
     setCurrentPage(1);
   };
 
-  const handleAddToWishlist = (product) => {
-    addToWishlist(product);
-  };
 
-  const handleAddToCart = (product) => {
-    addToCart(product, 1);
-  };
 
   const renderStars = (rating) => {
     const stars = [];
@@ -333,14 +238,14 @@ const Shop = () => {
   };
 
   const ProductCard = ({ product }) => (
-    <div className="group">
+    <Link to={`/product/${product._id}`} className="group block">
       <div className="relative overflow-hidden rounded-lg bg-white shadow-sm hover:shadow-lg transition-all duration-300">
         {/* Product Image */}
         <div className="aspect-square overflow-hidden">
           <img
-            src={product.image}
+            src={product.images?.[0] || product.image}
             alt={product.name}
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+            className="w-full h-full object-cover group-hover:scale-110 group-hover:brightness-75 transition-all duration-300"
           />
         </div>
 
@@ -360,17 +265,31 @@ const Shop = () => {
 
         {/* Quick Actions */}
         <div className="absolute top-3 right-3 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-          <button className="p-2 bg-white/90 backdrop-blur-sm rounded-full hover:bg-white transition-colors">
-            <HeartIcon className="h-5 w-5 text-gray-600" />
+          <button 
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleAddToWishlist(product);
+            }}
+            className={`p-2 bg-white/90 backdrop-blur-sm rounded-full hover:bg-white transition-colors ${
+              isInWishlist(product._id) ? 'text-red-500' : 'text-gray-600'
+            }`}
+            title={isInWishlist(product._id) ? 'Remove from Wishlist' : 'Add to Wishlist'}
+          >
+            <HeartIcon className={`h-5 w-5 ${isInWishlist(product._id) ? 'fill-current' : ''}`} />
           </button>
-          <Link to={`/product/${product._id}`} className="p-2 bg-white/90 backdrop-blur-sm rounded-full hover:bg-white transition-colors">
-            <EyeIcon className="h-5 w-5 text-gray-600" />
-          </Link>
         </div>
 
         {/* Add to Cart Button */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-          <button className="w-full flex items-center justify-center px-4 py-2 bg-white text-gray-900 font-semibold rounded-lg hover:bg-gray-100 transition-colors">
+        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 via-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <button 
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleAddToCart(product);
+            }}
+            className="w-full flex items-center justify-center px-4 py-3 bg-white text-gray-900 font-semibold rounded-lg hover:bg-gray-100 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+          >
             <ShoppingBagIcon className="h-5 w-5 mr-2" />
             Add to Cart
           </button>
@@ -379,108 +298,126 @@ const Shop = () => {
 
       {/* Product Info */}
       <div className="mt-4">
-        <Link to={`/product/${product._id}`} className="block">
-          <h3 className="font-semibold text-gray-900 mb-1 group-hover:text-[#6C7A59] transition-colors">
-            {product.name}
-          </h3>
-        </Link>
+        <h3 className="font-semibold text-gray-900 mb-1 group-hover:text-[#6C7A59] transition-colors">
+          {product.name}
+        </h3>
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center space-x-2">
             <span className="text-lg font-bold text-gray-900">
-              ${product.price}
+              Rs. {product.price?.toLocaleString()}
             </span>
             {product.originalPrice && (
               <span className="text-sm text-gray-500 line-through">
-                ${product.originalPrice}
+                Rs. {product.originalPrice?.toLocaleString()}
               </span>
             )}
           </div>
           <div className="flex items-center">
-            {renderStars(product.rating)}
+            {renderStars(product.rating || 0)}
             <span className="ml-1 text-sm text-gray-500">
-              ({product.numReviews})
+              ({product.numReviews || 0})
             </span>
           </div>
         </div>
         
         {/* Color and Size Options */}
-        <div className="flex items-center justify-between text-sm text-gray-600">
-          <span>{product.colors.length} colors</span>
-          <span>{product.sizes.length} sizes</span>
+        <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
+          <span>{product.colors?.length || 0} colors</span>
+          <span>{product.sizes?.length || 0} sizes</span>
         </div>
       </div>
-    </div>
+    </Link>
   );
 
   const ProductListItem = ({ product }) => (
-    <div className="group bg-white rounded-lg shadow-sm hover:shadow-lg transition-all duration-300 p-4">
-      <div className="flex gap-4">
-        {/* Product Image */}
-        <div className="relative w-32 h-32 flex-shrink-0">
-          <img
-            src={product.image}
-            alt={product.name}
-            className="w-full h-full object-cover rounded-lg"
-          />
-          {/* Badges */}
-          <div className="absolute top-2 left-2 flex flex-col gap-1">
-            {product.isNew && (
-              <span className="inline-block px-1 py-0.5 bg-blue-600 text-white text-xs font-semibold rounded">
-                NEW
-              </span>
-            )}
-            {product.discount && (
-              <span className="inline-block px-1 py-0.5 bg-red-600 text-white text-xs font-semibold rounded">
-                -{product.discount}%
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Product Details */}
-        <div className="flex-1">
-          <Link to={`/product/${product._id}`} className="block">
-            <h3 className="font-semibold text-gray-900 mb-2 group-hover:text-[#6C7A59] transition-colors">
-              {product.name}
-            </h3>
-          </Link>
-          
-          <div className="flex items-center mb-2">
-            {renderStars(product.rating)}
-            <span className="ml-2 text-sm text-gray-500">
-              ({product.numReviews} reviews)
-            </span>
-          </div>
-
-          <p className="text-sm text-gray-600 mb-3">
-            Available in {product.colors.length} colors and {product.sizes.length} sizes
-          </p>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <span className="text-xl font-bold text-gray-900">
-                ${product.price}
-              </span>
-              {product.originalPrice && (
-                <span className="text-sm text-gray-500 line-through">
-                  ${product.originalPrice}
+    <Link to={`/product/${product._id}`} className="block">
+      <div className="group bg-white rounded-lg shadow-sm hover:shadow-lg transition-all duration-300 p-4">
+        <div className="flex gap-4">
+          {/* Product Image */}
+          <div className="relative w-32 h-32 flex-shrink-0">
+            <img
+              src={product.images?.[0] || product.image}
+              alt={product.name}
+              className="w-full h-full object-cover rounded-lg"
+            />
+            {/* Badges */}
+            <div className="absolute top-2 left-2 flex flex-col gap-1">
+              {product.isNew && (
+                <span className="inline-block px-1 py-0.5 bg-blue-600 text-white text-xs font-semibold rounded">
+                  NEW
+                </span>
+              )}
+              {product.discount && (
+                <span className="inline-block px-1 py-0.5 bg-red-600 text-white text-xs font-semibold rounded">
+                  -{product.discount}%
                 </span>
               )}
             </div>
+          </div>
 
-            <div className="flex items-center space-x-2">
-              <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
-                <HeartIcon className="h-5 w-5" />
-              </button>
-              <button className="flex items-center px-4 py-2 bg-[#6C7A59] text-white font-semibold rounded-lg hover:bg-[#5A6A4A] transition-colors">
-                <ShoppingBagIcon className="h-5 w-5 mr-2" />
-                Add to Cart
-              </button>
+          {/* Product Details */}
+          <div className="flex-1">
+            <h3 className="font-semibold text-gray-900 mb-2 group-hover:text-[#6C7A59] transition-colors">
+              {product.name}
+            </h3>
+            
+            <div className="flex items-center mb-2">
+              {renderStars(product.rating || 0)}
+              <span className="ml-2 text-sm text-gray-500">
+                ({product.numReviews || 0} reviews)
+              </span>
+            </div>
+
+            <p className="text-sm text-gray-600 mb-3">
+              Available in {product.colors?.length || 0} colors and {product.sizes?.length || 0} sizes
+            </p>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className="text-xl font-bold text-gray-900">
+                  Rs. {product.price?.toLocaleString()}
+                </span>
+                {product.originalPrice && (
+                  <span className="text-sm text-gray-500 line-through">
+                    Rs. {product.originalPrice?.toLocaleString()}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <button 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleAddToWishlist(product);
+                  }}
+                  className={`p-2 rounded-lg border-2 transition-all duration-200 ${
+                    isInWishlist(product._id) 
+                      ? 'border-red-300 bg-red-50 text-red-600 hover:bg-red-100' 
+                      : 'border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-100'
+                  }`}
+                  title={isInWishlist(product._id) ? 'Remove from Wishlist' : 'Add to Wishlist'}
+                >
+                  <HeartIcon className={`h-4 w-4 ${isInWishlist(product._id) ? 'fill-current' : ''}`} />
+                </button>
+                
+                <button 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleAddToCart(product);
+                  }}
+                  className="flex items-center px-4 py-2 bg-[#6C7A59] text-white font-semibold rounded-lg hover:bg-[#5A6A4A] transition-colors"
+                >
+                  <ShoppingBagIcon className="h-5 w-5 mr-2" />
+                  Add to Cart
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </Link>
   );
 
   return (

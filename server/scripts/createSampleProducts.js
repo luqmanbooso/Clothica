@@ -21,21 +21,21 @@ const createSampleProducts = async () => {
 
     const sampleProducts = [
       {
-        name: "Classic White T-Shirt",
-        description: "Premium cotton classic white t-shirt with a comfortable fit. Perfect for everyday wear.",
-        price: 29.99,
-        originalPrice: 39.99,
+        name: "Ayubowan Cotton T-Shirt",
+        description: "Premium cotton t-shirt with traditional Sri Lankan batik-inspired design. Perfect for everyday wear with a touch of local culture.",
+        price: 2500,
+        originalPrice: 3500,
         category: "men",
         subcategory: "t-shirts",
-        brand: "Clothica",
+        brand: "Clothica Lanka",
         images: [
           "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=500",
           "https://images.unsplash.com/photo-1503341504253-dff4815485f1?w=500"
         ],
         colors: [
           { name: "White", hex: "#FFFFFF", available: true },
-          { name: "Black", hex: "#000000", available: true },
-          { name: "Gray", hex: "#808080", available: true }
+          { name: "Navy Blue", hex: "#000080", available: true },
+          { name: "Cream", hex: "#F5F5DC", available: true }
         ],
         sizes: [
           { name: "S", available: true, stock: 50 },
@@ -43,30 +43,30 @@ const createSampleProducts = async () => {
           { name: "L", available: true, stock: 60 },
           { name: "XL", available: true, stock: 40 }
         ],
-        tags: ["casual", "cotton", "basic", "comfortable"],
+        tags: ["casual", "cotton", "batik", "sri-lanka", "comfortable"],
         rating: 4.5,
         numReviews: 12,
         isFeatured: true,
         discount: 25,
-        material: "100% Cotton",
+        material: "100% Sri Lankan Cotton",
         care: "Machine wash cold, tumble dry low"
       },
       {
-        name: "Slim Fit Jeans",
-        description: "Modern slim fit jeans with stretch denim for maximum comfort and style.",
-        price: 79.99,
-        originalPrice: 99.99,
+        name: "Colombo Denim Jeans",
+        description: "Premium denim jeans with modern slim fit, perfect for the urban Sri Lankan lifestyle. Comfortable stretch fabric for all-day wear.",
+        price: 8500,
+        originalPrice: 12000,
         category: "men",
         subcategory: "jeans",
-        brand: "Clothica",
+        brand: "Clothica Lanka",
         images: [
           "https://images.unsplash.com/photo-1542272604-787c3835535d?w=500",
           "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=500"
         ],
         colors: [
-          { name: "Blue", hex: "#000080", available: true },
-          { name: "Black", hex: "#000000", available: true },
-          { name: "Gray", hex: "#808080", available: true }
+          { name: "Indigo Blue", hex: "#1E3A8A", available: true },
+          { name: "Dark Denim", hex: "#1F2937", available: true },
+          { name: "Light Blue", hex: "#3B82F6", available: true }
         ],
         sizes: [
           { name: "30", available: true, stock: 30 },
@@ -74,7 +74,7 @@ const createSampleProducts = async () => {
           { name: "34", available: true, stock: 40 },
           { name: "36", available: true, stock: 35 }
         ],
-        tags: ["denim", "slim-fit", "stretch", "casual"],
+        tags: ["denim", "slim-fit", "stretch", "urban", "colombo-style"],
         rating: 4.3,
         numReviews: 8,
         isFeatured: true,
@@ -83,21 +83,21 @@ const createSampleProducts = async () => {
         care: "Machine wash cold, do not bleach"
       },
       {
-        name: "Summer Dress",
-        description: "Elegant summer dress perfect for warm weather and special occasions.",
-        price: 89.99,
-        originalPrice: 119.99,
+        name: "Kandy Floral Dress",
+        description: "Elegant summer dress inspired by the beautiful gardens of Kandy. Perfect for warm weather and special occasions with traditional floral patterns.",
+        price: 6500,
+        originalPrice: 8500,
         category: "women",
         subcategory: "dresses",
-        brand: "Clothica",
+        brand: "Clothica Lanka",
         images: [
           "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=500",
           "https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=500"
         ],
         colors: [
-          { name: "Floral", hex: "#FFB6C1", available: true },
-          { name: "Blue", hex: "#4169E1", available: true },
-          { name: "White", hex: "#FFFFFF", available: true }
+          { name: "Tropical Floral", hex: "#FFB6C1", available: true },
+          { name: "Ocean Blue", hex: "#4169E1", available: true },
+          { name: "Pearl White", hex: "#FFFFFF", available: true }
         ],
         sizes: [
           { name: "XS", available: true, stock: 25 },
@@ -105,30 +105,30 @@ const createSampleProducts = async () => {
           { name: "M", available: true, stock: 50 },
           { name: "L", available: true, stock: 35 }
         ],
-        tags: ["summer", "dress", "elegant", "floral"],
+        tags: ["summer", "dress", "elegant", "floral", "kandy-inspired"],
         rating: 4.7,
         numReviews: 15,
         isFeatured: true,
         discount: 25,
-        material: "Polyester Blend",
+        material: "Premium Polyester Blend",
         care: "Hand wash cold, lay flat to dry"
       },
       {
-        name: "Casual Sneakers",
-        description: "Comfortable and stylish sneakers for everyday wear and casual outings.",
-        price: 69.99,
-        originalPrice: 89.99,
+        name: "Galle Fort Sneakers",
+        description: "Comfortable and stylish sneakers inspired by the historic Galle Fort. Perfect for exploring Sri Lanka's beautiful coastal areas.",
+        price: 4500,
+        originalPrice: 6000,
         category: "shoes",
         subcategory: "sneakers",
-        brand: "Clothica",
+        brand: "Clothica Lanka",
         images: [
           "https://images.unsplash.com/photo-1549298916-b41d501d3772?w=500",
           "https://images.unsplash.com/photo-1552346154-21d32810aba3?w=500"
         ],
         colors: [
-          { name: "White", hex: "#FFFFFF", available: true },
-          { name: "Black", hex: "#000000", available: true },
-          { name: "Gray", hex: "#808080", available: true }
+          { name: "Coconut White", hex: "#FFFFFF", available: true },
+          { name: "Fort Black", hex: "#000000", available: true },
+          { name: "Sand Gray", hex: "#808080", available: true }
         ],
         sizes: [
           { name: "7", available: true, stock: 20 },
@@ -137,41 +137,100 @@ const createSampleProducts = async () => {
           { name: "10", available: true, stock: 25 },
           { name: "11", available: true, stock: 15 }
         ],
-        tags: ["sneakers", "casual", "comfortable", "stylish"],
+        tags: ["sneakers", "casual", "comfortable", "galle-fort", "coastal-style"],
         rating: 4.4,
         numReviews: 22,
         isFeatured: true,
         discount: 22,
-        material: "Canvas and Rubber",
+        material: "Premium Canvas and Rubber",
         care: "Wipe with damp cloth, air dry"
       },
       {
-        name: "Leather Handbag",
-        description: "Premium leather handbag with multiple compartments for organized storage.",
-        price: 129.99,
-        originalPrice: 159.99,
+        name: "Sigiriya Leather Handbag",
+        description: "Premium leather handbag inspired by the majestic Sigiriya rock fortress. Multiple compartments for organized storage with traditional craftsmanship.",
+        price: 12000,
+        originalPrice: 15000,
         category: "bags",
         subcategory: "handbags",
-        brand: "Clothica",
+        brand: "Clothica Lanka",
         images: [
           "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=500",
           "https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=500"
         ],
         colors: [
-          { name: "Brown", hex: "#8B4513", available: true },
-          { name: "Black", hex: "#000000", available: true },
-          { name: "Tan", hex: "#D2B48C", available: true }
+          { name: "Mahogany Brown", hex: "#8B4513", available: true },
+          { name: "Midnight Black", hex: "#000000", available: true },
+          { name: "Desert Tan", hex: "#D2B48C", available: true }
         ],
         sizes: [
           { name: "One Size", available: true, stock: 40 }
         ],
-        tags: ["leather", "handbag", "premium", "organized"],
+        tags: ["leather", "handbag", "premium", "sigiriya-inspired", "traditional-craft"],
         rating: 4.6,
         numReviews: 18,
         isFeatured: true,
         discount: 19,
-        material: "Genuine Leather",
+        material: "Genuine Sri Lankan Leather",
         care: "Clean with leather conditioner, avoid water"
+      },
+      {
+        name: "Tea Garden Sarong",
+        description: "Authentic Sri Lankan sarong made from the finest cotton, perfect for beach days and casual wear. Features traditional tea garden patterns.",
+        price: 1800,
+        originalPrice: 2500,
+        category: "men",
+        subcategory: "sarongs",
+        brand: "Clothica Lanka",
+        images: [
+          "https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=500",
+          "https://images.unsplash.com/photo-1503341504253-dff4815485f1?w=500"
+        ],
+        colors: [
+          { name: "Tea Green", hex: "#228B22", available: true },
+          { name: "Sunset Orange", hex: "#FF8C00", available: true },
+          { name: "Ocean Blue", hex: "#4169E1", available: true }
+        ],
+        sizes: [
+          { name: "One Size", available: true, stock: 100 }
+        ],
+        tags: ["sarong", "traditional", "cotton", "tea-garden", "beach-wear"],
+        rating: 4.8,
+        numReviews: 25,
+        isFeatured: true,
+        discount: 28,
+        material: "100% Pure Cotton",
+        care: "Hand wash cold, air dry"
+      },
+      {
+        name: "Jaffna Spice Kurta",
+        description: "Elegant kurta inspired by the rich cultural heritage of Jaffna. Features traditional embroidery and comfortable fit for all occasions.",
+        price: 4200,
+        originalPrice: 5800,
+        category: "men",
+        subcategory: "kurtas",
+        brand: "Clothica Lanka",
+        images: [
+          "https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=500",
+          "https://images.unsplash.com/photo-1503341504253-dff4815485f1?w=500"
+        ],
+        colors: [
+          { name: "Spice Red", hex: "#DC143C", available: true },
+          { name: "Royal Blue", hex: "#000080", available: true },
+          { name: "Emerald Green", hex: "#228B22", available: true }
+        ],
+        sizes: [
+          { name: "S", available: true, stock: 30 },
+          { name: "M", available: true, stock: 45 },
+          { name: "L", available: true, stock: 40 },
+          { name: "XL", available: true, stock: 35 }
+        ],
+        tags: ["kurta", "traditional", "jaffna-inspired", "embroidery", "cultural"],
+        rating: 4.6,
+        numReviews: 18,
+        isFeatured: true,
+        discount: 28,
+        material: "Premium Cotton Blend",
+        care: "Hand wash cold, iron on low heat"
       }
     ];
 
@@ -181,6 +240,7 @@ const createSampleProducts = async () => {
     console.log('✅ Sample products created successfully!');
     console.log(`📦 Created ${sampleProducts.length} products`);
     console.log('🛍️ You can now browse products in the store');
+    console.log('🇱🇰 All products feature Sri Lanka themed names and realistic LKR pricing');
 
     process.exit(0);
   } catch (error) {

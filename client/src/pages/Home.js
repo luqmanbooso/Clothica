@@ -13,10 +13,14 @@ import {
   StarIcon as StarIconSolid
 } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
+import WelcomeModal from '../components/WelcomeModal';
+import { useAuth } from '../contexts/AuthContext';
 
 const Home = () => {
+  const { user, isAuthenticated } = useAuth();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
   useEffect(() => {
     setIsVisible(true);
@@ -25,6 +29,20 @@ const Home = () => {
     }, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  // Show welcome modal for new users (only on first login, not page refresh)
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      // Check if this is a new user session (not just page refresh)
+      const hasSeenWelcome = sessionStorage.getItem('welcomeModalShown');
+      const isNewUser = !hasSeenWelcome;
+      
+      if (isNewUser) {
+        setShowWelcomeModal(true);
+        sessionStorage.setItem('welcomeModalShown', 'true');
+      }
+    }
+  }, [isAuthenticated, user]);
 
   const heroSlides = [
     {
@@ -480,6 +498,13 @@ const Home = () => {
           </div>
         </motion.div>
       </section>
+
+      {/* Welcome Modal */}
+      <WelcomeModal 
+        isOpen={showWelcomeModal}
+        onClose={() => setShowWelcomeModal(false)}
+        userName={user?.name}
+      />
     </div>
   );
 };

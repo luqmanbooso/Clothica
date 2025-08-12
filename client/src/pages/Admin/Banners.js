@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { FiImage, FiPlus, FiEdit, FiTrash2, FiEye, FiEyeOff, FiCalendar, FiLink } from 'react-icons/fi';
 import axios from 'axios';
-import toast from 'react-hot-toast';
+import { useToast } from '../../contexts/ToastContext';
 
 const AdminBanners = () => {
+  const { success: showSuccess, error: showError } = useToast();
   const [banners, setBanners] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -20,7 +21,7 @@ const AdminBanners = () => {
       setBanners(response.data);
     } catch (error) {
       console.error('Error fetching banners:', error);
-      toast.error('Failed to load banners');
+      showError('Failed to load banners');
     } finally {
       setLoading(false);
     }
@@ -30,17 +31,17 @@ const AdminBanners = () => {
     try {
       if (editingBanner) {
         await axios.put(`/api/admin/banners/${editingBanner._id}`, formData);
-        toast.success('Banner updated successfully');
+        showSuccess('Banner updated successfully');
       } else {
         await axios.post('/api/admin/banners', formData);
-        toast.success('Banner created successfully');
+        showSuccess('Banner created successfully');
       }
       setShowModal(false);
       setEditingBanner(null);
       fetchBanners();
     } catch (error) {
       console.error('Error saving banner:', error);
-      toast.error('Failed to save banner');
+      showError('Failed to save banner');
     }
   };
 
@@ -51,11 +52,11 @@ const AdminBanners = () => {
 
     try {
       await axios.delete(`/api/admin/banners/${bannerId}`);
-      toast.success('Banner deleted successfully');
+      showSuccess('Banner deleted successfully');
       fetchBanners();
     } catch (error) {
       console.error('Error deleting banner:', error);
-      toast.error('Failed to delete banner');
+      showError('Failed to delete banner');
     }
   };
 
@@ -64,11 +65,11 @@ const AdminBanners = () => {
       await axios.put(`/api/admin/banners/${bannerId}`, {
         isActive: !currentStatus
       });
-      toast.success('Banner status updated');
+      showSuccess('Banner status updated');
       fetchBanners();
     } catch (error) {
       console.error('Error updating banner status:', error);
-      toast.error('Failed to update banner status');
+      showError('Failed to update banner status');
     }
   };
 

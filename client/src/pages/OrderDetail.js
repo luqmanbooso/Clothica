@@ -3,11 +3,12 @@ import { useParams, Link } from 'react-router-dom';
 import { FiPackage, FiTruck, FiCalendar, FiDollarSign, FiMapPin, FiArrowLeft, FiPrinter } from 'react-icons/fi';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
-import toast from 'react-hot-toast';
+import { useToast } from '../contexts/ToastContext';
 import Invoice from '../components/Invoice/Invoice';
 
 const OrderDetail = () => {
   const { id } = useParams();
+  const { error: showError } = useToast();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showInvoice, setShowInvoice] = useState(false);
@@ -24,7 +25,7 @@ const OrderDetail = () => {
       setOrder(response.data);
     } catch (error) {
       console.error('Error fetching order:', error);
-      toast.error('Failed to load order details');
+      showError('Failed to load order details');
     } finally {
       setLoading(false);
     }

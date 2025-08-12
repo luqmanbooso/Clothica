@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom';
 import { FiPackage, FiCalendar, FiDollarSign } from 'react-icons/fi';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
-import toast from 'react-hot-toast';
+import { useToast } from '../contexts/ToastContext';
 
 const Orders = () => {
+  const { error: showError } = useToast();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
@@ -21,7 +22,7 @@ const Orders = () => {
       setOrders(response.data);
     } catch (error) {
       console.error('Error fetching orders:', error);
-      toast.error('Failed to load orders');
+      showError('Failed to load orders');
     } finally {
       setLoading(false);
     }

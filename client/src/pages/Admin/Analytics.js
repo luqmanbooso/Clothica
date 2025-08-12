@@ -3,9 +3,10 @@ import { FiTrendingUp, FiUsers, FiShoppingCart, FiDollarSign, FiPackage, FiCalen
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { format, subDays, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 import axios from 'axios';
-import toast from 'react-hot-toast';
+import { useToast } from '../../contexts/ToastContext';
 
 const AdminAnalytics = () => {
+  const { error: showError } = useToast();
   const [analyticsData, setAnalyticsData] = useState({
     overview: {
       totalRevenue: 0,
@@ -37,7 +38,7 @@ const AdminAnalytics = () => {
       setAnalyticsData(response.data);
     } catch (error) {
       console.error('Error fetching analytics data:', error);
-      toast.error('Failed to load analytics data');
+      showError('Failed to load analytics data');
     } finally {
       setLoading(false);
     }

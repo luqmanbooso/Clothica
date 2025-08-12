@@ -5,6 +5,47 @@ const { auth, admin } = require('../middleware/auth');
 
 const router = express.Router();
 
+// Add/remove from wishlist (MUST come before /:id route)
+router.put('/wishlist/:productId', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    const productId = req.params.productId;
+
+    const isInWishlist = user.wishlist.includes(productId);
+
+    if (isInWishlist) {
+      // Remove from wishlist
+      user.wishlist = user.wishlist.filter(id => id.toString() !== productId);
+    } else {
+      // Add to wishlist
+      user.wishlist.push(productId);
+    }
+
+    await user.save();
+
+    res.json({ 
+      message: isInWishlist ? 'Removed from wishlist' : 'Added to wishlist',
+      wishlist: user.wishlist 
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get user wishlist (MUST come before /:id route)
+router.get('/wishlist', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id)
+      .populate('wishlist', 'name price images brand rating');
+
+    res.json(user.wishlist);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Get all users (admin only)
 router.get('/', [auth, admin], async (req, res) => {
   try {
@@ -89,47 +130,6 @@ router.put('/:id/toggle-status', [auth, admin], async (req, res) => {
     await user.save();
 
     res.json({ message: `User ${user.isActive ? 'activated' : 'deactivated'} successfully` });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// Add/remove from wishlist
-router.put('/wishlist/:productId', auth, async (req, res) => {
-  try {
-    const user = await User.findById(req.user._id);
-    const productId = req.params.productId;
-
-    const isInWishlist = user.wishlist.includes(productId);
-
-    if (isInWishlist) {
-      // Remove from wishlist
-      user.wishlist = user.wishlist.filter(id => id.toString() !== productId);
-    } else {
-      // Add to wishlist
-      user.wishlist.push(productId);
-    }
-
-    await user.save();
-
-    res.json({ 
-      message: isInWishlist ? 'Removed from wishlist' : 'Added to wishlist',
-      wishlist: user.wishlist 
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// Get user wishlist
-router.get('/wishlist', auth, async (req, res) => {
-  try {
-    const user = await User.findById(req.user._id)
-      .populate('wishlist', 'name price images brand rating');
-
-    res.json(user.wishlist);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });

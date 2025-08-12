@@ -4,11 +4,18 @@ import { HeartIcon, TrashIcon, ShoppingCartIcon } from '@heroicons/react/24/outl
 import { motion } from 'framer-motion';
 import { useWishlist } from '../contexts/WishlistContext';
 import { useCart } from '../contexts/CartContext';
+import { useToast } from '../contexts/ToastContext';
 
 const Wishlist = () => {
-  const { wishlistItems, removeFromWishlist } = useWishlist();
+  const { wishlist, removeFromWishlist } = useWishlist();
   const { addToCart } = useCart();
+  const { success, error } = useToast();
   const [loading, setLoading] = useState(true);
+
+  const handleRemoveFromWishlist = (productId) => {
+    removeFromWishlist(productId);
+    success('Removed from wishlist');
+  };
 
   useEffect(() => {
     // Simulate loading
@@ -17,7 +24,8 @@ const Wishlist = () => {
 
   const handleAddToCart = (product) => {
     addToCart(product, 1);
-    removeFromWishlist(product.id);
+    removeFromWishlist(product._id || product.id);
+    success(`${product.name} added to cart!`);
   };
 
   const containerVariants = {
@@ -40,7 +48,7 @@ const Wishlist = () => {
     }
   };
 
-  if (loading) {
+  if (loading || !wishlist) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#6C7A59]"></div>
@@ -71,29 +79,29 @@ const Wishlist = () => {
           </motion.div>
 
           {/* Wishlist Items */}
-          {wishlistItems.length > 0 ? (
+          {wishlist && wishlist.length > 0 ? (
             <motion.div 
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
               variants={itemVariants}
             >
-              {wishlistItems.map((product) => (
-                <motion.div
-                  key={product.id}
-                  className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-                  whileHover={{ y: -5 }}
-                >
+              {wishlist.map((product) => (
+                                 <motion.div
+                   key={product._id || product.id}
+                   className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                   whileHover={{ y: -5 }}
+                 >
                   {/* Product Image */}
                   <div className="relative h-48 bg-gray-100">
                     <img
-                      src={product.image}
+                      src={product.images?.[0] || product.image}
                       alt={product.name}
                       className="w-full h-full object-cover"
                     />
                     <div className="absolute top-2 right-2">
-                      <button
-                        onClick={() => removeFromWishlist(product.id)}
-                        className="w-8 h-8 bg-red-100 text-red-600 rounded-full flex items-center justify-center hover:bg-red-200 transition-colors"
-                      >
+                                             <button
+                         onClick={() => handleRemoveFromWishlist(product._id || product.id)}
+                         className="w-8 h-8 bg-red-100 text-red-600 rounded-full flex items-center justify-center hover:bg-red-200 transition-colors"
+                       >
                         <TrashIcon className="h-4 w-4" />
                       </button>
                     </div>
@@ -107,7 +115,7 @@ const Wishlist = () => {
                     
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-lg font-bold text-[#1E1E1E]">
-                        ${product.price}
+                        Rs. {product.price?.toLocaleString()}
                       </span>
                       <div className="flex items-center">
                         <HeartIcon className="h-4 w-4 text-red-500" />
@@ -153,7 +161,7 @@ const Wishlist = () => {
           )}
 
           {/* Stats */}
-          {wishlistItems.length > 0 && (
+          {wishlist && wishlist.length > 0 && (
             <motion.div 
               className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6"
               variants={itemVariants}
@@ -162,7 +170,7 @@ const Wishlist = () => {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total Items</p>
                   <p className="text-2xl font-display font-bold text-[#1E1E1E]">
-                    {wishlistItems.length}
+                    {wishlist.length}
                   </p>
                 </div>
                 <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-pink-500 rounded-xl flex items-center justify-center">
