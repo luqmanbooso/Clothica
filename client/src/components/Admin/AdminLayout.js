@@ -14,7 +14,8 @@ import {
   Cog6ToothIcon,
   ArrowRightOnRectangleIcon,
   SparklesIcon,
-  ClockIcon
+  ClockIcon,
+  CurrencyDollarIcon
 } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
@@ -62,6 +63,7 @@ const AdminLayout = ({ children }) => {
     { name: 'Categories', href: '/admin/categories', icon: TagIcon },
     { name: 'Coupons', href: '/admin/coupons', icon: TicketIcon },
     { name: 'Banners', href: '/admin/banners', icon: PhotoIcon },
+    { name: 'Monetization', href: '/admin/monetization', icon: CurrencyDollarIcon },
     { name: 'Analytics', href: '/admin/analytics', icon: ChartBarIcon },
     { name: 'Settings', href: '/admin/settings', icon: Cog6ToothIcon },
   ];

@@ -209,9 +209,9 @@ router.post('/login', [
           { expiresIn: '30d' },
           (err, refreshToken) => {
             if (err) throw err;
-            
-            res.json({
-              token,
+
+    res.json({
+      token,
               refreshToken,
               user: user.getPublicProfile()
             });

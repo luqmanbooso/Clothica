@@ -6,11 +6,13 @@ const morgan = require('morgan');
 require('dotenv').config();
 
 const authRoutes = require('./routes/auth');
+const userRoutes = require('./routes/users');
 const productRoutes = require('./routes/products');
 const orderRoutes = require('./routes/orders');
-const userRoutes = require('./routes/users');
-const adminRoutes = require('./routes/admin');
 const couponRoutes = require('./routes/coupons');
+const loyaltyRoutes = require('./routes/loyalty');
+const affiliateRoutes = require('./routes/affiliate');
+const specialOffersRoutes = require('./routes/specialOffers');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -27,11 +29,13 @@ app.use('/uploads', express.static('uploads'));
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/admin', adminRoutes);
 app.use('/api/coupons', couponRoutes);
+app.use('/api/loyalty', loyaltyRoutes);
+app.use('/api/affiliate', affiliateRoutes);
+app.use('/api/special-offers', specialOffersRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -45,7 +49,7 @@ app.use((err, req, res, next) => {
 });
 
 // Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/clothica', {
+mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })

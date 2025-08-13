@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { StarIcon, ShoppingBagIcon, HeartIcon, EyeIcon, FunnelIcon, Squares2X2Icon, ListBulletIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
 import axios from 'axios';
@@ -9,6 +9,7 @@ import { useToast } from '../contexts/ToastContext';
 
 const Shop = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('grid');
@@ -24,6 +25,11 @@ const Shop = () => {
   const { addToWishlist, isInWishlist } = useWishlist();
   const { addToCart } = useCart();
   const { success, error, warning } = useToast();
+
+  // Helper function to validate category
+  const isValidCategory = (categoryId) => {
+    return categories.some(cat => cat.id === categoryId);
+  };
 
   const handleAddToWishlist = (product) => {
     addToWishlist(product);
@@ -107,7 +113,26 @@ const Shop = () => {
   }, []);
 
   useEffect(() => {
+    // Handle initial load and URL parameters
+    const category = searchParams.get('category');
+    const priceRange = searchParams.get('priceRange');
+    const rating = searchParams.get('rating');
+    const sortBy = searchParams.get('sortBy');
+    
+    // Initialize filters from URL parameters
+    const initialFilters = {
+      category: category || '',
+      priceRange: priceRange || '',
+      rating: rating || '',
+      sortBy: sortBy || 'newest'
+    };
+    
+    setFilters(initialFilters);
+  }, []); // Only run once on mount
+
+  useEffect(() => {
     if (filters.category || filters.priceRange || filters.rating || filters.sortBy !== 'newest') {
+      setCurrentPage(1); // Reset to first page when filters change
       loadProducts();
     }
   }, [filters]);
@@ -115,9 +140,24 @@ const Shop = () => {
   useEffect(() => {
     const category = searchParams.get('category');
     if (category) {
-      setFilters(prev => ({ ...prev, category }));
+      // Check if the category is valid before setting it
+      if (isValidCategory(category)) {
+        setFilters(prev => ({ ...prev, category }));
+      } else {
+        // If invalid category, clear the category filter and show all products
+        setFilters(prev => ({ ...prev, category: '' }));
+        // Remove the invalid category from URL and redirect to clean shop page
+        const newSearchParams = new URLSearchParams(searchParams);
+        newSearchParams.delete('category');
+        setSearchParams(newSearchParams);
+        // Show warning to user
+        warning(`Invalid category "${category}" detected. Showing all products instead.`);
+      }
+    } else {
+      // If no category in URL, ensure filters are cleared
+      setFilters(prev => ({ ...prev, category: '' }));
     }
-  }, [searchParams]);
+  }, [searchParams, categories]);
 
   const loadProducts = async () => {
     setLoading(true);
@@ -169,6 +209,23 @@ const Shop = () => {
       const response = await axios.get('/api/products', { params });
       setProducts(response.data.products);
       setTotalProducts(response.data.total);
+      
+      // If no products found and category filter is applied, try without category filter
+      if (response.data.products.length === 0 && filters.category && filters.category !== 'all') {
+        const fallbackParams = { ...params };
+        delete fallbackParams.category;
+        const fallbackResponse = await axios.get('/api/products', { params: fallbackParams });
+        setProducts(fallbackResponse.data.products);
+        setTotalProducts(fallbackResponse.data.total);
+        // Clear the category filter since it's not working
+        setFilters(prev => ({ ...prev, category: '' }));
+        warning(`No products found in "${filters.category}" category. Showing all products instead.`);
+      }
+      
+      // If still no products found, show helpful message
+      if (response.data.products.length === 0) {
+        // Don't show error, just log it - this is normal when filters are too restrictive
+      }
     } catch (error) {
       console.error('Error loading products:', error);
       error('Failed to load products');
@@ -212,6 +269,13 @@ const Shop = () => {
       sortBy: 'newest'
     });
     setCurrentPage(1);
+    
+    // Clear URL search parameters
+    const newSearchParams = new URLSearchParams();
+    setSearchParams(newSearchParams);
+    
+    // Reload products without filters
+    loadProducts();
   };
 
 
@@ -434,19 +498,49 @@ const Shop = () => {
         {/* Categories */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
           {categories.map(category => (
-            <Link key={category.id} to={`/shop?category=${category.id}`}>
-              <div className="group relative overflow-hidden bg-gradient-to-br from-[#6C7A59] to-[#D6BFAF] p-6 rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 transform hover:scale-105">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-white mb-1">{category.name}</h3>
-                    <p className="text-white/80 text-sm">{category.count} products</p>
+            <div key={category.id}>
+              {category.id === 'all' ? (
+                <button
+                  onClick={() => {
+                    clearFilters();
+                    navigate('/shop');
+                  }}
+                  className="w-full group relative overflow-hidden bg-gradient-to-br from-[#6C7A59] to-[#D6BFAF] p-6 rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 transform hover:scale-105"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold text-white mb-1">{category.name}</h3>
+                      <p className="text-white/80 text-sm">{category.count} products</p>
+                    </div>
                   </div>
-                </div>
-                <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors"></div>
-              </div>
-            </Link>
-          ))}
+                  <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors"></div>
+                </button>
+              ) : (
+                <Link 
+                  to={`/shop?category=${category.id}`}
+                  onClick={(e) => {
+                    // Prevent navigation if category is invalid
+                    if (!isValidCategory(category.id)) {
+                      e.preventDefault();
+                      warning(`Invalid category "${category.id}" detected.`);
+                      return;
+                    }
+                  }}
+                >
+                  <div className="group relative overflow-hidden bg-gradient-to-br from-[#6C7A59] to-[#D6BFAF] p-6 rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 transform hover:scale-105">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-semibold text-white mb-1">{category.name}</h3>
+                        <p className="text-white/80 text-sm">{category.count} products</p>
+                      </div>
+                    </div>
+                    <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors"></div>
+                  </div>
+                </Link>
+              )}
             </div>
+          ))}
+        </div>
 
         {/* Filters and Sort */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
@@ -547,6 +641,75 @@ const Shop = () => {
             </div>
           )}
         </div>
+
+        {/* Active Filters Indicator */}
+        {(filters.category || filters.priceRange !== '' || filters.rating !== '' || filters.sortBy !== 'newest') ? (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className="text-sm font-medium text-blue-800">Active Filters:</span>
+                {filters.category && (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    Category: {categories.find(cat => cat.id === filters.category)?.name || filters.category}
+                    <button
+                      onClick={() => handleFilterChange('category', '')}
+                      className="ml-1.5 text-blue-400 hover:text-blue-600"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+                {filters.priceRange && filters.priceRange !== 'all' && (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    Price: {priceRanges.find(range => range.id === filters.priceRange)?.name || filters.priceRange}
+                    <button
+                      onClick={() => handleFilterChange('priceRange', 'all')}
+                      className="ml-1.5 text-blue-400 hover:text-blue-600"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+                {filters.rating && (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    Rating: {filters.rating}+ stars
+                    <button
+                      onClick={() => handleFilterChange('rating', '')}
+                      className="ml-1.5 text-blue-400 hover:text-blue-600"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+                {filters.sortBy !== 'newest' && (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    Sort: {sortOptions.find(option => option.id === filters.sortBy)?.name || filters.sortBy}
+                    <button
+                      onClick={() => handleFilterChange('sortBy', 'newest')}
+                      className="ml-1.5 text-blue-400 hover:text-blue-600"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={clearFilters}
+                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+              >
+                Clear All
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center justify-center">
+              <span className="text-sm font-medium text-green-800">
+                🎯 Showing all products - No filters applied
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Products Grid/List */}
         {loading ? (

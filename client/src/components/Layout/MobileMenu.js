@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FiX, FiSearch, FiShoppingCart, FiHeart, FiUser, FiHome, FiGrid } from 'react-icons/fi';
+import { FiX, FiSearch, FiShoppingCart, FiHeart, FiUser, FiHome, FiGrid, FiStar } from 'react-icons/fi';
 import { useAuth } from '../../contexts/AuthContext';
 
 const MobileMenu = ({ isOpen, onClose, user, isAuthenticated, isAdmin }) => {
@@ -141,6 +141,14 @@ const MobileMenu = ({ isOpen, onClose, user, isAuthenticated, isAdmin }) => {
                   >
                     <FiHeart className="w-5 h-5" />
                     <span>Wishlist</span>
+                  </Link>
+                  <Link
+                    to="/loyalty"
+                    onClick={onClose}
+                    className="flex items-center space-x-3 p-3 rounded-lg text-secondary-700 hover:bg-secondary-50 hover:text-primary-500 transition-colors"
+                  >
+                    <FiStar className="w-5 w-5" />
+                    <span>Loyalty</span>
                   </Link>
                   {isAdmin && (
                     <Link

@@ -37,20 +37,19 @@ export const AuthProvider = ({ children }) => {
         if (error.response?.status === 401 && !originalRequest._retry) {
           originalRequest._retry = true;
           
-          // For now, just logout the user when token expires
-          // This prevents infinite 401 loops
-          console.log('Token expired, logging out user');
-          
-          // Show session expired message
-          if (window.location.pathname !== '/login') {
-            // Use a simple alert for now since we can't access toast context here
-            alert('Your session has expired. Please log in again.');
-          }
-          
-          logout();
-          
-          // Redirect to login page
-          window.location.href = '/login';
+                  // Handle token expiration gracefully
+        console.log('Token expired, logging out user');
+        
+        // Only redirect if not already on login page
+        if (window.location.pathname !== '/login') {
+          // Store the current path for post-login redirect
+          sessionStorage.setItem('redirectAfterLogin', window.location.pathname);
+        }
+        
+        logout();
+        
+        // Redirect to login page
+        window.location.href = '/login';
           
           return Promise.reject(error);
         }
@@ -124,6 +123,13 @@ export const AuthProvider = ({ children }) => {
       setUser(userData);
       setIsAuthenticated(true);
       setIsAdmin(userData.role === 'admin');
+      
+      // Check if there's a redirect path stored
+      const redirectPath = sessionStorage.getItem('redirectAfterLogin');
+      if (redirectPath) {
+        sessionStorage.removeItem('redirectAfterLogin');
+        window.location.href = redirectPath;
+      }
       
       return { success: true };
     } catch (error) {

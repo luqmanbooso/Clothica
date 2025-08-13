@@ -29,6 +29,7 @@ import Profile from './pages/Profile';
 import Orders from './pages/Orders';
 import OrderSuccess from './pages/OrderSuccess';
 import Checkout from './pages/Checkout';
+import LoyaltyDashboard from './pages/LoyaltyDashboard';
 
 // Admin Pages
 import Dashboard from './pages/Admin/Dashboard';
@@ -38,6 +39,7 @@ import Users from './pages/Admin/Users';
 import Categories from './pages/Admin/Categories';
 import Coupons from './pages/Admin/Coupons';
 import Banners from './pages/Admin/Banners';
+import MonetizationDashboard from './pages/Admin/MonetizationDashboard';
 import Analytics from './pages/Admin/Analytics';
 import Settings from './pages/Admin/Settings';
 
@@ -176,6 +178,14 @@ function App() {
                     </ClientRoute>
                   } />
 
+                  <Route path="/loyalty" element={
+                    <ProtectedRoute>
+                      <Header />
+                      <LoyaltyDashboard />
+                      <Footer />
+                    </ProtectedRoute>
+                  } />
+
                   {/* Admin Routes */}
                   <Route path="/admin/dashboard" element={
                     <AdminRoute>
@@ -218,19 +228,27 @@ function App() {
                   } />
                   
                   <Route path="/admin/coupons" element={
-                    <AdminRoute>
-                      <AdminLayout>
-                        <Coupons />
-                      </AdminLayout>
-                    </AdminRoute>
+                    <ProtectedRoute>
+                      <Header />
+                      <Coupons />
+                      <Footer />
+                    </ProtectedRoute>
                   } />
                   
                   <Route path="/admin/banners" element={
-                    <AdminRoute>
-                      <AdminLayout>
-                        <Banners />
-                      </AdminLayout>
-                    </AdminRoute>
+                    <ProtectedRoute>
+                      <Header />
+                      <Banners />
+                      <Footer />
+                    </ProtectedRoute>
+                  } />
+                  
+                  <Route path="/admin/monetization" element={
+                    <ProtectedRoute>
+                      <Header />
+                      <MonetizationDashboard />
+                      <Footer />
+                    </ProtectedRoute>
                   } />
                   
                   <Route path="/admin/analytics" element={

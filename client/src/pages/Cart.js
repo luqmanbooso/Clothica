@@ -146,9 +146,12 @@ const Cart = () => {
                       {/* Product Image */}
                       <div className="flex-shrink-0">
                         <img
-                            src={item.product.image}
-                            alt={item.product.name}
+                          src={item.product.images?.[0] || item.product.image || '/placeholder-product.jpg'}
+                          alt={item.product.name}
                           className="w-20 h-20 object-cover rounded-lg"
+                          onError={(e) => {
+                            e.target.src = '/placeholder-product.jpg';
+                          }}
                         />
                       </div>
                       
@@ -169,16 +172,16 @@ const Cart = () => {
                             <div className="text-right">
                               <div className="flex items-center space-x-2">
                                 <span className="text-lg font-bold text-gray-900">
-                                  ${(item.price * item.quantity).toFixed(2)}
+                                  Rs. {(item.price * item.quantity).toFixed(2)}
                                 </span>
                                 {item.product.originalPrice && (
                                   <span className="text-sm text-gray-500 line-through">
-                                    ${(item.product.originalPrice * item.quantity).toFixed(2)}
+                                    Rs. {(item.product.originalPrice * item.quantity).toFixed(2)}
                                   </span>
                                 )}
                               </div>
                               <p className="text-sm text-gray-500 mt-1">
-                                ${item.price} each
+                                Rs. {item.price} each
                               </p>
                           </div>
                         </div>
@@ -299,26 +302,26 @@ const Cart = () => {
                           value={couponCode}
                           onChange={(e) => setCouponCode(e.target.value)}
                           placeholder="Enter coupon code"
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6C7A59] focus:border-[#6C7A59]"
                         />
                         <button
                           onClick={handleApplyCoupon}
                           disabled={couponLoading}
-                          className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                          className="px-4 py-2 bg-[#6C7A59] text-white font-medium rounded-lg hover:bg-[#5A6A4A] transition-colors disabled:opacity-50"
                         >
                           {couponLoading ? 'Applying...' : 'Apply'}
                         </button>
                       </div>
                       
                       {/* Welcome Coupon Suggestion */}
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <div className="bg-[#6C7A59]/10 border border-[#6C7A59]/20 rounded-lg p-3">
                         <div className="flex items-center space-x-2 mb-2">
-                          <GiftIcon className="h-4 w-4 text-blue-600" />
-                          <span className="text-sm font-medium text-blue-800">Try these coupons:</span>
+                          <GiftIcon className="h-4 w-4 text-[#6C7A59]" />
+                          <span className="text-sm font-medium text-[#6C7A59]">Try these coupons:</span>
                         </div>
-                        <div className="space-y-1 text-xs text-blue-700">
-                                                  <p><strong>WELCOME20</strong> - 20% off first order</p>
-                        <p><strong>FREESHIP100</strong> - Free shipping above Rs. 10,000</p>
+                        <div className="space-y-1 text-xs text-[#6C7A59]">
+                          <p><strong>WELCOME20</strong> - 20% off first order</p>
+                          <p><strong>FREESHIP100</strong> - Free shipping above Rs. 10,000</p>
                         </div>
                       </div>
                     </div>
@@ -337,7 +340,7 @@ const Cart = () => {
                           value={method.id}
                           checked={shippingMethod === method.id}
                           onChange={(e) => setShippingMethod(e.target.value)}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                          className="h-4 w-4 text-[#6C7A59] focus:ring-[#6C7A59] border-gray-300"
                         />
                         <div className="ml-3 flex-1">
                           <div className="flex items-center justify-between">
@@ -388,7 +391,7 @@ const Cart = () => {
                 {/* Checkout Button */}
                 <Link
                   to="/checkout"
-                  className="w-full flex items-center justify-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+                  className="w-full flex items-center justify-center px-6 py-3 bg-[#6C7A59] text-white font-semibold rounded-lg hover:bg-[#5A6A4A] transition-colors"
                 >
                   Proceed to Checkout
                   <ArrowRightIcon className="ml-2 h-5 w-5" />

@@ -25,7 +25,14 @@ router.get('/', async (req, res) => {
     const query = { isActive: true };
 
     // Apply filters
-    if (category) query.category = category;
+    if (category) {
+      // Validate category before applying filter
+      const validCategories = ['men', 'women', 'accessories', 'shoes', 'bags'];
+      if (validCategories.includes(category)) {
+        query.category = category;
+      }
+      // If invalid category, don't apply filter (show all products)
+    }
     if (subcategory) query.subcategory = subcategory;
     if (brand) query.brand = { $regex: brand, $options: 'i' };
     if (minPrice || maxPrice) {
@@ -64,7 +71,7 @@ router.get('/', async (req, res) => {
 // Get category counts
 router.get('/categories', async (req, res) => {
   try {
-    const categories = ['men', 'women', 'kids', 'accessories', 'shoes', 'bags'];
+    const categories = ['men', 'women', 'accessories', 'shoes', 'bags'];
     const categoryCounts = {};
     
     for (const category of categories) {
@@ -74,6 +81,10 @@ router.get('/categories', async (req, res) => {
       });
       categoryCounts[category] = count;
     }
+    
+    // Add 'all' category count (total products)
+    const totalCount = await Product.countDocuments({ isActive: true });
+    categoryCounts['all'] = totalCount;
     
     res.json(categoryCounts);
   } catch (error) {

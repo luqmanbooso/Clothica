@@ -386,6 +386,10 @@ const Header = () => {
                         <ShoppingBagIcon className="w-5 h-5" />
                         <span>Orders</span>
                       </Link>
+                      <Link to="/loyalty" className="flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-gray-50 text-gray-700 hover:text-[#6C7A59] transition-colors">
+                        <StarIcon className="w-5 h-5" />
+                        <span>Loyalty</span>
+                      </Link>
                       {isAdmin && (
                         <Link to="/admin/dashboard" className="flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-gray-50 text-gray-700 hover:text-[#6C7A59] transition-colors">
                           <StarIcon className="w-5 h-5" />
