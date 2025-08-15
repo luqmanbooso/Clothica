@@ -1,334 +1,297 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
-  PlusIcon, 
-  PencilIcon, 
-  TrashIcon, 
-  MagnifyingGlassIcon, 
-  XMarkIcon,
-  EyeIcon,
-  EyeSlashIcon,
-  StarIcon,
-  TagIcon,
-  PhotoIcon,
-  DocumentTextIcon,
-  CubeIcon,
-  CurrencyDollarIcon,
-  ArchiveBoxIcon,
-  CogIcon,
-  ArrowUpIcon,
-  ArrowDownIcon,
-  FunnelIcon,
-  ViewColumnsIcon
+  PlusIcon, MagnifyingGlassIcon, CubeIcon, ExclamationTriangleIcon,
+  CheckCircleIcon, StarIcon, PhotoIcon, PencilIcon, TrashIcon,
+  DocumentArrowDownIcon, DocumentArrowUpIcon, BuildingOfficeIcon,
+  TruckIcon, ChartBarIcon
 } from '@heroicons/react/24/outline';
+import { motion } from 'framer-motion';
+import axios from 'axios';
 import { useToast } from '../../contexts/ToastContext';
-import { motion, AnimatePresence } from 'framer-motion';
-import InventoryDashboard from '../../components/InventoryDashboard';
 
 const Products = () => {
-  const { showToast } = useToast();
   const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [editingProduct, setEditingProduct] = useState(null);
+  // Filters & Search
   const [searchTerm, setSearchTerm] = useState('');
-
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedBrand, setSelectedBrand] = useState('all');
+  const [stockStatusFilter, setStockStatusFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('createdAt');
+  const [sortOrder, setSortOrder] = useState('desc');
+  
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
   const [selectedProducts, setSelectedProducts] = useState([]);
-
+  const [showBulkActions, setShowBulkActions] = useState(false);
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
-    description: '',
-    price: '',
-    category: '',
-    images: [],
-    stock: '',
     sku: '',
+    category: '',
+    brand: '',
+    description: '',
+    price: 0,
+    originalPrice: 0,
+    costPrice: 0,
+    inventory: {
+      totalStock: 0,
+      lowStockThreshold: 10,
+      criticalStockThreshold: 5,
+      reorderPoint: 5
+    },
+    supplier: {
+      name: '',
+      contact: '',
+      email: '',
+      phone: '',
+      leadTime: 0,
+      minimumOrder: 0
+    },
     isActive: true,
     isFeatured: false,
-    weight: '',
-    dimensions: { length: '', width: '', height: '' },
-    tags: [],
-    variants: [],
-    costPrice: '',
-    taxRate: '',
-    shippingClass: 'standard',
-    metaTitle: '',
-    metaDescription: '',
-    seoUrl: '',
-    colors: [],
-    sizes: [],
-    brand: '',
-    subcategory: '',
-    material: '',
-    care: '',
-    discount: 0
+    isNew: false,
+    isOnSale: false
   });
-
-  // Enhanced state for better UX
-  const [viewMode, setViewMode] = useState('grid'); // grid, list, table
-  const [sortBy, setSortBy] = useState('name');
-  const [sortOrder, setSortOrder] = useState('asc');
-  const [filters, setFilters] = useState({
-    status: 'all',
-    stockLevel: 'all',
-    priceRange: 'all',
-    category: 'all'
+  const [categories, setCategories] = useState([]);
+  const [brands, setBrands] = useState([]);
+  
+  // Inventory Analytics
+  const [inventoryAnalytics, setInventoryAnalytics] = useState({
+    totalProducts: 0,
+    outOfStock: 0,
+    lowStock: 0,
+    criticalStock: 0,
+    totalValue: 0,
+    lowStockValue: 0
   });
+  
+  // Alerts
   const [inventoryAlerts, setInventoryAlerts] = useState([]);
-  const [bulkEditMode, setBulkEditMode] = useState(false);
+  const [warehouses, setWarehouses] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
+  
+  // Stock Management
+  const [stockHistory, setStockHistory] = useState([]);
+  const [showStockModal, setShowStockModal] = useState(false);
+  const [selectedProductForStock, setSelectedProductForStock] = useState(null);
+  const [stockAction, setStockAction] = useState('adjustment');
+  const [stockReason, setStockReason] = useState('');
+  const [stockQuantity, setStockQuantity] = useState(0);
+  const [stockNotes, setStockNotes] = useState('');
 
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  const fileInputRef = useRef(null);
+  // Advanced Filters
+  const [priceRange, setPriceRange] = useState({ min: '', max: '' });
+  const [dateRange, setDateRange] = useState({ start: '', end: '' });
+  const [supplierFilter, setSupplierFilter] = useState('all');
+  const [warehouseFilter, setWarehouseFilter] = useState('all');
 
+  const { success: showSuccess, error: showError } = useToast();
+
+  // Helper Functions
+  const getStockStatus = (stock, threshold = 10) => {
+    if (stock === 0) return { status: 'out-of-stock', color: 'text-red-600', bg: 'bg-red-100' };
+    if (stock <= threshold) return { status: 'low-stock', color: 'text-orange-600', bg: 'bg-orange-100' };
+    return { status: 'in-stock', color: 'text-green-600', bg: 'bg-green-100' };
+  };
+
+  const formatCurrency = (amount) => `Rs. ${(amount || 0).toLocaleString()}`;
+
+  const formatSKU = (sku) => {
+    return sku || 'N/A';
+  };
+
+  // Fetch Products with Advanced Filtering
   const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/admin/products');
-      setProducts(response.data);
+      const params = {
+        page: currentPage,
+        limit: itemsPerPage,
+        search: searchTerm,
+        category: selectedCategory !== 'all' ? selectedCategory : undefined,
+        brand: selectedBrand !== 'all' ? selectedBrand : undefined,
+        stockStatus: stockStatusFilter !== 'all' ? stockStatusFilter : undefined,
+        sortBy,
+        sortOrder
+      };
+      
+      const response = await axios.get('/api/admin/products', { params });
+      setProducts(response.data.products || []);
+      setTotalPages(response.data.totalPages || 1);
+      setTotalProducts(response.data.total || 0);
     } catch (error) {
       console.error('Error fetching products:', error);
-      showToast('Error fetching products', 'error');
+      showError('Failed to load products');
     } finally {
       setLoading(false);
     }
-  }, [showToast]);
+  }, [currentPage, itemsPerPage, searchTerm, selectedCategory, selectedBrand, stockStatusFilter, sortBy, sortOrder, showError]);
 
+  // Fetch Categories & Brands
   const fetchCategories = useCallback(async () => {
     try {
-      const response = await axios.get('/api/products/categories');
-      console.log('Categories API response:', response.data);
-      // Ensure categories is always an array
+      const response = await axios.get('/api/admin/categories');
       setCategories(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error fetching categories:', error);
-      setCategories([]); // Set empty array on error
+      setCategories([]);
     }
   }, []);
 
-  // Enhanced inventory management
-  const checkInventoryAlerts = useCallback(() => {
-    const alerts = [];
-    products.forEach(product => {
-      // Check main stock
-      if (product.stock <= 0) {
-        alerts.push({
-          product,
-          type: 'out_of_stock',
-          severity: 'high'
-        });
-      } else if (product.stock <= 5) {
-        alerts.push({
-          product,
-          type: 'critical_stock',
-          severity: 'high'
-        });
-      } else if (product.stock <= 10) {
-        alerts.push({
-          product,
-          type: 'low_stock',
-          severity: 'medium'
-        });
-      } else if (product.stock <= 25) {
-        alerts.push({
-          product,
-          type: 'stock_warning',
-          severity: 'low'
-        });
-      }
-
-      // Check size-based stock
-      if (product.sizes && Array.isArray(product.sizes)) {
-        product.sizes.forEach(size => {
-          if (size.stock <= 0 && size.available) {
-            alerts.push({
-              product,
-              type: 'size_out_of_stock',
-              severity: 'medium',
-              size: size.name
-            });
-          } else if (size.stock <= 3 && size.available) {
-            alerts.push({
-              product,
-              type: 'size_low_stock',
-              severity: 'low',
-              size: size.name
-            });
-          }
-        });
-      }
-    });
-    setInventoryAlerts(alerts);
+  const fetchBrands = useCallback(async () => {
+    try {
+      // Extract unique brands from products
+      const uniqueBrands = [...new Set(products.map(p => p.brand).filter(Boolean))];
+      setBrands(Array.isArray(uniqueBrands) ? uniqueBrands : []);
+    } catch (error) {
+      console.error('Error fetching brands:', error);
+      setBrands([]);
+    }
   }, [products]);
 
-  // File upload handling
-  const handleFileUpload = async (files) => {
-    const uploadedImages = [];
-    
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const formData = new FormData();
-      formData.append('image', file);
-      
-      try {
-        const response = await axios.post('/api/admin/upload-image', formData);
-        uploadedImages.push(response.data.imageUrl);
-      } catch (error) {
-        console.error('Error uploading image:', error);
-        showToast('Error uploading image', 'error');
-      }
+  // Fetch Inventory Analytics
+  const fetchInventoryAnalytics = useCallback(async () => {
+    try {
+      // Calculate analytics from products data
+      const totalProducts = products.length;
+      const outOfStock = products.filter(p => (p.inventory?.totalStock || 0) === 0).length;
+      const lowStock = products.filter(p => {
+        const stock = p.inventory?.totalStock || 0;
+        const threshold = p.inventory?.lowStockThreshold || 10;
+        return stock > 0 && stock <= threshold;
+      }).length;
+      const criticalStock = products.filter(p => {
+        const stock = p.inventory?.totalStock || 0;
+        const threshold = p.inventory?.criticalStockThreshold || 5;
+        return stock > 0 && stock <= threshold;
+      }).length;
+      const totalValue = products.reduce((sum, p) => sum + ((p.inventory?.totalStock || 0) * (p.price || 0)), 0);
+      const lowStockValue = products.filter(p => {
+        const stock = p.inventory?.totalStock || 0;
+        const threshold = p.inventory?.lowStockThreshold || 10;
+        return stock > 0 && stock <= threshold;
+      }).reduce((sum, p) => sum + ((p.inventory?.totalStock || 0) * (p.price || 0)), 0);
+
+      setInventoryAnalytics({
+        totalProducts,
+        outOfStock,
+        lowStock,
+        criticalStock,
+        totalValue,
+        lowStockValue
+      });
+    } catch (error) {
+      console.error('Error calculating inventory analytics:', error);
     }
-    
-    return uploadedImages;
+  }, [products]);
+
+  // Fetch Inventory Alerts
+  const fetchInventoryAlerts = useCallback(async () => {
+    try {
+      const response = await axios.get('/api/admin/inventory/alerts');
+      setInventoryAlerts(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.error('Error fetching inventory alerts:', error);
+      setInventoryAlerts([]);
+    }
+  }, []);
+
+  // Fetch stock history for a product
+  const fetchStockHistory = async (productId) => {
+    try {
+      const response = await axios.get(`/api/admin/products/${productId}/stock-history`);
+      setStockHistory(response.data || []);
+    } catch (error) {
+      console.error('Error fetching stock history:', error);
+      showError('Failed to load stock history');
+    }
   };
 
-  // Enhanced sorting and filtering
-  const getSortedAndFilteredProducts = useCallback(() => {
-    let filtered = products.filter(product => {
-      const matchesSearch = product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           product.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           product.sku?.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesCategory = filters.category === 'all' || product.category === filters.category;
-      const matchesStatus = filters.status === 'all' || 
-                           (filters.status === 'active' && product.isActive) ||
-                           (filters.status === 'inactive' && !product.isActive);
-      
-      const matchesStock = filters.stockLevel === 'all' ||
-                          (filters.stockLevel === 'out' && product.stock <= 0) ||
-                          (filters.stockLevel === 'low' && product.stock <= 10) ||
-                          (filters.stockLevel === 'normal' && product.stock > 10);
-      
-      return matchesSearch && matchesCategory && matchesStatus && matchesStock;
-    });
-
-    // Sorting
-    filtered.sort((a, b) => {
-      let aVal = a[sortBy];
-      let bVal = b[sortBy];
-      
-      if (typeof aVal === 'string') {
-        aVal = aVal.toLowerCase();
-        bVal = bVal.toLowerCase();
-      }
-      
-      if (sortOrder === 'asc') {
-        return aVal > bVal ? 1 : -1;
-      } else {
-        return aVal < bVal ? 1 : -1;
-      }
-    });
-
-    return filtered;
-  }, [products, searchTerm, filters, sortBy, sortOrder]);
-
+  // Initialize Data
   useEffect(() => {
     fetchProducts();
     fetchCategories();
-  }, [fetchProducts, fetchCategories]);
+    fetchInventoryAlerts();
+  }, [fetchProducts, fetchCategories, fetchInventoryAlerts]);
 
-  // Check inventory alerts when products change
+  // Update brands when products change
   useEffect(() => {
-    checkInventoryAlerts();
-  }, [products, checkInventoryAlerts]);
+    fetchBrands();
+    fetchInventoryAnalytics();
+  }, [fetchBrands, fetchInventoryAnalytics]);
 
-  // Debug categories state changes
-  useEffect(() => {
-    console.log('Categories state updated:', categories);
-  }, [categories]);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      if (editingProduct) {
-        await axios.put(`/api/admin/products/${editingProduct._id}`, formData);
-        showToast('Product updated successfully', 'success');
-      } else {
-        await axios.post('/api/admin/products', formData);
-        showToast('Product created successfully', 'success');
-      }
-      setShowModal(false);
-      setEditingProduct(null);
-      resetForm();
-      fetchProducts();
-    } catch (error) {
-      console.error('Error saving product:', error);
-      showToast('Error saving product', 'error');
-    }
-  };
-
-  const handleEdit = (product) => {
-    setEditingProduct(product);
-    setFormData({
-      name: product.name || '',
-      description: product.description || '',
-      price: product.price || '',
-      category: product.category || '',
-      images: product.images || [],
-      stock: product.stock || '',
-      sku: product.sku || '',
-      isActive: product.isActive !== undefined ? product.isActive : true,
-      isFeatured: product.isFeatured || false,
-      weight: product.weight || '',
-      dimensions: product.dimensions || { length: '', width: '', height: '' },
-      tags: product.tags || [],
-      variants: product.variants || [],
-      costPrice: product.costPrice || '',
-      taxRate: product.taxRate || '',
-      shippingClass: product.shippingClass || 'standard',
-      metaTitle: product.metaTitle || '',
-      metaDescription: product.metaDescription || '',
-      seoUrl: product.seoUrl || '',
-      colors: product.colors || [],
-      sizes: product.sizes || [],
-      brand: product.brand || '',
-      subcategory: product.subcategory || '',
-      material: product.material || '',
-      care: product.care || '',
-      discount: product.discount || 0
-    });
-    setShowModal(true);
-  };
-
-  const handleDelete = async (productId) => {
-    if (window.confirm('Are you sure you want to delete this product?')) {
-      try {
-        await axios.delete(`/api/admin/products/${productId}`);
-        showToast('Product deleted successfully', 'success');
-        fetchProducts();
-      } catch (error) {
-        console.error('Error deleting product:', error);
-        showToast('Error deleting product', 'error');
+  // Enhanced filtering
+  const filteredProducts = products.filter(product => {
+    const matchesSearch = !searchTerm || 
+      product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.sku?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
+    const matchesBrand = selectedBrand === 'all' || product.brand === selectedBrand;
+    
+    // Enhanced stock status filtering
+    let matchesStockStatus = true;
+    if (stockStatusFilter !== 'all') {
+      const stock = product.inventory?.totalStock || 0;
+      const lowThreshold = product.inventory?.lowStockThreshold || 10;
+      const criticalThreshold = product.inventory?.criticalStockThreshold || 5;
+      
+      switch (stockStatusFilter) {
+        case 'in-stock':
+          matchesStockStatus = stock > lowThreshold;
+          break;
+        case 'low-stock':
+          matchesStockStatus = stock > 0 && stock <= lowThreshold;
+          break;
+        case 'critical':
+          matchesStockStatus = stock > 0 && stock <= criticalThreshold;
+          break;
+        case 'out-of-stock':
+          matchesStockStatus = stock === 0;
+          break;
+        default:
+          matchesStockStatus = true;
       }
     }
-  };
+
+    // Price range filtering
+    const matchesPriceRange = (!priceRange.min || product.price >= parseFloat(priceRange.min)) &&
+                             (!priceRange.max || product.price <= parseFloat(priceRange.max));
+
+    // Date range filtering
+    const matchesDateRange = (!dateRange.start || new Date(product.createdAt) >= new Date(dateRange.start)) &&
+                            (!dateRange.end || new Date(product.createdAt) <= new Date(dateRange.end));
+
+    // Supplier filtering
+    const matchesSupplier = supplierFilter === 'all' || product.supplier?.name === supplierFilter;
+    
+    return matchesSearch && matchesCategory && matchesBrand && matchesStockStatus && 
+           matchesPriceRange && matchesDateRange && matchesSupplier;
+  });
 
   const handleBulkAction = async (action) => {
     if (selectedProducts.length === 0) {
-      showToast('Please select products first', 'warning');
+      showError('Please select products first');
       return;
     }
 
     try {
-      let endpoint = '/api/admin/products/bulk-action';
-      let payload = { productIds: selectedProducts, action };
+      await axios.post('/api/admin/products/bulk-action', {
+        productIds: selectedProducts,
+        action
+      });
       
-      // Handle special actions
-      if (action === 'feature') {
-        endpoint = '/api/admin/products/bulk-feature';
-        payload = { productIds: selectedProducts, isFeatured: true };
-      } else if (action === 'unfeature') {
-        endpoint = '/api/admin/products/bulk-feature';
-        payload = { productIds: selectedProducts, isFeatured: false };
-      }
-
-      await axios.post(endpoint, payload);
-      showToast(`Bulk ${action} completed successfully`, 'success');
+      showSuccess(`Bulk ${action} completed successfully`);
       setSelectedProducts([]);
+      setShowBulkActions(false);
       fetchProducts();
     } catch (error) {
       console.error('Error performing bulk action:', error);
-      showToast('Error performing bulk action', 'error');
+      showError('Failed to perform bulk action');
     }
   };
 
@@ -348,1334 +311,1144 @@ const Products = () => {
     }
   };
 
+  const handleDelete = async (productId) => {
+    if (window.confirm('Are you sure you want to delete this product?')) {
+      try {
+        await axios.delete(`/api/admin/products/${productId}`);
+        showSuccess('Product deleted successfully');
+        fetchProducts();
+      } catch (error) {
+        console.error('Error deleting product:', error);
+        showError('Failed to delete product');
+      }
+    }
+  };
+
+  // Enhanced stock update with history tracking
+  const handleStockUpdate = async (productId, newStock, action = 'adjustment', reason = 'Manual stock update', notes = '') => {
+    try {
+      const response = await axios.post(`/api/admin/products/${productId}/stock`, {
+        quantity: newStock,
+        type: action,
+        reason: reason,
+        notes: notes,
+        timestamp: new Date().toISOString()
+      });
+      
+      showSuccess('Stock updated successfully');
+      
+      // Update local state
+      setProducts(prev => prev.map(p => 
+        p._id === productId 
+          ? { ...p, inventory: { ...p.inventory, totalStock: newStock } }
+          : p
+      ));
+      
+      // Refresh stock history
+      if (selectedProductForStock?._id === productId) {
+        fetchStockHistory(productId);
+      }
+      
+      fetchProducts();
+    } catch (error) {
+      console.error('Error updating stock:', error);
+      showError('Failed to update stock');
+    }
+  };
+
+  // Handle stock action submission
+  const handleStockAction = async () => {
+    if (!selectedProductForStock || !stockQuantity || !stockReason) {
+      showError('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      const currentStock = selectedProductForStock.inventory?.totalStock || 0;
+      let newStock = currentStock;
+
+      switch (stockAction) {
+        case 'adjustment':
+          newStock = stockQuantity;
+          break;
+        case 'addition':
+          newStock = currentStock + stockQuantity;
+          break;
+        case 'subtraction':
+          newStock = Math.max(0, currentStock - stockQuantity);
+          break;
+        case 'restock':
+          newStock = currentStock + stockQuantity;
+          break;
+        default:
+          newStock = stockQuantity;
+      }
+
+      await handleStockUpdate(
+        selectedProductForStock._id, 
+        newStock, 
+        stockAction, 
+        stockReason, 
+        stockNotes
+      );
+
+      // Reset form
+      setStockAction('adjustment');
+      setStockReason('');
+      setStockQuantity(0);
+      setStockNotes('');
+      setShowStockModal(false);
+      setSelectedProductForStock(null);
+    } catch (error) {
+      console.error('Error performing stock action:', error);
+      showError('Failed to perform stock action');
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    
+    if (name.includes('.')) {
+      const [parent, child] = name.split('.');
+      setFormData(prev => ({
+        ...prev,
+        [parent]: {
+          ...prev[parent],
+          [child]: type === 'checkbox' ? checked : (type === 'number' ? parseFloat(value) || 0 : value)
+        }
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: type === 'checkbox' ? checked : (type === 'number' ? parseFloat(value) || 0 : value)
+      }));
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingProduct) {
+        await axios.put(`/api/admin/products/${editingProduct._id}`, formData);
+        showSuccess('Product updated successfully! 🎉');
+      } else {
+        await axios.post('/api/admin/products', formData);
+        showSuccess('Product created successfully! 🚀');
+      }
+      setShowProductModal(false);
+      resetForm();
+      fetchProducts();
+    } catch (error) {
+      console.error('Error saving product:', error);
+      showError('Failed to save product');
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       name: '',
-      description: '',
-      price: '',
-      category: '',
-      images: [],
-      stock: '',
       sku: '',
+      category: '',
+      brand: '',
+      description: '',
+      price: 0,
+      originalPrice: 0,
+      costPrice: 0,
+      inventory: {
+        totalStock: 0,
+        lowStockThreshold: 10,
+        criticalStockThreshold: 5,
+        reorderPoint: 5
+      },
+      supplier: {
+        name: '',
+        contact: '',
+        email: '',
+        phone: '',
+        leadTime: 0,
+        minimumOrder: 0
+      },
       isActive: true,
       isFeatured: false,
-      weight: '',
-      dimensions: { length: '', width: '', height: '' },
-      tags: [],
-      variants: [],
-      costPrice: '',
-      taxRate: '',
-      shippingClass: 'standard',
-      metaTitle: '',
-      metaDescription: '',
-      seoUrl: '',
-      colors: [],
-      sizes: [],
-      brand: '',
-      subcategory: '',
-      material: '',
-      care: '',
-      discount: 0
+      isNew: false,
+      isOnSale: false
     });
+    setEditingProduct(null);
   };
 
-  const addImage = () => {
-    setFormData(prev => ({
-      ...prev,
-      images: [...prev.images, '']
-    }));
+  const handleEdit = (product) => {
+    setEditingProduct(product);
+    setFormData({
+      name: product.name || '',
+      sku: product.sku || '',
+      category: product.category || '',
+      brand: product.brand || '',
+      description: product.description || '',
+      price: product.price || 0,
+      originalPrice: product.originalPrice || 0,
+      costPrice: product.costPrice || 0,
+      inventory: {
+        totalStock: product.inventory?.totalStock || 0,
+        lowStockThreshold: product.inventory?.lowStockThreshold || 10,
+        criticalStockThreshold: product.inventory?.criticalStockThreshold || 5,
+        reorderPoint: product.inventory?.reorderPoint || 5
+      },
+      supplier: {
+        name: product.supplier?.name || '',
+        contact: product.supplier?.contact || '',
+        email: product.supplier?.email || '',
+        phone: product.supplier?.phone || '',
+        leadTime: product.supplier?.leadTime || 0,
+        minimumOrder: product.supplier?.minimumOrder || 0
+      },
+      isActive: product.isActive !== undefined ? product.isActive : true,
+      isFeatured: product.isFeatured || false,
+      isNew: product.isNew || false,
+      isOnSale: product.isOnSale || false
+    });
+    setShowProductModal(true);
   };
-
-  const removeImage = (index) => {
-    setFormData(prev => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index)
-    }));
-  };
-
-  const updateImage = (index, value) => {
-    setFormData(prev => ({
-      ...prev,
-      images: prev.images.map((img, i) => i === index ? value : img)
-    }));
-  };
-
-  // Color management functions
-  const addColor = () => {
-    setFormData(prev => ({
-      ...prev,
-      colors: [...prev.colors, { name: '', hex: '#000000', available: true }]
-    }));
-  };
-
-  const removeColor = (index) => {
-    setFormData(prev => ({
-      ...prev,
-      colors: prev.colors.filter((_, i) => i !== index)
-    }));
-  };
-
-  const updateColor = (index, field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      colors: prev.colors.map((color, i) => 
-        i === index ? { ...color, [field]: value } : color
-      )
-    }));
-  };
-
-  // Size management functions
-  const addSize = () => {
-    setFormData(prev => ({
-      ...prev,
-      sizes: [...prev.sizes, { name: '', available: true, stock: 0 }]
-    }));
-  };
-
-  const removeSize = (index) => {
-    setFormData(prev => ({
-      ...prev,
-      sizes: prev.sizes.filter((_, i) => i !== index)
-    }));
-  };
-
-  const updateSize = (index, field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      sizes: prev.sizes.map((size, i) => 
-        i === index ? { ...size, [field]: value } : size
-      )
-    }));
-  };
-
-  // Tag management functions
-  const addTag = () => {
-    setFormData(prev => ({
-      ...prev,
-      tags: [...prev.tags, '']
-    }));
-  };
-
-  const removeTag = (index) => {
-    setFormData(prev => ({
-      ...prev,
-      tags: prev.tags.filter((_, i) => i !== index)
-    }));
-  };
-
-  const updateTag = (index, value) => {
-    setFormData(prev => ({
-      ...prev,
-      tags: prev.tags.map((tag, i) => i === index ? value : tag)
-    }));
-  };
-
-  const filteredProducts = getSortedAndFilteredProducts();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2 mb-8"></div>
-            <div className="h-96 bg-gray-200 rounded"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Enhanced Header */}
-        <div className="mb-8">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+    <motion.div 
+      className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+    >
+      <h1 className="text-3xl font-bold text-gray-900 mb-8">
+        Products & Inventory Management
+      </h1>
+      
+      {/* Analytics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-white rounded-xl p-6 shadow-lg border border-gray-200 hover:shadow-xl transition-shadow"
+        >
+          <div className="flex items-center justify-between">
             <div>
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl">
-                  <CubeIcon className="h-8 w-8 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900">Product Management</h1>
-                  <p className="mt-2 text-gray-600">Comprehensive product catalog management with inventory tracking</p>
-                </div>
-              </div>
-              
-              {/* Quick Stats */}
-              <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-white p-4 rounded-lg shadow-sm border border-gray-200"
-                >
-                  <div className="flex items-center">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <CubeIcon className="h-5 w-5 text-blue-600" />
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm font-medium text-gray-600">Total Products</p>
-                      <p className="text-2xl font-bold text-gray-900">{products.length}</p>
-                    </div>
-                  </div>
-                </motion.div>
-
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                  className="bg-white p-4 rounded-lg shadow-sm border border-gray-200"
-                >
-                  <div className="flex items-center">
-                    <div className="p-2 bg-green-100 rounded-lg">
-                      <EyeIcon className="h-5 w-5 text-green-600" />
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm font-medium text-gray-600">Active</p>
-                      <p className="text-2xl font-bold text-gray-900">{products.filter(p => p.isActive).length}</p>
-                    </div>
-                  </div>
-                </motion.div>
-
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="bg-white p-4 rounded-lg shadow-sm border border-gray-200"
-                >
-                  <div className="flex items-center">
-                    <div className="p-2 bg-yellow-100 rounded-lg">
-                      <StarIcon className="h-5 w-5 text-yellow-600" />
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm font-medium text-gray-600">Featured</p>
-                      <p className="text-2xl font-bold text-gray-900">{products.filter(p => p.isFeatured).length}</p>
-                    </div>
-                  </div>
-                </motion.div>
-
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="bg-white p-4 rounded-lg shadow-sm border border-gray-200"
-                >
-                  <div className="flex items-center">
-                    <div className="p-2 bg-red-100 rounded-lg">
-                      <ArchiveBoxIcon className="h-5 w-5 text-red-600" />
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm font-medium text-gray-600">Low Stock</p>
-                      <p className="text-2xl font-bold text-gray-900">{inventoryAlerts.filter(a => a.type === 'low_stock').length}</p>
-                    </div>
-                  </div>
-                </motion.div>
-              </div>
+              <p className="text-sm font-medium text-gray-600">Total Products</p>
+              <p className="text-2xl font-bold text-gray-900">{products.length}</p>
             </div>
-
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button
-                onClick={() => setShowModal(true)}
-                className="inline-flex items-center px-6 py-3 border border-transparent text-sm font-medium rounded-xl shadow-lg text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transform hover:scale-105 transition-all duration-200"
-              >
-                <PlusIcon className="h-5 w-5 mr-2" />
-                Add Product
-              </button>
-              
-              <button
-                onClick={() => setBulkEditMode(!bulkEditMode)}
-                className={`inline-flex items-center px-4 py-3 border text-sm font-medium rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200 ${
-                  bulkEditMode 
-                    ? 'border-red-300 text-red-700 bg-red-50 hover:bg-red-100' 
-                    : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
-                }`}
-              >
-                <CogIcon className="h-5 w-5 mr-2" />
-                Bulk Edit
-              </button>
+            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+              <CubeIcon className="h-6 w-6 text-blue-600" />
             </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-white rounded-xl p-6 shadow-lg border border-gray-200 hover:shadow-xl transition-shadow"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Low Stock</p>
+              <p className="text-2xl font-bold text-orange-600">{inventoryAlerts.length}</p>
+            </div>
+            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+              <ExclamationTriangleIcon className="h-6 w-6 text-orange-600" />
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="bg-white rounded-xl p-6 shadow-lg border border-gray-200 hover:shadow-xl transition-shadow"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Active Products</p>
+              <p className="text-2xl font-bold text-green-600">
+                {products.filter(p => p.isActive).length}
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+              <CheckCircleIcon className="h-6 w-6 text-green-600" />
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="bg-white rounded-xl p-6 shadow-lg border border-gray-200 hover:shadow-xl transition-shadow"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Featured</p>
+              <p className="text-2xl font-bold text-purple-600">
+                {products.filter(p => p.isFeatured).length}
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+              <StarIcon className="h-6 w-6 text-purple-600" />
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Controls Section */}
+      <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200 mb-8">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div className="flex flex-col sm:flex-row gap-4 flex-1">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={selectedProducts.length === filteredProducts.length && filteredProducts.length > 0}
+                onChange={selectAllProducts}
+                className="rounded border-gray-300 text-[#6C7A59] focus:ring-[#6C7A59] w-4 h-4"
+              />
+              <span className="text-sm text-gray-600">Select All</span>
+            </div>
+            
+            <div className="relative flex-1 max-w-md">
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search products..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+              />
+            </div>
+            
+            {/* Category Filter */}
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+            >
+              <option value="all">All Categories</option>
+              {Array.isArray(categories) && categories.map(category => (
+                <option key={category._id || category} value={category.name || category}>
+                  {category.name || category}
+                </option>
+              ))}
+            </select>
+            
+            {/* Brand Filter */}
+            <select
+              value={selectedBrand}
+              onChange={(e) => setSelectedBrand(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+            >
+              <option value="all">All Brands</option>
+              {Array.isArray(brands) && brands.map(brand => (
+                <option key={brand} value={brand}>{brand}</option>
+              ))}
+            </select>
+            
+            {/* Stock Status Filter */}
+            <select
+              value={stockStatusFilter}
+              onChange={(e) => setStockStatusFilter(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+            >
+              <option value="all">All Stock</option>
+              <option value="in-stock">In Stock</option>
+              <option value="low-stock">Low Stock</option>
+              <option value="critical">Critical</option>
+              <option value="out-of-stock">Out of Stock</option>
+            </select>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            {selectedProducts.length > 0 && (
+              <button
+                onClick={() => setShowBulkActions(!showBulkActions)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md"
+              >
+                {selectedProducts.length} Selected
+              </button>
+            )}
+            
+            <button
+              onClick={() => {
+                resetForm();
+                setShowProductModal(true);
+              }}
+              className="flex items-center px-6 py-2 bg-[#6C7A59] text-white rounded-lg hover:bg-[#5A6A4A] transition-colors shadow-lg"
+            >
+              <PlusIcon className="h-5 w-5 mr-2" />
+              Add Product
+            </button>
           </div>
         </div>
 
-        {/* Enhanced Filters and Controls */}
-        <div className="bg-white shadow-lg rounded-xl mb-6 border border-gray-200">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <div className="flex flex-col lg:flex-row gap-4">
-              {/* Search Bar */}
-              <div className="flex-1">
-                <div className="relative">
-                  <MagnifyingGlassIcon className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search products by name, description, or SKU..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
-                  />
-                </div>
-              </div>
-
-              {/* View Mode Toggle */}
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setViewMode('grid')}
-                  className={`p-2 rounded-lg transition-colors ${
-                    viewMode === 'grid' 
-                      ? 'bg-indigo-100 text-indigo-600' 
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  <ViewColumnsIcon className="h-5 w-5" />
-                </button>
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`p-2 rounded-lg transition-colors ${
-                    viewMode === 'list' 
-                      ? 'bg-indigo-100 text-indigo-600' 
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  <DocumentTextIcon className="h-5 w-5" />
-                </button>
-              </div>
-
-              {/* Advanced Filters Toggle */}
+        {/* Bulk Actions */}
+        {showBulkActions && (
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <div className="flex flex-wrap gap-2">
               <button
-                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                className={`inline-flex items-center px-4 py-2 border rounded-lg text-sm font-medium transition-colors ${
-                  showAdvancedFilters
-                    ? 'border-indigo-300 text-indigo-700 bg-indigo-50'
-                    : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
-                }`}
+                onClick={() => handleBulkAction('activate')}
+                className="px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm"
               >
-                <FunnelIcon className="h-4 w-4 mr-2" />
-                Filters
+                Activate All
+              </button>
+              <button
+                onClick={() => handleBulkAction('deactivate')}
+                className="px-3 py-1 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors text-sm"
+              >
+                Deactivate All
+              </button>
+              <button
+                onClick={() => handleBulkAction('feature')}
+                className="px-3 py-1 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-sm"
+              >
+                Feature All
+              </button>
+              <button
+                onClick={() => handleBulkAction('delete')}
+                className="px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-sm"
+              >
+                Delete All
               </button>
             </div>
           </div>
+        )}
+      </div>
 
-          {/* Advanced Filters */}
-          <AnimatePresence>
-            {showAdvancedFilters && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="px-6 py-4 border-b border-gray-200 bg-gray-50"
-              >
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {/* Category Filter */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                    <select
-                      value={filters.category}
-                      onChange={(e) => setFilters({...filters, category: e.target.value})}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    >
-                      <option value="all">All Categories</option>
-                      {Array.isArray(categories) && categories.map(category => (
-                        <option key={category._id} value={category._id}>
-                          {category.name}
-                        </option>
-                      ))}
-                    </select>
+      {/* Products Grid */}
+      {loading ? (
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#6C7A59] mx-auto"></div>
+        </div>
+      ) : filteredProducts.length === 0 ? (
+        <div className="text-center py-12">
+          <CubeIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No products found</h3>
+          <p className="text-gray-600">Try adjusting your search or filters</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filteredProducts.map((product, index) => (
+            <motion.div
+              key={product._id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 }}
+              whileHover={{ y: -5, scale: 1.02 }}
+              className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300"
+            >
+              {/* Product Image */}
+              <div className="h-48 relative bg-gray-100">
+                <div className="absolute top-2 left-2 z-10">
+                  <input
+                    type="checkbox"
+                    checked={selectedProducts.includes(product._id)}
+                    onChange={() => toggleProductSelection(product._id)}
+                    className="rounded border-gray-300 text-[#6C7A59] focus:ring-[#6C7A59] w-5 h-5"
+                  />
+                </div>
+                
+                {product.images && product.images.length > 0 ? (
+                  <img
+                    src={product.images[0]}
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <PhotoIcon className="h-12 w-12 text-gray-400" />
                   </div>
-
-                  {/* Status Filter */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                    <select
-                      value={filters.status}
-                      onChange={(e) => setFilters({...filters, status: e.target.value})}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    >
-                      <option value="all">All Status</option>
-                      <option value="active">Active</option>
-                      <option value="inactive">Inactive</option>
-                    </select>
-                  </div>
-
-                  {/* Stock Level Filter */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Stock Level</label>
-                    <select
-                      value={filters.stockLevel}
-                      onChange={(e) => setFilters({...filters, stockLevel: e.target.value})}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    >
-                      <option value="all">All Stock Levels</option>
-                      <option value="out">Out of Stock</option>
-                      <option value="low">Low Stock (≤10)</option>
-                      <option value="normal">Normal Stock (>10)</option>
-                    </select>
-                  </div>
-
-                  {/* Sort Options */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
-                    <div className="flex gap-2">
-                      <select
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value)}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                      >
-                        <option value="name">Name</option>
-                        <option value="price">Price</option>
-                        <option value="stock">Stock</option>
-                        <option value="createdAt">Date Created</option>
-                      </select>
-                      <button
-                        onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                        className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                      >
-                        {sortOrder === 'asc' ? <ArrowUpIcon className="h-4 w-4" /> : <ArrowDownIcon className="h-4 w-4" />}
-                      </button>
+                )}
+                
+                {/* Stock Status Badge */}
+                <div className="absolute top-2 right-2">
+                  {getStockStatus(
+                    product.inventory?.totalStock || 0,
+                    product.inventory?.lowStockThreshold || 10
+                  ).status === 'out-of-stock' ? (
+                    <ExclamationTriangleIcon className="h-5 w-5 text-red-600" />
+                  ) : getStockStatus(
+                    product.inventory?.totalStock || 0,
+                    product.inventory?.lowStockThreshold || 10
+                  ).status === 'low-stock' ? (
+                    <ExclamationTriangleIcon className="h-5 w-5 text-orange-600" />
+                  ) : (
+                    <CheckCircleIcon className="h-5 w-5 text-green-600" />
+                  )}
+                </div>
+                
+                {/* Featured Badge */}
+                {product.isFeatured && (
+                  <div className="absolute bottom-2 left-2">
+                    <div className="bg-yellow-500 text-white text-xs px-2 py-1 rounded-full">
+                      Featured
                     </div>
                   </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                )}
+              </div>
 
-          {/* Enhanced Bulk Actions */}
-          {selectedProducts.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="px-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-200"
-            >
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <CubeIcon className="h-5 w-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <span className="text-sm font-medium text-blue-900">
-                      {selectedProducts.length} product(s) selected
+              {/* Product Info */}
+              <div className="p-4">
+                <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">{product.name}</h3>
+                <p className="text-sm text-gray-600 mb-2">SKU: {product.sku || 'N/A'}</p>
+                <p className="text-sm text-gray-600 mb-3 line-clamp-2">{product.description}</p>
+                
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-bold text-[#6C7A59]">
+                      {formatCurrency(product.price)}
                     </span>
-                    <p className="text-xs text-blue-700">Ready for bulk operations</p>
+                    {product.originalPrice > product.price && (
+                      <span className="text-sm text-gray-500 line-through">
+                        {formatCurrency(product.originalPrice)}
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div className="flex items-center gap-1">
+                    <StarIcon className="h-4 w-4 text-yellow-500 fill-current" />
+                    <span className="text-sm text-gray-600">{product.rating || '4.0'}</span>
                   </div>
                 </div>
                 
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => handleBulkAction('activate')}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-green-700 bg-green-100 hover:bg-green-200 transition-colors"
+                <div className="flex items-center justify-between mb-3">
+                  <span className={`text-sm px-2 py-1 rounded-full ${
+                    getStockStatus(
+                      product.inventory?.totalStock || 0,
+                      product.inventory?.lowStockThreshold || 10
+                    ).bg
+                  } ${
+                    getStockStatus(
+                      product.inventory?.totalStock || 0,
+                      product.inventory?.lowStockThreshold || 10
+                    ).color
+                  }`}>
+                    Stock: {product.inventory?.totalStock || 0}
+                  </span>
+                  
+                  <span className="text-sm text-gray-600">
+                    {product.category} • {product.brand}
+                  </span>
+                </div>
+                
+                {/* Action Buttons */}
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => handleEdit(product)}
+                    className="flex-1 flex items-center justify-center px-3 py-2 bg-[#6C7A59] text-white rounded-lg hover:bg-[#5A6A4A] transition-colors text-sm shadow-md"
                   >
-                    <EyeIcon className="h-4 w-4 mr-2" />
-                    Activate
+                    <PencilIcon className="h-4 w-4 mr-1" />
+                    Edit
                   </button>
-                  <button
-                    onClick={() => handleBulkAction('deactivate')}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-orange-700 bg-orange-100 hover:bg-orange-200 transition-colors"
+                  
+                  <button 
+                    onClick={() => {
+                      setSelectedProductForStock(product);
+                      setShowStockModal(true);
+                    }}
+                    className="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm shadow-md"
+                    title="Manage Stock"
                   >
-                    <EyeSlashIcon className="h-4 w-4 mr-2" />
-                    Deactivate
+                    <CubeIcon className="h-4 w-4" />
                   </button>
-                  <button
-                    onClick={() => handleBulkAction('feature')}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-yellow-700 bg-yellow-100 hover:bg-yellow-200 transition-colors"
+                  
+                  <button 
+                    onClick={() => handleDelete(product._id)}
+                    className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm shadow-md"
                   >
-                    <StarIcon className="h-4 w-4 mr-2" />
-                    Feature
-                  </button>
-                  <button
-                    onClick={() => handleBulkAction('delete')}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-red-700 bg-red-100 hover:bg-red-200 transition-colors"
-                  >
-                    <TrashIcon className="h-4 w-4 mr-2" />
-                    Delete
+                    <TrashIcon className="h-4 w-4" />
                   </button>
                 </div>
               </div>
             </motion.div>
-          )}
+          ))}
         </div>
-
-        {/* Enhanced Products Display */}
-        <div className="bg-white shadow-lg rounded-xl border border-gray-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <h3 className="text-xl font-semibold text-gray-900">
-                  Products ({filteredProducts.length})
-                </h3>
-                {inventoryAlerts.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <div className="p-1 bg-red-100 rounded-full">
-                      <ArchiveBoxIcon className="h-4 w-4 text-red-600" />
-                    </div>
-                    <span className="text-sm text-red-600 font-medium">
-                      {inventoryAlerts.length} inventory alerts
-                    </span>
-                  </div>
-                )}
+      )}
+      
+      {/* Modals will be added here */}
+      
+      {/* Product Modal */}
+      {showProductModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  {editingProduct ? 'Edit Product' : 'Add New Product'}
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowProductModal(false);
+                    setEditingProduct(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                >
+                  ×
+                </button>
               </div>
-              
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={selectedProducts.length === filteredProducts.length && filteredProducts.length > 0}
-                    onChange={selectAllProducts}
-                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                  />
-                  <span className="text-sm text-gray-600 font-medium">Select All</span>
+            </div>
+
+            <form className="p-6 space-y-6" onSubmit={handleSubmit}>
+              {/* Basic Information */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <CubeIcon className="h-5 w-5 mr-2 text-blue-600" />
+                  Basic Information
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Product Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                      placeholder="Enter product name..."
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      SKU <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="sku"
+                      value={formData.sku}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                      placeholder="Auto-generated if empty"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Category <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      name="category"
+                      value={formData.category}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                    >
+                      <option value="">Select Category</option>
+                      {Array.isArray(categories) && categories.map(category => (
+                        <option key={category._id || category} value={category.name || category}>
+                          {category.name || category}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Brand <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="brand"
+                      value={formData.brand}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                      placeholder="Enter brand name..."
+                    />
+                  </div>
                 </div>
                 
-                <div className="h-4 w-px bg-gray-300"></div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Description <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    name="description"
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    required
+                    rows={3}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                    placeholder="Describe your product..."
+                  />
+                </div>
+              </div>
+
+              {/* Pricing & Inventory */}
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <ChartBarIcon className="h-5 w-5 mr-2 text-green-600" />
+                  Pricing & Inventory
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Price <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      name="price"
+                      value={formData.price}
+                      onChange={handleInputChange}
+                      required
+                      min="0"
+                      step="0.01"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Original Price
+                    </label>
+                    <input
+                      type="number"
+                      name="originalPrice"
+                      value={formData.originalPrice}
+                      onChange={handleInputChange}
+                      min="0"
+                      step="0.01"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Cost Price
+                    </label>
+                    <input
+                      type="number"
+                      name="costPrice"
+                      value={formData.costPrice}
+                      onChange={handleInputChange}
+                      min="0"
+                      step="0.01"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
                 
-                <span className="text-sm text-gray-500">
-                  Showing {filteredProducts.length} of {products.length} products
-                </span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Current Stock <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      name="inventory.totalStock"
+                      value={formData.inventory.totalStock}
+                      onChange={handleInputChange}
+                      required
+                      min="0"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Low Stock Threshold
+                    </label>
+                    <input
+                      type="number"
+                      name="inventory.lowStockThreshold"
+                      value={formData.inventory.lowStockThreshold}
+                      onChange={handleInputChange}
+                      min="0"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Critical Stock Threshold
+                    </label>
+                    <input
+                      type="number"
+                      name="inventory.criticalStockThreshold"
+                      value={formData.inventory.criticalStockThreshold}
+                      onChange={handleInputChange}
+                      min="0"
+                      className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Reorder Point
+                    </label>
+                    <input
+                      type="number"
+                      name="inventory.reorderPoint"
+                      value={formData.inventory.reorderPoint}
+                      onChange={handleInputChange}
+                      min="0"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Supplier Information */}
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-xl">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <TruckIcon className="h-5 w-5 mr-2 text-purple-600" />
+                  Supplier Information
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Supplier Name
+                    </label>
+                    <input
+                      type="text"
+                      name="supplier.name"
+                      value={formData.supplier.name}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                      placeholder="Enter supplier name..."
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Contact Person
+                    </label>
+                    <input
+                      type="text"
+                      name="supplier.contact"
+                      value={formData.supplier.contact}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                      placeholder="Enter contact person..."
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      name="supplier.email"
+                      value={formData.supplier.email}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                      placeholder="Enter email..."
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Phone
+                    </label>
+                    <input
+                      type="tel"
+                      name="supplier.phone"
+                      value={formData.supplier.phone}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                      placeholder="Enter phone number..."
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Lead Time (Days)
+                    </label>
+                    <input
+                      type="number"
+                      name="supplier.leadTime"
+                      value={formData.supplier.leadTime}
+                      onChange={handleInputChange}
+                      min="0"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Minimum Order
+                    </label>
+                    <input
+                      type="number"
+                      name="supplier.minimumOrder"
+                      value={formData.supplier.minimumOrder}
+                      onChange={handleInputChange}
+                      min="0"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Product Status */}
+              <div className="bg-gradient-to-r from-yellow-50 to-orange-50 p-6 rounded-xl">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <StarIcon className="h-5 w-5 mr-2 text-yellow-600" />
+                  Product Status & Features
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="flex items-center gap-6">
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        name="isActive"
+                        checked={formData.isActive}
+                        onChange={handleInputChange}
+                        className="rounded border-gray-300 text-[#6C7A59] focus:ring-[#6C7A59] mr-2"
+                      />
+                      <span className="text-sm font-medium text-gray-700">Active Product</span>
+                    </label>
+                    
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        name="isFeatured"
+                        checked={formData.isFeatured}
+                        onChange={handleInputChange}
+                        className="rounded border-gray-300 text-[#6C7A59] focus:ring-[#6C7A59] mr-2"
+                      />
+                      <span className="text-sm font-medium text-gray-700">Featured Product</span>
+                    </label>
+                  </div>
+                  
+                  <div className="flex items-center gap-6">
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        name="isNew"
+                        checked={formData.isNew}
+                        onChange={handleInputChange}
+                        className="rounded border-gray-300 text-[#6C7A59] focus:ring-[#6C7A59] mr-2"
+                      />
+                      <span className="text-sm font-medium text-gray-700">New Product</span>
+                    </label>
+                    
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        name="isOnSale"
+                        checked={formData.isOnSale}
+                        onChange={handleInputChange}
+                        className="rounded border-gray-300 text-[#6C7A59] focus:ring-[#6C7A59] mr-2"
+                      />
+                      <span className="text-sm font-medium text-gray-700">On Sale</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Form Actions */}
+              <div className="flex items-center justify-end gap-4 border-t border-gray-200 pt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowProductModal(false);
+                    setEditingProduct(null);
+                  }}
+                  className="px-6 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                
+                <button
+                  type="submit"
+                  className="px-8 py-3 text-sm font-medium text-white bg-[#6C7A59] rounded-lg hover:bg-[#5A6A4A] transition-colors shadow-md"
+                >
+                  {editingProduct ? 'Update Product' : 'Create Product'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Stock Management Modal */}
+      {showStockModal && selectedProductForStock && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Stock Management - {selectedProductForStock.name}
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowStockModal(false);
+                    setSelectedProductForStock(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Current Stock Info */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Current Stock Information</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium text-gray-700">Current Stock:</span>
+                    <span className="ml-2 text-lg font-bold text-blue-600">
+                      {selectedProductForStock.inventory?.totalStock || 0}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Low Stock Threshold:</span>
+                    <span className="ml-2 text-lg font-bold text-orange-600">
+                      {selectedProductForStock.inventory?.lowStockThreshold || 10}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Critical Threshold:</span>
+                    <span className="ml-2 text-lg font-bold text-red-600">
+                      {selectedProductForStock.inventory?.criticalStockThreshold || 5}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Reorder Point:</span>
+                    <span className="ml-2 text-lg font-bold text-purple-600">
+                      {selectedProductForStock.inventory?.reorderPoint || 5}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Stock Action Form */}
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Stock Action</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Action Type <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={stockAction}
+                      onChange={(e) => setStockAction(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                    >
+                      <option value="adjustment">Set Stock to Specific Value</option>
+                      <option value="addition">Add to Current Stock</option>
+                      <option value="subtraction">Subtract from Current Stock</option>
+                      <option value="restock">Restock Product</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Quantity <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={stockQuantity}
+                      onChange={(e) => setStockQuantity(parseInt(e.target.value) || 0)}
+                      min="0"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                      placeholder="Enter quantity"
+                    />
+                  </div>
+                </div>
+                
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Reason <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={stockReason}
+                    onChange={(e) => setStockReason(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                  >
+                    <option value="">Select Reason</option>
+                    <option value="Manual adjustment">Manual adjustment</option>
+                    <option value="Restock from supplier">Restock from supplier</option>
+                    <option value="Return from customer">Return from customer</option>
+                    <option value="Damage/Loss">Damage/Loss</option>
+                    <option value="Inventory count">Inventory count</option>
+                    <option value="Transfer between locations">Transfer between locations</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Notes
+                  </label>
+                  <textarea
+                    value={stockNotes}
+                    onChange={(e) => setStockNotes(e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                    placeholder="Additional notes about this stock change..."
+                  />
+                </div>
+              </div>
+
+              {/* Stock History */}
+              <div className="bg-gradient-to-r from-gray-50 to-slate-50 p-4 rounded-xl">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-semibold text-gray-900">Stock History</h3>
+                  <button
+                    onClick={() => fetchStockHistory(selectedProductForStock._id)}
+                    className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                  >
+                    Refresh
+                  </button>
+                </div>
+                
+                {stockHistory.length > 0 ? (
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {stockHistory.map((record, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-white rounded-lg border">
+                        <div className="text-sm">
+                          <span className="font-medium">{record.type}</span>
+                          <span className="text-gray-500 ml-2">- {record.reason}</span>
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {new Date(record.timestamp).toLocaleDateString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-sm text-center py-4">No stock history available</p>
+                )}
+              </div>
+
+              {/* Modal Actions */}
+              <div className="flex items-center justify-end gap-4 border-t border-gray-200 pt-6">
+                <button
+                  onClick={() => {
+                    setShowStockModal(false);
+                    setSelectedProductForStock(null);
+                  }}
+                  className="px-6 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                
+                <button
+                  onClick={handleStockAction}
+                  className="px-8 py-3 text-sm font-medium text-white bg-[#6C7A59] rounded-lg hover:bg-[#5A6A4A] transition-colors shadow-md"
+                >
+                  Update Stock
+                </button>
               </div>
             </div>
           </div>
-
-          {/* Products Grid/List View */}
-          {viewMode === 'grid' ? (
-            <div className="p-6">
-              {filteredProducts.length === 0 ? (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="text-center py-12"
-                >
-                  <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                    <CubeIcon className="h-12 w-12 text-gray-400" />
-                  </div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No products found</h3>
-                  <p className="text-gray-500 mb-6">Try adjusting your search or filters</p>
-                  <button
-                    onClick={() => setShowModal(true)}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700"
-                  >
-                    <PlusIcon className="h-4 w-4 mr-2" />
-                    Add Your First Product
-                  </button>
-                </motion.div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {filteredProducts.map((product, index) => (
-                    <motion.div
-                      key={product._id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                      className="group bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-lg transition-all duration-200 hover:border-indigo-300"
-                    >
-                      {/* Product Image */}
-                      <div className="relative aspect-square bg-gray-100 rounded-t-xl overflow-hidden">
-                        <img
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                          src={product.images?.[0] || '/placeholder-product.png'}
-                          alt={product.name}
-                          onError={(e) => {
-                            e.target.src = '/placeholder-product.png';
-                          }}
-                        />
-                        
-                        {/* Status Badges */}
-                        <div className="absolute top-3 left-3 flex flex-col gap-2">
-                          {product.isFeatured && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 shadow-sm">
-                              <StarIcon className="h-3 w-3 mr-1" />
-                              Featured
-                            </span>
-                          )}
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium shadow-sm ${
-                            product.isActive 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {product.isActive ? 'Active' : 'Inactive'}
-                          </span>
-                        </div>
-
-                        {/* Stock Status */}
-                        <div className="absolute top-3 right-3">
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white shadow-sm ${
-                            product.stock <= 0 
-                              ? 'bg-red-500' 
-                              : product.stock <= 10 
-                                ? 'bg-yellow-500' 
-                                : 'bg-green-500'
-                          }`}>
-                            {product.stock <= 0 ? 'Out of Stock' : `Stock: ${product.stock}`}
-                          </span>
-                        </div>
-
-                        {/* Selection Checkbox */}
-                        <div className="absolute bottom-3 left-3">
-                          <input
-                            type="checkbox"
-                            checked={selectedProducts.includes(product._id)}
-                            onChange={() => toggleProductSelection(product._id)}
-                            className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded shadow-sm"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Product Info */}
-                      <div className="p-4">
-                        <div className="mb-3">
-                          <h3 className="text-sm font-semibold text-gray-900 mb-1 overflow-hidden" style={{
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical'
-                          }}>
-                            {product.name}
-                          </h3>
-                          <p className="text-xs text-gray-500 mb-2">
-                            SKU: {product.sku || 'N/A'}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            Category: {product.category || 'Uncategorized'}
-                          </p>
-                        </div>
-
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="text-lg font-bold text-gray-900">
-                            ${product.price?.toFixed(2) || '0.00'}
-                          </span>
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => handleEdit(product)}
-                              className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                            >
-                              <PencilIcon className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(product._id)}
-                              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            >
-                              <TrashIcon className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Quick Actions */}
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleEdit(product)}
-                            className="flex-1 bg-indigo-50 text-indigo-700 px-3 py-2 rounded-lg text-sm font-medium hover:bg-indigo-100 transition-colors"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleEdit(product)}
-                            className="px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
-                          >
-                            <EyeIcon className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="p-6">
-              {/* List View - Similar to original but enhanced */}
-              <div className="space-y-4">
-                {filteredProducts.map((product) => (
-                  <motion.div
-                    key={product._id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                  >
-                    <div className="flex items-center space-x-4">
-                      <input
-                        type="checkbox"
-                        checked={selectedProducts.includes(product._id)}
-                        onChange={() => toggleProductSelection(product._id)}
-                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                      />
-                      
-                      <div className="flex-shrink-0 h-16 w-16">
-                        <img
-                          className="h-16 w-16 rounded-lg object-cover"
-                          src={product.images?.[0] || '/placeholder-product.png'}
-                          alt={product.name}
-                          onError={(e) => {
-                            e.target.src = '/placeholder-product.png';
-                          }}
-                        />
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-2">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            {product.name}
-                          </p>
-                          {product.isFeatured && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                              <StarIcon className="h-3 w-3 mr-1" />
-                              Featured
-                            </span>
-                          )}
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            product.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                          }`}>
-                            {product.isActive ? 'Active' : 'Inactive'}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-500 truncate">
-                          SKU: {product.sku || 'N/A'}
-                        </p>
-                        <p className="text-sm text-gray-500 truncate">
-                          Category: {product.category || 'Uncategorized'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center space-x-4">
-                      <div className="text-right">
-                        <p className="text-sm font-medium text-gray-900">
-                          ${product.price?.toFixed(2) || '0.00'}
-                        </p>
-                      </div>
-                      
-                      <div className="text-right">
-                        <p className={`text-sm font-medium ${
-                          product.stock <= 0 ? 'text-red-600' : 
-                          product.stock <= 10 ? 'text-yellow-600' : 'text-green-600'
-                        }`}>
-                          Stock: {product.stock || 0}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleEdit(product)}
-                          className="text-indigo-600 hover:text-indigo-900 p-2 hover:bg-indigo-50 rounded-lg transition-colors"
-                        >
-                          <PencilIcon className="h-5 w-5" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(product._id)}
-                          className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded-lg transition-colors"
-                        >
-                          <TrashIcon className="h-5 w-5" />
-                        </button>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
-      </div>
-
-      {/* Inventory Dashboard */}
-      <div className="mt-8">
-        <InventoryDashboard
-          inventoryAlerts={inventoryAlerts}
-          products={products}
-          onViewProduct={(product) => {
-            handleEdit(product);
-            setShowModal(true);
-          }}
-        />
-      </div>
-
-      {/* Enhanced Product Modal */}
-      <AnimatePresence>
-        {showModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full z-50"
-          >
-            <div className="relative top-4 mx-auto p-6 w-11/12 max-w-4xl shadow-2xl rounded-2xl bg-white">
-              <div className="flex justify-between items-center mb-6">
-                <div>
-                  <h3 className="text-2xl font-bold text-gray-900">
-                    {editingProduct ? 'Edit Product' : 'Add New Product'}
-                  </h3>
-                  <p className="text-gray-600 mt-1">
-                    {editingProduct ? 'Update product information and settings' : 'Create a new product for your catalog'}
-                  </p>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowModal(false);
-                    setEditingProduct(null);
-                    resetForm();
-                  }}
-                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <XMarkIcon className="h-6 w-6" />
-                </button>
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-8">
-                {/* Basic Information */}
-                <div className="bg-gray-50 p-6 rounded-xl">
-                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <DocumentTextIcon className="h-5 w-5 text-indigo-600" />
-                    Basic Information
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Product Name *</label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.name}
-                        onChange={(e) => setFormData({...formData, name: e.target.value})}
-                        className="block w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
-                        placeholder="Enter product name"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">SKU</label>
-                      <input
-                        type="text"
-                        value={formData.sku}
-                        onChange={(e) => setFormData({...formData, sku: e.target.value})}
-                        className="block w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
-                        placeholder="Stock Keeping Unit"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                      <textarea
-                        rows={3}
-                        value={formData.description}
-                        onChange={(e) => setFormData({...formData, description: e.target.value})}
-                        className="block w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
-                        placeholder="Product description"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                      <select
-                        value={formData.category}
-                        onChange={(e) => setFormData({...formData, category: e.target.value})}
-                        className="block w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
-                      >
-                        <option value="">Select Category</option>
-                        {Array.isArray(categories) && categories.map(category => (
-                          <option key={category._id} value={category._id}>
-                            {category.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Subcategory</label>
-                      <input
-                        type="text"
-                        value={formData.subcategory}
-                        onChange={(e) => setFormData({...formData, subcategory: e.target.value})}
-                        className="block w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
-                        placeholder="e.g., t-shirts, sneakers, handbags"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Brand</label>
-                      <input
-                        type="text"
-                        value={formData.brand}
-                        onChange={(e) => setFormData({...formData, brand: e.target.value})}
-                        className="block w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
-                        placeholder="Brand name"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Discount (%)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={formData.discount}
-                        onChange={(e) => setFormData({...formData, discount: parseFloat(e.target.value) || 0})}
-                        className="block w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
-                        placeholder="0"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Pricing & Inventory */}
-                <div className="bg-gray-50 p-6 rounded-xl">
-                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <CurrencyDollarIcon className="h-5 w-5 text-green-600" />
-                    Pricing & Inventory
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Price *</label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
-                        <input
-                          type="number"
-                          step="0.01"
-                          required
-                          value={formData.price}
-                          onChange={(e) => setFormData({...formData, price: parseFloat(e.target.value)})}
-                          className="block w-full border border-gray-300 rounded-lg pl-8 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
-                          placeholder="0.00"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Cost Price</label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={formData.costPrice}
-                          onChange={(e) => setFormData({...formData, costPrice: parseFloat(e.target.value)})}
-                          className="block w-full border border-gray-300 rounded-lg pl-8 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
-                          placeholder="0.00"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Stock Quantity</label>
-                      <input
-                        type="number"
-                        value={formData.stock}
-                        onChange={(e) => setFormData({...formData, stock: parseInt(e.target.value)})}
-                        className="block w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
-                        placeholder="0"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Tax Rate (%)</label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        value={formData.taxRate}
-                        onChange={(e) => setFormData({...formData, taxRate: parseFloat(e.target.value)})}
-                        className="block w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
-                        placeholder="0.0"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Weight (kg)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={formData.weight}
-                        onChange={(e) => setFormData({...formData, weight: parseFloat(e.target.value)})}
-                        className="block w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
-                        placeholder="0.00"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Shipping Class</label>
-                      <select
-                        value={formData.shippingClass}
-                        onChange={(e) => setFormData({...formData, shippingClass: e.target.value})}
-                        className="block w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
-                      >
-                        <option value="standard">Standard</option>
-                        <option value="express">Express</option>
-                        <option value="premium">Premium</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Material</label>
-                      <input
-                        type="text"
-                        value={formData.material}
-                        onChange={(e) => setFormData({...formData, material: e.target.value})}
-                        className="block w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
-                        placeholder="e.g., Cotton, Leather, Polyester"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Care Instructions</label>
-                      <input
-                        type="text"
-                        value={formData.care}
-                        onChange={(e) => setFormData({...formData, care: e.target.value})}
-                        className="block w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
-                        placeholder="e.g., Machine wash cold, tumble dry low"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Images & Media */}
-                <div className="bg-gray-50 p-6 rounded-xl">
-                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <PhotoIcon className="h-5 w-5 text-purple-600" />
-                    Images & Media
-                  </h4>
-                  
-                  {/* File Upload */}
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Upload Images</label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-indigo-400 transition-colors">
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        multiple
-                        accept="image/*"
-                        onChange={(e) => {
-                          if (e.target.files) {
-                            handleFileUpload(Array.from(e.target.files)).then(urls => {
-                              setFormData(prev => ({
-                                ...prev,
-                                images: [...prev.images, ...urls]
-                              }));
-                            });
-                          }
-                        }}
-                        className="hidden"
-                      />
-                      <PhotoIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                      <p className="text-sm text-gray-600 mb-2">
-                        Drag and drop images here, or{' '}
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="text-indigo-600 hover:text-indigo-500 font-medium"
-                        >
-                          browse files
-                        </button>
-                      </p>
-                      <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB each</p>
-                    </div>
-                  </div>
-
-                  {/* Image URLs */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Image URLs</label>
-                    <div className="space-y-3">
-                      {formData.images.map((image, index) => (
-                        <div key={index} className="flex items-center gap-3">
-                          {/* Image Preview */}
-                          <div className="flex-shrink-0">
-                            <div className="h-20 w-20 rounded-lg border border-gray-300 overflow-hidden bg-gray-100">
-                              {image ? (
-                                <img
-                                  src={image}
-                                  alt={`Product ${index + 1}`}
-                                  className="h-full w-full object-cover"
-                                  onError={(e) => {
-                                    e.target.src = '/placeholder-product.png';
-                                  }}
-                                />
-                              ) : (
-                                <div className="h-full w-full flex items-center justify-center">
-                                  <PhotoIcon className="h-8 w-8 text-gray-400" />
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          
-                          <div className="flex-1">
-                            <input
-                              type="text"
-                              value={image}
-                              onChange={(e) => updateImage(index, e.target.value)}
-                              placeholder="Image URL"
-                              className="block w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
-                            />
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => removeImage(index)}
-                            className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
-                          >
-                            <TrashIcon className="h-5 w-5" />
-                          </button>
-                        </div>
-                      ))}
-                      <button
-                        type="button"
-                        onClick={addImage}
-                        className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                      >
-                        <PlusIcon className="h-4 w-4 mr-2" />
-                        Add Image URL
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Colors & Sizes Management */}
-                <div className="bg-gray-50 p-6 rounded-xl">
-                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <CubeIcon className="h-5 w-5 text-orange-600" />
-                    Colors & Sizes Management
-                  </h4>
-                  
-                  {/* Colors */}
-                  <div className="mb-6">
-                    <div className="flex items-center justify-between mb-3">
-                      <label className="block text-sm font-medium text-gray-700">Product Colors</label>
-                      <button
-                        type="button"
-                        onClick={addColor}
-                        className="inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                      >
-                        <PlusIcon className="h-4 w-4 mr-1" />
-                        Add Color
-                      </button>
-                    </div>
-                    <div className="space-y-3">
-                      {formData.colors.map((color, index) => (
-                        <div key={index} className="flex items-center gap-3">
-                          <div className="flex-1">
-                            <input
-                              type="text"
-                              value={color.name}
-                              onChange={(e) => updateColor(index, 'name', e.target.value)}
-                              placeholder="Color name (e.g., Red, Blue)"
-                              className="block w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
-                            />
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="color"
-                              value={color.hex}
-                              onChange={(e) => updateColor(index, 'hex', e.target.value)}
-                              className="h-10 w-16 border border-gray-300 rounded-lg cursor-pointer"
-                            />
-                            <label className="flex items-center">
-                              <input
-                                type="checkbox"
-                                checked={color.available}
-                                onChange={(e) => updateColor(index, 'available', e.target.checked)}
-                                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                              />
-                              <span className="ml-2 text-sm text-gray-700">Available</span>
-                            </label>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => removeColor(index)}
-                            className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
-                          >
-                            <TrashIcon className="h-4 w-4" />
-                          </button>
-                        </div>
-                      ))}
-                      {formData.colors.length === 0 && (
-                        <p className="text-sm text-gray-500 text-center py-4">No colors added yet</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Sizes */}
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <label className="block text-sm font-medium text-gray-700">Product Sizes</label>
-                      <button
-                        type="button"
-                        onClick={addSize}
-                        className="inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                      >
-                        <PlusIcon className="h-4 w-4 mr-1" />
-                        Add Size
-                      </button>
-                    </div>
-                    <div className="space-y-3">
-                      {formData.sizes.map((size, index) => (
-                        <div key={index} className="flex items-center gap-3">
-                          <div className="flex-1">
-                            <input
-                              type="text"
-                              value={size.name}
-                              onChange={(e) => updateSize(index, 'name', e.target.value)}
-                              placeholder="Size name (e.g., S, M, L, XL)"
-                              className="block w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
-                            />
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="number"
-                              min="0"
-                              value={size.stock}
-                              onChange={(e) => updateSize(index, 'stock', parseInt(e.target.value) || 0)}
-                              placeholder="Stock"
-                              className="block w-20 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
-                            />
-                            <label className="flex items-center">
-                              <input
-                                type="checkbox"
-                                checked={size.available}
-                                onChange={(e) => updateSize(index, 'available', e.target.checked)}
-                                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                              />
-                              <span className="ml-2 text-sm text-gray-700">Available</span>
-                            </label>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => removeSize(index)}
-                            className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
-                          >
-                            <TrashIcon className="h-4 w-4" />
-                          </button>
-                        </div>
-                      ))}
-                      {formData.sizes.length === 0 && (
-                        <p className="text-sm text-gray-500 text-center py-4">No sizes added yet</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Tags Management */}
-                <div className="bg-gray-50 p-6 rounded-xl">
-                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <TagIcon className="h-5 w-5 text-green-600" />
-                    Tags Management
-                  </h4>
-                  <div className="space-y-3">
-                    {formData.tags.map((tag, index) => (
-                      <div key={index} className="flex items-center gap-3">
-                        <div className="flex-1">
-                          <input
-                            type="text"
-                            value={tag}
-                            onChange={(e) => updateTag(index, e.target.value)}
-                            placeholder="Tag (e.g., summer, casual, formal)"
-                            className="block w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeTag(index)}
-                          className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
-                        >
-                          <TrashIcon className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={addTag}
-                      className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    >
-                      <PlusIcon className="h-4 w-4 mr-2" />
-                      Add Tag
-                    </button>
-                  </div>
-                </div>
-
-                {/* SEO & Settings */}
-                <div className="bg-gray-50 p-6 rounded-xl">
-                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <TagIcon className="h-5 w-5 text-blue-600" />
-                    SEO & Settings
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Meta Title</label>
-                      <input
-                        type="text"
-                        value={formData.metaTitle}
-                        onChange={(e) => setFormData({...formData, metaTitle: e.target.value})}
-                        className="block w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
-                        placeholder="SEO meta title"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">SEO URL</label>
-                      <input
-                        type="text"
-                        value={formData.seoUrl}
-                        onChange={(e) => setFormData({...formData, seoUrl: e.target.value})}
-                        className="block w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
-                        placeholder="product-url-slug"
-                      />
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Meta Description</label>
-                      <textarea
-                        rows={3}
-                        value={formData.metaDescription}
-                        onChange={(e) => setFormData({...formData, metaDescription: e.target.value})}
-                        className="block w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
-                        placeholder="SEO meta description"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Product Status */}
-                <div className="bg-gray-50 p-6 rounded-xl">
-                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <CogIcon className="h-5 w-5 text-gray-600" />
-                    Product Status
-                  </h4>
-                  <div className="flex flex-wrap gap-6">
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={formData.isActive}
-                        onChange={(e) => setFormData({...formData, isActive: e.target.checked})}
-                        className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                      />
-                      <label className="ml-3 block text-sm font-medium text-gray-900">Active</label>
-                    </div>
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={formData.isFeatured}
-                        onChange={(e) => setFormData({...formData, isFeatured: e.target.checked})}
-                        className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                      />
-                      <label className="ml-3 block text-sm font-medium text-gray-900">Featured</label>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Form Actions */}
-                <div className="flex justify-end gap-4 pt-6 border-t border-gray-200">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowModal(false);
-                      setEditingProduct(null);
-                      resetForm();
-                    }}
-                    className="px-6 py-3 border border-gray-300 rounded-xl shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-8 py-3 border border-transparent rounded-xl shadow-lg text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transform hover:scale-105 transition-all duration-200"
-                  >
-                    {editingProduct ? 'Update Product' : 'Create Product'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+      )}
+      
+    </motion.div>
   );
 };
 

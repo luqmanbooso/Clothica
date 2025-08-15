@@ -14,6 +14,9 @@ const adminRoutes = require('./routes/admin');
 const loyaltyRoutes = require('./routes/loyalty');
 const affiliateRoutes = require('./routes/affiliate');
 const specialOffersRoutes = require('./routes/specialOffers');
+const eventsRoutes = require('./routes/events');
+const unifiedDiscountsRoutes = require('./routes/unifiedDiscounts');
+const smartInventoryRoutes = require('./routes/smartInventory');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -37,6 +40,9 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/loyalty', loyaltyRoutes);
 app.use('/api/affiliate', affiliateRoutes);
 app.use('/api/special-offers', specialOffersRoutes);
+app.use('/api/events', eventsRoutes);
+app.use('/api/unified-discounts', unifiedDiscountsRoutes);
+app.use('/api/smart-inventory', smartInventoryRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

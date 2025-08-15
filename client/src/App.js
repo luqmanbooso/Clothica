@@ -38,11 +38,10 @@ import Products from './pages/Admin/Products';
 import OrdersAdmin from './pages/Admin/Orders';
 import Users from './pages/Admin/Users';
 import Categories from './pages/Admin/Categories';
-import Coupons from './pages/Admin/Coupons';
-import Banners from './pages/Admin/Banners';
 import MonetizationDashboard from './pages/Admin/MonetizationDashboard';
 import Analytics from './pages/Admin/Analytics';
 import Settings from './pages/Admin/Settings';
+import Events from './pages/Admin/Events';
 
 // Protected Route Component
 import ProtectedRoute from './components/Auth/ProtectedRoute';
@@ -238,22 +237,6 @@ function App() {
                     </AdminRoute>
                   } />
                   
-                  <Route path="/admin/coupons" element={
-                    <AdminRoute>
-                      <AdminLayout>
-                        <Coupons />
-                      </AdminLayout>
-                    </AdminRoute>
-                  } />
-                  
-                  <Route path="/admin/banners" element={
-                    <AdminRoute>
-                      <AdminLayout>
-                        <Banners />
-                      </AdminLayout>
-                    </AdminRoute>
-                  } />
-                  
                   <Route path="/admin/monetization" element={
                     <AdminRoute>
                       <AdminLayout>
@@ -277,6 +260,14 @@ function App() {
                       </AdminLayout>
                     </AdminRoute>
                   } />
+                  
+                              <Route path="/admin/events" element={
+              <AdminRoute>
+                <AdminLayout>
+                  <Events />
+                </AdminLayout>
+              </AdminRoute>
+            } />
                 </Routes>
                                 </div>
                 </CouponProvider>

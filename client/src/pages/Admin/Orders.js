@@ -24,7 +24,27 @@ const Orders = () => {
   const [sortBy, setSortBy] = useState('date');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [generatingInvoice, setGeneratingInvoice] = useState(false);
   const { success: showSuccess, error: showError } = useToast();
+
+  // Order Details & Management
+  const [orderDetails, setOrderDetails] = useState(null);
+  const [showOrderDetailsModal, setShowOrderDetailsModal] = useState(false);
+  const [showFulfillmentModal, setShowFulfillmentModal] = useState(false);
+  const [fulfillmentData, setFulfillmentData] = useState({
+    trackingNumber: '',
+    carrier: '',
+    estimatedDelivery: '',
+    notes: ''
+  });
+  const [selectedOrderForFulfillment, setSelectedOrderForFulfillment] = useState(null);
+
+  // Enhanced Filters
+  const [dateRange, setDateRange] = useState({ start: '', end: '' });
+  const [priceRange, setPriceRange] = useState({ min: '', max: '' });
+  const [customerFilter, setCustomerFilter] = useState('');
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState('all');
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -40,26 +60,109 @@ const Orders = () => {
     }
   }, [showError]);
 
+  const generateInvoice = async (orderId) => {
+    try {
+      setGeneratingInvoice(true);
+      const response = await axios.get(`/api/admin/orders/${orderId}/invoice`, {
+        responseType: 'blob'
+      });
+      
+      // Create blob and download
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `invoice-${orderId}.pdf`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+      
+      showSuccess('Invoice generated successfully');
+    } catch (error) {
+      console.error('Error generating invoice:', error);
+      showError('Failed to generate invoice');
+    } finally {
+      setGeneratingInvoice(false);
+    }
+  };
+
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
 
-  const updateOrderStatus = async (orderId, newStatus) => {
+  // Enhanced order status update with workflow
+  const updateOrderStatus = async (orderId, newStatus, notes = '') => {
     try {
-      await axios.put(`/api/admin/orders/${orderId}/status`, {
-        status: newStatus
+      const response = await axios.put(`/api/admin/orders/${orderId}/status`, {
+        status: newStatus,
+        notes: notes,
+        updatedAt: new Date().toISOString()
       });
+      
       showSuccess('Order status updated successfully');
       
       // Update local state
       setOrders(prev => prev.map(order => 
         order._id === orderId 
-          ? { ...order, status: newStatus }
+          ? { ...order, status: newStatus, lastUpdated: new Date().toISOString() }
           : order
       ));
+      
+      // If order is being shipped, show fulfillment modal
+      if (newStatus === 'shipped' && !fulfillmentData.trackingNumber) {
+        setSelectedOrderForFulfillment(orders.find(o => o._id === orderId));
+        setShowFulfillmentModal(true);
+      }
     } catch (error) {
       console.error('Error updating order status:', error);
       showError('Failed to update order status');
+    }
+  };
+
+  // Handle order fulfillment
+  const handleFulfillment = async () => {
+    if (!selectedOrderForFulfillment || !fulfillmentData.trackingNumber || !fulfillmentData.carrier) {
+      showError('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      await axios.post(`/api/admin/orders/${selectedOrderForFulfillment._id}/fulfill`, {
+        trackingNumber: fulfillmentData.trackingNumber,
+        carrier: fulfillmentData.carrier,
+        estimatedDelivery: fulfillmentData.estimatedDelivery,
+        notes: fulfillmentData.notes,
+        fulfilledAt: new Date().toISOString()
+      });
+      
+      showSuccess('Order fulfilled successfully');
+      
+      // Update order status to shipped
+      await updateOrderStatus(selectedOrderForFulfillment._id, 'shipped', 'Order fulfilled and shipped');
+      
+      // Reset form
+      setFulfillmentData({
+        trackingNumber: '',
+        carrier: '',
+        estimatedDelivery: '',
+        notes: ''
+      });
+      setShowFulfillmentModal(false);
+      setSelectedOrderForFulfillment(null);
+    } catch (error) {
+      console.error('Error fulfilling order:', error);
+      showError('Failed to fulfill order');
+    }
+  };
+
+  // Get order details
+  const fetchOrderDetails = async (orderId) => {
+    try {
+      const response = await axios.get(`/api/admin/orders/${orderId}`);
+      setOrderDetails(response.data);
+      setShowOrderDetailsModal(true);
+    } catch (error) {
+      console.error('Error fetching order details:', error);
+      showError('Failed to load order details');
     }
   };
 
@@ -70,24 +173,29 @@ const Orders = () => {
     { value: 'status', label: 'Status' }
   ];
 
-  const filteredOrders = orders
-    .filter(order => 
-      (order.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-       order.customer?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-       order._id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-       order.id?.toLowerCase().includes(searchTerm.toLowerCase())) &&
-      (selectedStatus === 'all' || order.status === selectedStatus)
-    )
-    .sort((a, b) => {
-      switch (sortBy) {
-        case 'total':
-          return b.total - a.total;
-        case 'status':
-          return a.status.localeCompare(b.status);
-        default:
-          return new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date);
-      }
-    });
+  // Enhanced order filtering
+  const filteredOrders = orders.filter(order => {
+    const matchesSearch = !searchTerm || 
+      (order.user?.name || order.customer || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (order.user?.email || order.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (order.orderNumber || order._id || '').toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = selectedStatus === 'all' || order.status === selectedStatus;
+    
+    const matchesDateRange = (!dateRange.start || new Date(order.createdAt || order.date) >= new Date(dateRange.start)) &&
+                            (!dateRange.end || new Date(order.createdAt || order.date) <= new Date(dateRange.end));
+    
+    const matchesPriceRange = (!priceRange.min || (order.total || 0) >= parseFloat(priceRange.min)) &&
+                             (!priceRange.max || (order.total || 0) <= parseFloat(priceRange.max));
+    
+    const matchesCustomer = !customerFilter || 
+      (order.user?.name || order.customer || '').toLowerCase().includes(customerFilter.toLowerCase());
+    
+    const matchesPaymentMethod = paymentMethodFilter === 'all' || order.paymentMethod === paymentMethodFilter;
+    
+    return matchesSearch && matchesStatus && matchesDateRange && matchesPriceRange && 
+           matchesCustomer && matchesPaymentMethod;
+  });
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -174,17 +282,17 @@ const Orders = () => {
         className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6"
         variants={itemVariants}
       >
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           {/* Search */}
-            <div className="relative">
+          <div className="relative">
             <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-              <input
-                type="text"
+            <input
+              type="text"
               placeholder="Search orders..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6C7A59] focus:border-[#6C7A59] transition-all duration-200"
-              />
+            />
           </div>
 
           {/* Status Filter */}
@@ -192,7 +300,7 @@ const Orders = () => {
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6C7A59] focus:border-[#6C7A59] transition-all duration-200"
+              className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent transition-all duration-200"
             >
               {statuses.map(status => (
                 <option key={status} value={status}>
@@ -204,24 +312,83 @@ const Orders = () => {
 
           {/* Sort */}
           <div>
-                      <select
+            <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6C7A59] focus:border-[#6C7A59] transition-all duration-200"
+              className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent transition-all duration-200"
             >
               {sortOptions.map(option => (
                 <option key={option.value} value={option.value}>
                   Sort by {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                </option>
+              ))}
+            </select>
+          </div>
 
           {/* Results Count */}
           <div className="flex items-center justify-center md:justify-end">
             <span className="text-sm text-gray-600">
               {filteredOrders.length} orders found
             </span>
+          </div>
+        </div>
+
+        {/* Advanced Filters */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          {/* Date Range */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Start Date</label>
+            <input
+              type="date"
+              value={dateRange.start}
+              onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent text-sm"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">End Date</label>
+            <input
+              type="date"
+              value={dateRange.end}
+              onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent text-sm"
+            />
+          </div>
+
+          {/* Price Range */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Min Price</label>
+            <input
+              type="number"
+              placeholder="Min"
+              value={priceRange.min}
+              onChange={(e) => setPriceRange(prev => ({ ...prev, min: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent text-sm"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Max Price</label>
+            <input
+              type="number"
+              placeholder="Max"
+              value={priceRange.max}
+              onChange={(e) => setPriceRange(prev => ({ ...prev, max: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent text-sm"
+            />
+          </div>
+
+          {/* Customer Filter */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Customer</label>
+            <input
+              type="text"
+              placeholder="Customer name"
+              value={customerFilter}
+              onChange={(e) => setCustomerFilter(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent text-sm"
+            />
           </div>
         </div>
       </motion.div>
@@ -432,122 +599,476 @@ const Orders = () => {
       {/* Order Details Modal */}
       <AnimatePresence>
         {showOrderModal && selectedOrder && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+          >
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-white rounded-2xl p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
             >
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-display font-bold text-[#1E1E1E]">
-                  Order Details - #{selectedOrder._id?.slice(-8) || selectedOrder.id}
-                </h3>
-                <button
-                  onClick={() => setShowOrderModal(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <XMarkIcon className="h-6 w-6" />
-                </button>
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-gray-900">Order Details</h2>
+                  <button
+                    onClick={() => setShowOrderModal(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <XMarkIcon className="h-6 w-6" />
+                  </button>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Customer Information */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="font-semibold text-gray-900 mb-3">Customer Information</h4>
-                  <div className="space-y-2 text-sm">
-                    <p><span className="font-medium">Name:</span> {selectedOrder.user?.name || selectedOrder.customer || 'Unknown'}</p>
-                    <p><span className="font-medium">Email:</span> {selectedOrder.user?.email || selectedOrder.email || 'No email'}</p>
-                    <p><span className="font-medium">Phone:</span> {selectedOrder.user?.phone || 'No phone'}</p>
-                    <p><span className="font-medium">Order Date:</span> {new Date(selectedOrder.createdAt || selectedOrder.date).toLocaleDateString()}</p>
+              <div className="p-6 space-y-6">
+                {/* Order Header */}
+                <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-xl border border-blue-200">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Order Information</h3>
+                      <p className="text-sm text-gray-600">Order ID: #{selectedOrder.orderNumber || `ORD-${selectedOrder._id?.slice(-6) || '000000'}`}</p>
+                      <p className="text-sm text-gray-600">Date: {new Date(selectedOrder.createdAt || selectedOrder.date).toLocaleDateString()}</p>
+                      <p className="text-sm text-gray-600">Status: <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedOrder.status)}`}>
+                        {selectedOrder.status?.charAt(0).toUpperCase() + selectedOrder.status?.slice(1) || 'Unknown'}
+                      </span></p>
+                    </div>
+                    
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Customer Information</h3>
+                      <p className="text-sm text-gray-600">Name: {selectedOrder.user?.name || selectedOrder.customer || 'Unknown'}</p>
+                      <p className="text-sm text-gray-600">Email: {selectedOrder.user?.email || selectedOrder.email || 'No email'}</p>
+                      <p className="text-sm text-gray-600">Phone: {selectedOrder.user?.phone || selectedOrder.phone || 'No phone'}</p>
+                    </div>
+                    
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Payment Information</h3>
+                      <p className="text-sm text-gray-600">Method: {selectedOrder.paymentMethod || 'Not specified'}</p>
+                      <p className="text-sm text-gray-600">Total: <span className="font-bold text-lg text-[#6C7A59]">Rs. {(selectedOrder.total || 0).toLocaleString()}</span></p>
+                      <p className="text-sm text-gray-600">Items: {selectedOrder.items?.length || 0}</p>
+                    </div>
                   </div>
                 </div>
 
-                {/* Order Summary */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="font-semibold text-gray-900 mb-3">Order Summary</h4>
-                  <div className="space-y-2 text-sm">
-                    <p><span className="font-medium">Status:</span> 
-                      <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedOrder.status)}`}>
-                        {selectedOrder.status?.charAt(0).toUpperCase() + selectedOrder.status?.slice(1) || 'Unknown'}
-                      </span>
-                    </p>
-                    <p><span className="font-medium">Payment Method:</span> {selectedOrder.paymentMethod || 'Not specified'}</p>
-                    <p><span className="font-medium">Total Items:</span> {selectedOrder.items?.length || 0}</p>
-                    <p><span className="font-medium">Total Amount:</span> Rs. {(selectedOrder.total || 0).toLocaleString()}</p>
+                {/* Order Items */}
+                <div className="bg-gray-50 p-6 rounded-xl">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Order Items</h3>
+                  <div className="space-y-4">
+                    {selectedOrder.items?.map((item, index) => (
+                      <div key={index} className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
+                            {item.product?.images?.[0] ? (
+                              <img 
+                                src={item.product.images[0]} 
+                                alt={item.product?.name || item.name} 
+                                className="w-full h-full object-cover rounded-lg"
+                              />
+                            ) : (
+                              <ShoppingBagIcon className="h-8 w-8 text-gray-400" />
+                            )}
+                          </div>
+                          <div>
+                            <h4 className="font-medium text-gray-900">{item.product?.name || item.name || 'Product'}</h4>
+                            <p className="text-sm text-gray-600">SKU: {item.product?.sku || item.sku || 'N/A'}</p>
+                            <p className="text-sm text-gray-600">Quantity: {item.quantity || 1}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-medium text-gray-900">Rs. {(item.price || 0).toFixed(2)}</p>
+                          <p className="text-sm text-gray-600">Total: Rs. {((item.price || 0) * (item.quantity || 1)).toFixed(2)}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Shipping Information */}
+                {selectedOrder.shippingAddress && (
+                  <div className="bg-gray-50 p-6 rounded-xl">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Shipping Address</h3>
+                    <div className="bg-white p-4 rounded-lg border border-gray-200">
+                      <p className="text-sm text-gray-600">{selectedOrder.shippingAddress.street}</p>
+                      <p className="text-sm text-gray-600">{selectedOrder.shippingAddress.city}, {selectedOrder.shippingAddress.state}</p>
+                      <p className="text-sm text-gray-600">{selectedOrder.shippingAddress.postalCode}</p>
+                      <p className="text-sm text-gray-600">{selectedOrder.shippingAddress.country}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex items-center justify-between pt-6 border-t border-gray-200">
+                  <div className="flex items-center space-x-3">
+                    <button
+                      onClick={() => generateInvoice(selectedOrder._id || selectedOrder.id)}
+                      disabled={generatingInvoice}
+                      className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {generatingInvoice ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <CurrencyDollarIcon className="h-4 w-4 mr-2" />
+                          Generate Invoice
+                        </>
+                      )}
+                    </button>
+                    
+                    <button
+                      onClick={() => setShowOrderModal(false)}
+                      className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      Close
+                    </button>
+                  </div>
+                  
+                  {/* Status Update */}
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-gray-600">Update Status:</span>
+                    <select
+                      value={selectedOrder.status}
+                      onChange={(e) => {
+                        updateOrderStatus(selectedOrder._id || selectedOrder.id, e.target.value);
+                        setSelectedOrder({ ...selectedOrder, status: e.target.value });
+                      }}
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="processing">Processing</option>
+                      <option value="shipped">Shipped</option>
+                      <option value="completed">Completed</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Order Details Modal */}
+      {showOrderDetailsModal && orderDetails && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Order Details - #{orderDetails.orderNumber || orderDetails._id}
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowOrderDetailsModal(false);
+                    setOrderDetails(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Order Summary */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Order Summary</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium text-gray-700">Order Date:</span>
+                    <p className="text-gray-900">{new Date(orderDetails.createdAt).toLocaleDateString()}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Status:</span>
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(orderDetails.status)}`}>
+                      {orderDetails.status?.charAt(0).toUpperCase() + orderDetails.status?.slice(1)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Total:</span>
+                    <p className="text-lg font-bold text-green-600">Rs. {(orderDetails.total || 0).toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Payment Method:</span>
+                    <p className="text-gray-900">{orderDetails.paymentMethod || 'Not specified'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Customer Information */}
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Customer Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <span className="font-medium text-gray-700">Name:</span>
+                    <p className="text-gray-900">{orderDetails.user?.name || orderDetails.customer || 'Unknown'}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Email:</span>
+                    <p className="text-gray-900">{orderDetails.user?.email || orderDetails.email || 'No email'}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Phone:</span>
+                    <p className="text-gray-900">{orderDetails.user?.phone || 'No phone'}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Customer ID:</span>
+                    <p className="text-gray-900">{orderDetails.user?._id || 'N/A'}</p>
                   </div>
                 </div>
               </div>
 
               {/* Order Items */}
-              <div className="mt-6">
-                <h4 className="font-semibold text-gray-900 mb-3">Order Items</h4>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  {selectedOrder.items?.map((item, index) => (
-                    <div key={index} className="flex items-center justify-between py-2 border-b border-gray-200 last:border-b-0">
+              <div className="bg-gradient-to-r from-yellow-50 to-orange-50 p-4 rounded-xl">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Order Items</h3>
+                <div className="space-y-3">
+                  {orderDetails.items?.map((item, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-white rounded-lg border">
                       <div className="flex items-center space-x-3">
                         <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
-                          {item.image ? (
-                            <img src={item.image} alt={item.name} className="w-full h-full object-cover rounded-lg" />
+                          {item.product?.images?.[0] ? (
+                            <img 
+                              src={item.product.images[0]} 
+                              alt={item.product?.name || item.name} 
+                              className="w-full h-full object-cover rounded-lg"
+                            />
                           ) : (
                             <ShoppingBagIcon className="h-6 w-6 text-gray-400" />
                           )}
                         </div>
                         <div>
-                          <p className="font-medium text-gray-900">{item.name || 'Product Name'}</p>
-                          <p className="text-sm text-gray-600">SKU: {item.sku || 'N/A'}</p>
+                          <h4 className="font-medium text-gray-900">{item.product?.name || item.name || 'Product'}</h4>
+                          <p className="text-sm text-gray-600">SKU: {item.product?.sku || item.sku || 'N/A'}</p>
+                          <p className="text-sm text-gray-600">Quantity: {item.quantity || 1}</p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="font-medium text-gray-900">Rs. {(item.price || 0).toLocaleString()}</p>
-                        <p className="text-sm text-gray-600">Qty: {item.quantity || 1}</p>
+                        <p className="font-medium text-gray-900">Rs. {(item.price || 0).toFixed(2)}</p>
+                        <p className="text-sm text-gray-600">Total: Rs. {((item.price || 0) * (item.quantity || 1)).toFixed(2)}</p>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Shipping Address */}
-              {selectedOrder.shippingAddress && (
-                <div className="mt-6">
-                  <h4 className="font-semibold text-gray-900 mb-3">Shipping Address</h4>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-sm text-gray-700">
-                      {selectedOrder.shippingAddress.firstName} {selectedOrder.shippingAddress.lastName}<br />
-                      {selectedOrder.shippingAddress.address || 'No address'}<br />
-                      {selectedOrder.shippingAddress.city || 'No city'}, {selectedOrder.shippingAddress.province || selectedOrder.shippingAddress.state || 'No province'} {selectedOrder.shippingAddress.postalCode || selectedOrder.shippingAddress.zipCode || 'No postal code'}<br />
-                      {selectedOrder.shippingAddress.country || 'Sri Lanka'}
-                    </p>
-                    <div className="mt-2 text-xs text-gray-500">
-                      <p>Email: {selectedOrder.shippingAddress.email || 'No email'}</p>
-                      <p>Phone: {selectedOrder.shippingAddress.phone || 'No phone'}</p>
+              {/* Shipping & Billing */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {orderDetails.shippingAddress && (
+                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-xl">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Shipping Address</h3>
+                    <div className="bg-white p-3 rounded-lg border">
+                      <p className="text-sm text-gray-600">{orderDetails.shippingAddress.street}</p>
+                      <p className="text-sm text-gray-600">{orderDetails.shippingAddress.city}, {orderDetails.shippingAddress.state}</p>
+                      <p className="text-sm text-gray-600">{orderDetails.shippingAddress.postalCode}</p>
+                      <p className="text-sm text-gray-600">{orderDetails.shippingAddress.country}</p>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+                
+                {orderDetails.billingAddress && (
+                  <div className="bg-gradient-to-r from-indigo-50 to-blue-50 p-4 rounded-xl">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Billing Address</h3>
+                    <div className="bg-white p-3 rounded-lg border">
+                      <p className="text-sm text-gray-600">{orderDetails.billingAddress.street}</p>
+                      <p className="text-sm text-gray-600">{orderDetails.billingAddress.city}, {orderDetails.billingAddress.state}</p>
+                      <p className="text-sm text-gray-600">{orderDetails.billingAddress.postalCode}</p>
+                      <p className="text-sm text-gray-600">{orderDetails.billingAddress.country}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Actions */}
-              <div className="mt-6 flex justify-end space-x-3">
-                                 <button
-                   onClick={() => {
-                     // View invoice functionality for admin
-                     window.open(`/api/orders/${selectedOrder._id || selectedOrder.id}/invoice`, '_blank');
-                   }}
-                   className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                 >
-                   View Invoice
-                 </button>
+              <div className="flex items-center justify-between pt-6 border-t border-gray-200">
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={() => generateInvoice(orderDetails._id)}
+                    disabled={generatingInvoice}
+                    className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {generatingInvoice ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <CurrencyDollarIcon className="h-4 w-4 mr-2" />
+                        Generate Invoice
+                      </>
+                    )}
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      setShowOrderDetailsModal(false);
+                      setOrderDetails(null);
+                    }}
+                    className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+                
+                {/* Status Update */}
+                <div className="flex items-center justify-between pt-6 border-t border-gray-200">
+                  <span className="text-sm text-gray-600">Update Status:</span>
+                  <select
+                    value={orderDetails.status}
+                    onChange={(e) => {
+                      updateOrderStatus(orderDetails._id, e.target.value);
+                      setOrderDetails({ ...orderDetails, status: e.target.value });
+                    }}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="processing">Processing</option>
+                    <option value="shipped">Shipped</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fulfillment Modal */}
+      {showFulfillmentModal && selectedOrderForFulfillment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Order Fulfillment - #{selectedOrderForFulfillment.orderNumber || selectedOrderForFulfillment._id}
+                </h2>
                 <button
-                  onClick={() => setShowOrderModal(false)}
-                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                  onClick={() => {
+                    setShowFulfillmentModal(false);
+                    setSelectedOrderForFulfillment(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600 text-2xl"
                 >
-                  Close
+                  ×
                 </button>
               </div>
-            </motion.div>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Order Info */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Order Information</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium text-gray-700">Customer:</span>
+                    <p className="text-gray-900">{selectedOrderForFulfillment.user?.name || selectedOrderForFulfillment.customer}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Total:</span>
+                    <p className="text-gray-900">Rs. {(selectedOrderForFulfillment.total || 0).toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Items:</span>
+                    <p className="text-gray-900">{selectedOrderForFulfillment.items?.length || 0}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Order Date:</span>
+                    <p className="text-gray-900">{new Date(selectedOrderForFulfillment.createdAt).toLocaleDateString()}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Fulfillment Form */}
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Fulfillment Details</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Tracking Number <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={fulfillmentData.trackingNumber}
+                      onChange={(e) => setFulfillmentData(prev => ({ ...prev, trackingNumber: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                      placeholder="Enter tracking number"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Shipping Carrier <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={fulfillmentData.carrier}
+                      onChange={(e) => setFulfillmentData(prev => ({ ...prev, carrier: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                    >
+                      <option value="">Select Carrier</option>
+                      <option value="FedEx">FedEx</option>
+                      <option value="UPS">UPS</option>
+                      <option value="USPS">USPS</option>
+                      <option value="DHL">DHL</option>
+                      <option value="Local Delivery">Local Delivery</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Estimated Delivery Date
+                  </label>
+                  <input
+                    type="date"
+                    value={fulfillmentData.estimatedDelivery}
+                    onChange={(e) => setFulfillmentData(prev => ({ ...prev, estimatedDelivery: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                  />
+                </div>
+                
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Notes
+                  </label>
+                  <textarea
+                    value={fulfillmentData.notes}
+                    onChange={(e) => setFulfillmentData(prev => ({ ...prev, notes: e.target.value }))}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                    placeholder="Additional notes about this fulfillment..."
+                  />
+                </div>
+              </div>
+
+              {/* Modal Actions */}
+              <div className="flex items-center justify-end gap-4 border-t border-gray-200 pt-6">
+                <button
+                  onClick={() => {
+                    setShowFulfillmentModal(false);
+                    setSelectedOrderForFulfillment(null);
+                  }}
+                  className="px-6 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                
+                <button
+                  onClick={handleFulfillment}
+                  className="px-8 py-3 text-sm font-medium text-white bg-[#6C7A59] rounded-lg hover:bg-[#5A6A4A] transition-colors shadow-md"
+                >
+                  Fulfill Order
+                </button>
+              </div>
+            </div>
           </div>
-        )}
-      </AnimatePresence>
+        </div>
+      )}
     </motion.div>
   );
 };

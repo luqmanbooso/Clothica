@@ -27,7 +27,7 @@ const AdminSettings = () => {
 
   useEffect(() => {
     fetchSettings();
-  }, [fetchSettings]);
+  }, [showError]);
 
   const fetchSettings = useCallback(async () => {
     try {

@@ -8,136 +8,204 @@ const bannerSchema = new mongoose.Schema({
   },
   title: {
     type: String,
-    required: true
+    required: true,
+    trim: true
   },
-  subtitle: String,
-  description: String,
-  
-  // Visual Design
+  description: {
+    type: String,
+    trim: true
+  },
   image: {
     type: String,
     required: true
   },
-  mobileImage: String, // Optimized for mobile
-  altText: String,
   
-  // Creative Display
-  displayColor: {
+  // Display Configuration
+  displayMode: {
     type: String,
-    default: '#6C7A59'
+    enum: ['slideshow', 'ads', 'hero', 'sidebar', 'popup'],
+    default: 'slideshow'
   },
-  displayGradient: {
-    type: String,
-    default: 'linear-gradient(135deg, #6C7A59 0%, #8FBC8F 100%)'
-  },
-  displayIcon: {
-    type: String,
-    default: '🎉'
-  },
-  displayBadge: String,
-  displayMessage: String,
   
-  // Content & Messaging
-  ctaText: {
-    type: String,
-    default: 'Shop Now'
+  // Context & Targeting
+  context: {
+    location: {
+      type: String,
+      enum: ['homepage', 'shop', 'product', 'cart', 'checkout', 'all'],
+      default: 'all'
+    },
+    userType: {
+      type: String,
+      enum: ['all', 'guest', 'user', 'returning', 'vip', 'loyal'],
+      default: 'all'
+    },
+    timeOfDay: {
+      enabled: {
+        type: Boolean,
+        default: false
+      },
+      startHour: {
+        type: Number,
+        min: 0,
+        max: 23,
+        default: 9
+      },
+      endHour: {
+        type: Number,
+        min: 0,
+        max: 23,
+        default: 21
+      }
+    },
+    userBehavior: {
+      enabled: {
+        type: Boolean,
+        default: false
+      },
+      triggers: [{
+        type: String,
+        enum: ['browsing', 'cart_abandonment', 'return_visitor', 'high_value_customer', 'search_query']
+      }]
+    }
   },
-  ctaColor: {
-    type: String,
-    default: '#FFFFFF'
+
+  // Event Integration
+  eventId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Event'
   },
-  urgencyMessage: String,
-  countdownText: String,
-  
-  // Positioning & Layout
-  position: {
-    type: String,
-    enum: ['hero', 'top', 'middle', 'bottom', 'sidebar'],
-    default: 'hero'
-  },
-  priority: {
+  eventPriority: {
     type: Number,
-    default: 1,
-    min: 1,
-    max: 10
+    default: 1
   },
-  order: {
-    type: Number,
-    default: 0
-  },
-  
-  // Targeting & Display Rules - Fixed parallel arrays issue
-  targetAudience: {
-    type: String,
-    enum: ['all', 'new', 'returning', 'bronze', 'silver', 'gold', 'vip', 'guest'],
-    default: 'all'
-  },
-  showOnPages: {
-    type: String,
-    enum: ['home', 'shop', 'product', 'category', 'cart', 'checkout', 'all'],
-    default: 'all'
-  },
-  hideOnPages: [String],
-  
-  // Timing & Scheduling
-  startDate: {
-    type: Date,
-    default: Date.now
-  },
-  endDate: {
-    type: Date,
-    default: null
-  },
-  isRecurring: {
-    type: Boolean,
-    default: false
-  },
-  recurringPattern: {
-    type: String,
-    enum: ['daily', 'weekly', 'monthly', 'yearly']
-  },
-  
-  // Action & Navigation
+
+  // Action & Conversion
   actionType: {
     type: String,
-    enum: ['link', 'product', 'category', 'coupon', 'modal', 'scroll'],
+    enum: ['link', 'coupon', 'product', 'category', 'popup'],
     default: 'link'
   },
   actionUrl: String,
+  actionCoupon: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Coupon'
+  },
   actionProduct: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Product'
   },
   actionCategory: String,
-  actionCoupon: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Coupon'
-  },
   
-  // Performance & Analytics
-  clicks: {
-    type: Number,
-    default: 0
+  // Display Rules
+  displayRules: {
+    frequency: {
+      type: String,
+      enum: ['always', 'once_per_session', 'once_per_day', 'custom'],
+      default: 'always'
+    },
+    maxDisplays: {
+      type: Number,
+      default: 0 // 0 = unlimited
+    },
+    startDate: {
+      type: Date,
+      default: Date.now
+    },
+    endDate: {
+      type: Date
+    },
+    priority: {
+      type: Number,
+      default: 1,
+      min: 1,
+      max: 10
+    }
   },
-  impressions: {
-    type: Number,
-    default: 0
-  },
-  conversionRate: {
-    type: Number,
-    default: 0
-  },
-  
-  // Status & Management
+
+  // Status & Control
   isActive: {
     type: Boolean,
     default: true
   },
   status: {
     type: String,
-    enum: ['draft', 'active', 'paused', 'archived'],
+    enum: ['draft', 'active', 'paused', 'scheduled', 'archived'],
     default: 'draft'
   },
+  
+  // Analytics & Performance
+  analytics: {
+    views: {
+      type: Number,
+      default: 0
+    },
+    clicks: {
+      type: Number,
+      default: 0
+    },
+    conversions: {
+      type: Number,
+      default: 0
+    },
+    ctr: {
+      type: Number,
+      default: 0
+    },
+    revenue: {
+      type: Number,
+      default: 0
+    },
+    lastDisplayed: Date,
+    displayHistory: [{
+      date: Date,
+      views: Number,
+      clicks: Number,
+      conversions: Number,
+      revenue: Number
+    }]
+  },
+
+  // A/B Testing
+  abTesting: {
+    enabled: {
+      type: Boolean,
+      default: false
+    },
+    variant: {
+      type: String,
+      enum: ['A', 'B', 'C'],
+      default: 'A'
+    },
+    originalBanner: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Banner'
+    },
+    testResults: {
+      variantA: {
+        views: { type: Number, default: 0 },
+        clicks: { type: Number, default: 0 },
+        ctr: { type: Number, default: 0 }
+      },
+      variantB: {
+        views: { type: Number, default: 0 },
+        clicks: { type: Number, default: 0 },
+        ctr: { type: Number, default: 0 }
+      },
+      variantC: {
+        views: { type: Number, default: 0 },
+        clicks: { type: Number, default: 0 },
+        ctr: { type: Number, default: 0 }
+      }
+    }
+  },
+
+  // Metadata
+  tags: [String],
+  category: String,
+  targetAudience: String,
+  showOnPages: String,
+  
+  // Management
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -147,162 +215,144 @@ const bannerSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
-  
-  // Metadata
-  tags: [String],
-  notes: String,
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
+  order: {
+    type: Number,
+    default: 0
   }
 }, {
   timestamps: true
 });
 
-// Indexes for performance
-bannerSchema.index({ status: 1, isActive: 1, position: 1, priority: 1 });
-bannerSchema.index({ startDate: 1, endDate: 1 });
-bannerSchema.index({ targetAudience: 1, showOnPages: 1 });
-bannerSchema.index({ isSpinEventBanner: 1, status: 1 });
+// Indexes for efficient querying
+bannerSchema.index({ isActive: 1, status: 1 });
+bannerSchema.index({ 'displayRules.startDate': 1, 'displayRules.endDate': 1 });
+bannerSchema.index({ 'context.location': 1, 'context.userType': 1 });
+bannerSchema.index({ eventId: 1, eventPriority: 1 });
+bannerSchema.index({ 'displayRules.priority': 1, order: 1 });
 
-// Pre-save middleware
+// Virtual for click-through rate
+bannerSchema.virtual('ctr').get(function() {
+  if (this.analytics.views === 0) return 0;
+  return (this.analytics.clicks / this.analytics.views * 100).toFixed(2);
+});
+
+// Virtual for banner performance score
+bannerSchema.virtual('performanceScore').get(function() {
+  const ctr = parseFloat(this.ctr) || 0;
+  const conversionRate = this.analytics.views > 0 ? (this.analytics.conversions / this.analytics.views * 100) : 0;
+  const revenuePerView = this.analytics.views > 0 ? (this.analytics.revenue / this.analytics.views) : 0;
+  
+  return (ctr * 0.4 + conversionRate * 0.4 + revenuePerView * 0.2).toFixed(2);
+});
+
+// Pre-save middleware to update analytics
 bannerSchema.pre('save', function(next) {
-  this.updatedAt = new Date();
+  if (this.analytics.views > 0) {
+    this.analytics.ctr = parseFloat(this.ctr);
+  }
   next();
 });
 
-// Virtual for banner status
-bannerSchema.virtual('isCurrentlyActive').get(function() {
-  if (!this.isActive || this.status !== 'active') return false;
-  
+// Static method to get banners for specific context
+bannerSchema.statics.getBannersForContext = function(context) {
   const now = new Date();
-  if (this.startDate && now < this.startDate) return false;
-  if (this.endDate && now > this.endDate) return false;
+  const currentHour = now.getHours();
   
-  return true;
-});
-
-// Virtual for time remaining
-bannerSchema.virtual('timeRemaining').get(function() {
-  if (!this.endDate) return null;
-  
-  const now = new Date();
-  const remaining = this.endDate - now;
-  
-  if (remaining <= 0) return 0;
-  
-  return remaining;
-});
-
-// Methods
-bannerSchema.methods.isValidForUser = function(user, currentPage = 'home') {
-  if (!this.isCurrentlyActive) return false;
-  
-  // Check page targeting
-  if (this.showOnPages.length > 0 && !this.showOnPages.includes('all')) {
-    if (!this.showOnPages.includes(currentPage)) {
-      return false;
-    }
-  }
-  
-  // Check if page is hidden
-  if (this.hideOnPages.includes(currentPage)) {
-    return false;
-  }
-  
-  // Check audience targeting
-  if (this.targetAudience.length > 0 && !this.targetAudience.includes('all')) {
-    if (!user) {
-      // Guest user
-      if (!this.targetAudience.includes('guest')) {
-        return false;
-      }
-    } else {
-      // Registered user
-      const userGroup = this.getUserGroup(user);
-      if (!this.targetAudience.includes(userGroup)) {
-        return false;
-      }
-    }
-  }
-  
-  return true;
-};
-
-bannerSchema.methods.getUserGroup = function(user) {
-  if (user.loyaltyMembership === 'vip') return 'vip';
-  if (user.loyaltyMembership === 'gold') return 'gold';
-  if (user.loyaltyMembership === 'silver') return 'silver';
-  if (user.loyaltyMembership === 'bronze') return 'bronze';
-  
-  // Check if new or returning user
-  const daysSinceRegistration = Math.floor((new Date() - user.createdAt) / (1000 * 60 * 60 * 24));
-  if (daysSinceRegistration <= 30) return 'new';
-  
-  return 'returning';
-};
-
-bannerSchema.methods.incrementView = function() {
-  this.views++;
-  return this.save();
-};
-
-bannerSchema.methods.incrementClick = function() {
-  this.clicks++;
-  return this.save();
-};
-
-bannerSchema.methods.incrementConversion = function(amount = 0) {
-  this.conversions++;
-  this.revenue += amount;
-  return this.save();
-};
-
-// Static methods
-bannerSchema.statics.getActiveBanners = function(user = null, page = 'home') {
-  const query = {
-    status: 'active',
-    isActive: true,
-    $or: [
-      { startDate: { $lte: new Date() } },
-      { startDate: null }
-    ]
-  };
-  
-  // Add end date filter if specified
-  const endDateQuery = {
-    $or: [
-      { endDate: { $gte: new Date() } },
-      { endDate: null }
-    ]
-  };
-  
-  return this.find({ ...query, ...endDateQuery })
-    .sort({ priority: -1, order: 1, createdAt: -1 });
-};
-
-bannerSchema.statics.getBannersForPage = function(page, user = null) {
-  return this.getActiveBanners(user, page)
-    .then(banners => {
-      return banners.filter(banner => banner.isValidForUser(user, page));
-    });
-};
-
-bannerSchema.statics.getSpinEventBanners = function() {
   return this.find({
-    isSpinEventBanner: true,
-    status: 'active',
     isActive: true,
-    startDate: { $lte: new Date() },
+    status: 'active',
     $or: [
-      { endDate: { $gte: new Date() } },
-      { endDate: null }
+      { 'displayRules.endDate': { $exists: false } },
+      { 'displayRules.endDate': { $gte: now } }
+    ],
+    $or: [
+      { 'context.location': 'all' },
+      { 'context.location': context.location }
+    ],
+    $or: [
+      { 'context.userType': 'all' },
+      { 'context.userType': context.userType }
+    ],
+    $or: [
+      { 'context.timeOfDay.enabled': false },
+      {
+        'context.timeOfDay.enabled': true,
+        'context.timeOfDay.startHour': { $lte: currentHour },
+        'context.timeOfDay.endHour': { $gte: currentHour }
+      }
     ]
-  }).sort({ priority: -1, createdAt: -1 });
+  }).sort({ 'displayRules.priority': -1, order: 1 });
+};
+
+// Static method to get event banners
+bannerSchema.statics.getEventBanners = function(eventId) {
+  return this.find({
+    eventId: eventId,
+    isActive: true,
+    status: 'active'
+  }).sort({ eventPriority: 1, order: 1 });
+};
+
+// Instance method to record view
+bannerSchema.methods.recordView = function() {
+  this.analytics.views += 1;
+  this.analytics.lastDisplayed = new Date();
+  
+  // Update daily history
+  const today = new Date().toDateString();
+  const todayEntry = this.analytics.displayHistory.find(entry => 
+    entry.date.toDateString() === today
+  );
+  
+  if (todayEntry) {
+    todayEntry.views += 1;
+  } else {
+    this.analytics.displayHistory.push({
+      date: new Date(),
+      views: 1,
+      clicks: 0,
+      conversions: 0,
+      revenue: 0
+    });
+  }
+  
+  return this.save();
+};
+
+// Instance method to record click
+bannerSchema.methods.recordClick = function() {
+  this.analytics.clicks += 1;
+  
+  // Update daily history
+  const today = new Date().toDateString();
+  const todayEntry = this.analytics.displayHistory.find(entry => 
+    entry.date.toDateString() === today
+  );
+  
+  if (todayEntry) {
+    todayEntry.clicks += 1;
+  }
+  
+  return this.save();
+};
+
+// Instance method to record conversion
+bannerSchema.methods.recordConversion = function(revenue = 0) {
+  this.analytics.conversions += 1;
+  this.analytics.revenue += revenue;
+  
+  // Update daily history
+  const today = new Date().toDateString();
+  const todayEntry = this.analytics.displayHistory.find(entry => 
+    entry.date.toDateString() === today
+  );
+  
+  if (todayEntry) {
+    todayEntry.conversions += 1;
+    todayEntry.revenue += revenue;
+  }
+  
+  return this.save();
 };
 
 module.exports = mongoose.model('Banner', bannerSchema);

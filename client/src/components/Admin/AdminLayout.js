@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, NavLink } from 'react-router-dom';
 import { 
   Bars3Icon, 
   XMarkIcon,
@@ -15,7 +15,9 @@ import {
   ArrowRightOnRectangleIcon,
   SparklesIcon,
   ClockIcon,
-  CurrencyDollarIcon
+  CurrencyDollarIcon,
+  CalendarIcon,
+  BellIcon
 } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
@@ -23,9 +25,29 @@ import { useAuth } from '../../contexts/AuthContext';
 const AdminLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Sample notifications - in real app, fetch from API
+  const [notifications] = useState([
+    {
+      id: 1,
+      title: 'Low Stock Alert',
+      message: '5 products need restocking',
+      type: 'warning',
+      time: '2 minutes ago'
+    },
+    {
+      id: 2,
+      title: 'New Order',
+      message: 'Order #12345 received',
+      type: 'success',
+      time: '5 minutes ago'
+    }
+  ]);
 
   // Update time every minute
   useEffect(() => {
@@ -34,6 +56,21 @@ const AdminLayout = ({ children }) => {
     }, 60000);
     return () => clearInterval(timer);
   }, []);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showNotifications && !event.target.closest('.notifications-dropdown')) {
+        setShowNotifications(false);
+      }
+      if (showSettings && !event.target.closest('.settings-dropdown')) {
+        setShowSettings(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showNotifications, showSettings]);
 
   const getGreeting = () => {
     const hour = currentTime.getHours();
@@ -57,14 +94,12 @@ const AdminLayout = ({ children }) => {
 
   const navigation = [
     { name: 'Dashboard', href: '/admin/dashboard', icon: HomeIcon },
-    { name: 'Products', href: '/admin/products', icon: CubeIcon },
+    { name: 'Products & Inventory', href: '/admin/products', icon: CubeIcon },
     { name: 'Orders', href: '/admin/orders', icon: ShoppingCartIcon },
     { name: 'Users', href: '/admin/users', icon: UsersIcon },
     { name: 'Categories', href: '/admin/categories', icon: TagIcon },
-    { name: 'Coupons', href: '/admin/coupons', icon: TicketIcon },
-    { name: 'Banners', href: '/admin/banners', icon: PhotoIcon },
+    { name: 'Marketing Campaigns', href: '/admin/events', icon: CalendarIcon },
     { name: 'Monetization', href: '/admin/monetization', icon: CurrencyDollarIcon },
-    { name: 'Analytics', href: '/admin/analytics', icon: ChartBarIcon },
     { name: 'Settings', href: '/admin/settings', icon: Cog6ToothIcon },
   ];
 
@@ -135,22 +170,106 @@ const AdminLayout = ({ children }) => {
               </div>
 
               {/* Navigation */}
-              <nav className="flex-1 px-4 py-6 space-y-2">
-                {navigation.map((item) => (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    onClick={() => setSidebarOpen(false)}
-                    className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-                      isActive(item.href)
-                        ? 'bg-[#6C7A59] text-white shadow-lg'
-                        : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                    }`}
+              <nav className="mt-8">
+                <div className="space-y-2">
+                  <NavLink
+                    to="/admin/dashboard"
+                    className={({ isActive }) =>
+                      `flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                        isActive
+                          ? 'bg-[#6C7A59] text-white shadow-lg'
+                          : 'text-gray-700 hover:bg-gray-100 hover:text-[#6C7A59]'
+                      }`
+                    }
                   >
-                    <item.icon className="h-5 w-5" />
-                    <span className="font-medium">{item.name}</span>
-                  </Link>
-                ))}
+                    <ChartBarIcon className="h-5 w-5 mr-3" />
+                    Dashboard
+                  </NavLink>
+
+                  <NavLink
+                    to="/admin/products"
+                    className={({ isActive }) =>
+                      `flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                        isActive
+                          ? 'bg-[#6C7A59] text-white shadow-lg'
+                          : 'text-gray-700 hover:bg-gray-100 hover:text-[#6C7A59]'
+                      }`
+                    }
+                  >
+                    <CubeIcon className="h-5 w-5 mr-3" />
+                    Products & Inventory
+                  </NavLink>
+
+                  <NavLink
+                    to="/admin/orders"
+                    className={({ isActive }) =>
+                      `flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                        isActive
+                          ? 'bg-[#6C7A59] text-white shadow-lg'
+                          : 'text-gray-700 hover:bg-gray-100 hover:text-[#6C7A59]'
+                      }`
+                    }
+                  >
+                    <ShoppingCartIcon className="h-5 w-5 mr-3" />
+                    Orders
+                  </NavLink>
+
+                  <NavLink
+                    to="/admin/users"
+                    className={({ isActive }) =>
+                      `flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                        isActive
+                          ? 'bg-[#6C7A59] text-white shadow-lg'
+                          : 'text-gray-100 hover:bg-gray-100 hover:text-[#6C7A59]'
+                      }`
+                    }
+                  >
+                    <UsersIcon className="h-5 w-5 mr-3" />
+                    Users
+                  </NavLink>
+
+                  <NavLink
+                    to="/admin/categories"
+                    className={({ isActive }) =>
+                      `flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                        isActive
+                          ? 'bg-[#6C7A59] text-white shadow-lg'
+                          : 'text-gray-700 hover:bg-gray-100 hover:text-[#6C7A59]'
+                      }`
+                    }
+                  >
+                    <TagIcon className="h-5 w-5 mr-3" />
+                    Categories
+                  </NavLink>
+
+                  <NavLink
+                    to="/admin/events"
+                    className={({ isActive }) =>
+                      `flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                        isActive
+                          ? 'bg-[#6C7A59] text-white shadow-lg'
+                          : 'text-gray-700 hover:bg-gray-100 hover:text-[#6C7A59]'
+                      }`
+                    }
+                  >
+                    <CalendarIcon className="h-5 w-5 mr-3" />
+                    Marketing Campaigns
+                  </NavLink>
+
+                  <NavLink
+                    to="/admin/monetization"
+                    className={({ isActive }) =>
+                      `flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                        isActive
+                          ? 'bg-[#6C7A59] text-white shadow-lg'
+                          : 'text-gray-700 hover:bg-gray-100 hover:text-[#6C7A59]'
+                      }`
+                    }
+                  >
+                    <CurrencyDollarIcon className="h-5 w-5 mr-3" />
+                    Monetization
+                  </NavLink>
+                </div>
               </nav>
 
               {/* User Section */}
@@ -269,6 +388,94 @@ const AdminLayout = ({ children }) => {
                     {user?.firstName} {user?.lastName}
                   </span>
                 </div>
+              </div>
+
+              {/* Notifications */}
+              <div className="relative notifications-dropdown">
+                <button 
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg relative transition-colors"
+                >
+                  <BellIcon className="h-5 w-5" />
+                  {notifications.length > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                      {notifications.length}
+                    </span>
+                  )}
+                </button>
+                
+                {/* Notifications Dropdown */}
+                {showNotifications && (
+                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                    <div className="p-4 border-b border-gray-200">
+                      <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
+                    </div>
+                    <div className="max-h-64 overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <div className="p-4 text-center text-gray-500">
+                          No new notifications
+                        </div>
+                      ) : (
+                        notifications.map((notification) => (
+                          <div key={notification.id} className="p-4 border-b border-gray-100 hover:bg-gray-50">
+                            <div className="flex items-start">
+                              <div className="flex-shrink-0">
+                                <div className={`w-2 h-2 rounded-full ${
+                                  notification.type === 'warning' ? 'bg-yellow-400' :
+                                  notification.type === 'error' ? 'bg-red-400' :
+                                  notification.type === 'success' ? 'bg-green-400' :
+                                  'bg-blue-400'
+                                }`} />
+                              </div>
+                              <div className="ml-3 flex-1">
+                                <p className="text-sm font-medium text-gray-900">{notification.title}</p>
+                                <p className="text-sm text-gray-600">{notification.message}</p>
+                                <p className="text-xs text-gray-400 mt-1">{notification.time}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Settings */}
+              <div className="relative settings-dropdown">
+                <button
+                  onClick={() => setShowSettings(!showSettings)}
+                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <Cog6ToothIcon className="h-5 w-5" />
+                </button>
+                
+                {showSettings && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                    <div className="py-1">
+                      <Link
+                        to="/admin/settings"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={() => setShowSettings(false)}
+                      >
+                        Site Settings
+                      </Link>
+                      <Link
+                        to="/admin/profile"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={() => setShowSettings(false)}
+                      >
+                        Profile Settings
+                      </Link>
+                      <button
+                        onClick={handleLogout}
+                        className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                      >
+                        Logout
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
