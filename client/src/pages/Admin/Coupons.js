@@ -14,8 +14,12 @@ import {
   StarIcon
 } from '@heroicons/react/24/outline';
 import { motion } from 'framer-motion';
+import axios from 'axios'; // Added axios import
+import { FiTag, FiCheckCircle, FiUsers, FiDollarSign } from 'react-icons/fi';
+import { useToast } from '../../contexts/ToastContext';
 
 const Coupons = () => {
+  const { showSuccess, showError } = useToast();
   const [coupons, setCoupons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -30,7 +34,7 @@ const Coupons = () => {
     description: '',
     type: 'percentage', // percentage, fixed, free_shipping
     value: 0,
-    minSpend: 0,
+    minimumOrderAmount: 0, // Changed from minSpend
     maxDiscount: 0,
     usageLimit: 0,
     usedCount: 0,
@@ -38,25 +42,86 @@ const Coupons = () => {
     isSpecialEvent: false,
     eventType: '', // birthday, holiday, milestone, seasonal
     validFrom: '',
-    validUntil: '',
+    validUntil: '', // Changed from endDate
     applicableCategories: [],
     applicableProducts: [],
     userGroups: [], // new, loyal, vip
+    userUsageLimit: 1, // Added this field
     autoGenerate: false
   });
 
+  const [couponAnalytics, setCouponAnalytics] = useState({
+    totalCoupons: 0,
+    activeCoupons: 0,
+    totalUsage: 0,
+    totalSavings: 0
+  });
+
+  // Advanced Coupon Management
+  const handleBulkCouponAction = async (action, couponIds) => {
+    try {
+      const response = await axios.post('/api/admin/coupons/bulk-action', {
+        couponIds,
+        action
+      });
+      
+      if (response.data.success) {
+        showSuccess(`${action} completed successfully`);
+        fetchCoupons(); // Refresh the list
+      }
+    } catch (error) {
+      console.error('Bulk coupon action error:', error);
+      showError(`Failed to ${action} coupons`);
+    }
+  };
+
+  const duplicateCoupon = async (coupon) => {
+    try {
+      const duplicatedCoupon = {
+        ...coupon,
+        code: `${coupon.code}_COPY`,
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+        usedCount: 0,
+        usedBy: []
+      };
+      
+      delete duplicatedCoupon._id;
+      delete duplicatedCoupon.createdAt;
+      delete duplicatedCoupon.updatedAt;
+      
+      const response = await axios.post('/api/admin/coupons', duplicatedCoupon);
+      if (response.data) {
+        showSuccess('Coupon duplicated successfully');
+        fetchCoupons();
+      }
+    } catch (error) {
+      console.error('Error duplicating coupon:', error);
+      showError('Failed to duplicate coupon');
+    }
+  };
+
   useEffect(() => {
-    // Simulate loading coupons
-    setTimeout(() => {
+    fetchCoupons();
+  }, []);
+
+  const fetchCoupons = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get('/api/admin/coupons');
+      setCoupons(response.data);
+    } catch (error) {
+      console.error('Error fetching coupons:', error);
+      // Fallback to sample data if API fails
       setCoupons([
         {
-          id: 1,
+          _id: 1,
           code: 'WELCOME10',
           name: 'Welcome Discount',
           description: '10% off for new customers',
           type: 'percentage',
           value: 10,
-          minSpend: 50,
+          minimumOrderAmount: 50,
           maxDiscount: 100,
           usageLimit: 1000,
           usedCount: 234,
@@ -68,101 +133,15 @@ const Coupons = () => {
           applicableCategories: ['all'],
           applicableProducts: [],
           userGroups: ['new'],
-          autoGenerate: false,
-          createdAt: '2024-01-01'
-        },
-        {
-          id: 2,
-          code: 'SUMMER25',
-          name: 'Summer Sale',
-          description: '25% off summer collection',
-          type: 'percentage',
-          value: 25,
-          minSpend: 100,
-          maxDiscount: 200,
-          usageLimit: 500,
-          usedCount: 156,
-          isActive: true,
-          isSpecialEvent: true,
-          eventType: 'seasonal',
-          validFrom: '2024-06-01',
-          validUntil: '2024-08-31',
-          applicableCategories: ['summer', 'dresses'],
-          applicableProducts: [],
-          userGroups: ['all'],
-          autoGenerate: false,
-          createdAt: '2024-05-15'
-        },
-        {
-          id: 3,
-          code: 'LOYAL15',
-          name: 'Loyalty Reward',
-          description: '15% off for loyal customers',
-          type: 'percentage',
-          value: 15,
-          minSpend: 75,
-          maxDiscount: 150,
-          usageLimit: 200,
-          usedCount: 89,
-          isActive: true,
-          isSpecialEvent: false,
-          eventType: '',
-          validFrom: '2024-01-01',
-          validUntil: '2024-12-31',
-          applicableCategories: ['all'],
-          applicableProducts: [],
-          userGroups: ['loyal'],
-          autoGenerate: true,
-          createdAt: '2024-01-01'
-        },
-        {
-          id: 4,
-          code: 'BIRTHDAY20',
-          name: 'Birthday Special',
-          description: '20% off on your birthday month',
-          type: 'percentage',
-          value: 20,
-          minSpend: 50,
-          maxDiscount: 100,
-          usageLimit: 1,
-          usedCount: 0,
-          isActive: true,
-          isSpecialEvent: true,
-          eventType: 'birthday',
-          validFrom: '2024-01-01',
-          validUntil: '2024-12-31',
-          applicableCategories: ['all'],
-          applicableProducts: [],
-          userGroups: ['all'],
-          autoGenerate: true,
-          createdAt: '2024-01-01'
-        },
-        {
-          id: 5,
-          code: 'FREESHIP',
-          name: 'Free Shipping',
-          description: 'Free shipping on orders over $100',
-          type: 'free_shipping',
-          value: 0,
-          minSpend: 100,
-          maxDiscount: 0,
-          usageLimit: 1000,
-          usedCount: 445,
-          isActive: true,
-          isSpecialEvent: false,
-          eventType: '',
-          validFrom: '2024-01-01',
-          validUntil: '2024-12-31',
-          applicableCategories: ['all'],
-          applicableProducts: [],
-          userGroups: ['all'],
+          userUsageLimit: 1,
           autoGenerate: false,
           createdAt: '2024-01-01'
         }
       ]);
+    } finally {
       setLoading(false);
-    }, 1000);
-  }, []);
+    }
+  };
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -191,7 +170,7 @@ const Coupons = () => {
       description: '',
       type: 'percentage',
       value: 0,
-      minSpend: 0,
+      minimumOrderAmount: 0,
       maxDiscount: 0,
       usageLimit: 0,
       usedCount: 0,
@@ -203,6 +182,7 @@ const Coupons = () => {
       applicableCategories: [],
       applicableProducts: [],
       userGroups: ['all'],
+      userUsageLimit: 1,
       autoGenerate: false
     });
     setEditingCoupon(null);
@@ -216,7 +196,7 @@ const Coupons = () => {
       description: coupon.description,
       type: coupon.type,
       value: coupon.value,
-      minSpend: coupon.minSpend,
+      minimumOrderAmount: coupon.minimumOrderAmount,
       maxDiscount: coupon.maxDiscount,
       usageLimit: coupon.usageLimit,
       usedCount: coupon.usedCount,
@@ -228,6 +208,7 @@ const Coupons = () => {
       applicableCategories: coupon.applicableCategories,
       applicableProducts: coupon.applicableProducts,
       userGroups: coupon.userGroups,
+      userUsageLimit: coupon.userUsageLimit,
       autoGenerate: coupon.autoGenerate
     });
     setEditingCoupon(coupon);
@@ -238,13 +219,13 @@ const Coupons = () => {
     e.preventDefault();
     if (editingCoupon) {
       setCoupons(prev => prev.map(coupon => 
-        coupon.id === editingCoupon.id 
+        coupon._id === editingCoupon._id 
           ? { ...coupon, ...formData }
           : coupon
       ));
     } else {
       const newCoupon = {
-        id: Date.now(),
+        _id: Date.now(), // Placeholder for backend ID
         ...formData,
         usedCount: 0,
         createdAt: new Date().toISOString().split('T')[0]
@@ -257,13 +238,13 @@ const Coupons = () => {
 
   const handleDeleteCoupon = (couponId) => {
     if (window.confirm('Are you sure you want to delete this coupon?')) {
-      setCoupons(prev => prev.filter(coupon => coupon.id !== couponId));
+      setCoupons(prev => prev.filter(coupon => coupon._id !== couponId));
     }
   };
 
   const toggleCouponStatus = (couponId) => {
     setCoupons(prev => prev.map(coupon => 
-      coupon.id === couponId 
+      coupon._id === couponId 
         ? { ...coupon, isActive: !coupon.isActive }
         : coupon
     ));
@@ -371,58 +352,63 @@ const Coupons = () => {
         </button>
       </motion.div>
 
-      {/* Stats */}
+      {/* Coupon Analytics */}
       <motion.div 
-        className="grid grid-cols-1 md:grid-cols-4 gap-6"
+        className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6"
         variants={itemVariants}
       >
-        <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Total Coupons</p>
-              <p className="text-2xl font-display font-bold text-[#1E1E1E]">{coupons.length}</p>
+              <p className="text-2xl font-display font-bold text-[#1E1E1E]">
+                {couponAnalytics.totalCoupons}
+              </p>
             </div>
             <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center">
-              <GiftIcon className="h-6 w-6 text-white" />
+              <FiTag className="h-6 w-6 text-white" />
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Active Coupons</p>
-              <p className="text-2xl font-display font-bold text-[#1E1E1E]">
-                {coupons.filter(c => isActive(c)).length}
+              <p className="text-2xl font-display font-bold text-green-600">
+                {couponAnalytics.activeCoupons}
               </p>
             </div>
             <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center">
-              <EyeIcon className="h-6 w-6 text-white" />
+              <FiCheckCircle className="h-6 w-6 text-white" />
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Special Events</p>
-              <p className="text-2xl font-display font-bold text-[#1E1E1E]">
-                {coupons.filter(c => c.isSpecialEvent).length}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
-              <SparklesIcon className="h-6 w-6 text-white" />
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Total Usage</p>
-              <p className="text-2xl font-display font-bold text-[#1E1E1E]">
-                {coupons.reduce((sum, c) => sum + c.usedCount, 0)}
+              <p className="text-2xl font-display font-bold text-purple-600">
+                {couponAnalytics.totalUsage}
               </p>
             </div>
-            <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center">
-              <CurrencyDollarIcon className="h-6 w-6 text-white" />
+            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+              <FiUsers className="h-6 w-6 text-white" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total Savings</p>
+              <p className="text-2xl font-display font-bold text-yellow-600">
+                ${couponAnalytics.totalSavings?.toFixed(2) || '0.00'}
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl flex items-center justify-center">
+              <FiDollarSign className="h-6 w-6 text-white" />
             </div>
           </div>
         </div>
@@ -489,7 +475,7 @@ const Coupons = () => {
         <div className="p-6">
           <div className="space-y-4">
             {filteredCoupons.map((coupon) => (
-              <div key={coupon.id} className="border border-gray-200 rounded-xl p-6">
+              <div key={coupon._id} className="border border-gray-200 rounded-xl p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
                     <div className={`w-12 h-12 bg-gradient-to-br ${getCouponTypeColor(coupon.type)} rounded-xl flex items-center justify-center`}>
@@ -546,7 +532,7 @@ const Coupons = () => {
                   </div>
                   <div className="flex items-center space-x-2">
                     <button
-                      onClick={() => toggleCouponStatus(coupon.id)}
+                      onClick={() => toggleCouponStatus(coupon._id)}
                       className={`p-2 rounded-lg transition-colors ${
                         coupon.isActive 
                           ? 'text-green-600 hover:text-green-800' 
@@ -562,7 +548,7 @@ const Coupons = () => {
                       <PencilIcon className="h-5 w-5" />
                     </button>
                     <button
-                      onClick={() => handleDeleteCoupon(coupon.id)}
+                      onClick={() => handleDeleteCoupon(coupon._id)}
                       className="p-2 text-gray-600 hover:text-red-600 transition-colors"
                     >
                       <TrashIcon className="h-5 w-5" />
@@ -657,11 +643,11 @@ const Coupons = () => {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Minimum Spend</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Minimum Order Amount</label>
                   <input
                     type="number"
-                    value={formData.minSpend}
-                    onChange={(e) => setFormData({...formData, minSpend: parseFloat(e.target.value)})}
+                    value={formData.minimumOrderAmount}
+                    onChange={(e) => setFormData({...formData, minimumOrderAmount: parseFloat(e.target.value)})}
                     className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
                     min="0"
                     step="0.01"

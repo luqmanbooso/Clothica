@@ -184,7 +184,7 @@ router.post('/login', [
     await user.resetLoginAttempts();
     
     // Update last login
-    user.lastLogin = Date.now();
+    user.lastLoginDate = Date.now();
     await user.save();
 
     // Generate JWT token
@@ -356,7 +356,7 @@ router.post('/google/login', async (req, res) => {
     }
 
     // Update last login
-    user.lastLogin = Date.now();
+    user.lastLoginDate = Date.now();
     await user.save();
 
     // Reset login attempts on successful login

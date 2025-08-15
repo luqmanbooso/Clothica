@@ -5,11 +5,12 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 require('dotenv').config();
 
+// Import routes
 const authRoutes = require('./routes/auth');
-const userRoutes = require('./routes/users');
 const productRoutes = require('./routes/products');
+const userRoutes = require('./routes/users');
 const orderRoutes = require('./routes/orders');
-const couponRoutes = require('./routes/coupons');
+const adminRoutes = require('./routes/admin');
 const loyaltyRoutes = require('./routes/loyalty');
 const affiliateRoutes = require('./routes/affiliate');
 const specialOffersRoutes = require('./routes/specialOffers');
@@ -27,12 +28,12 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 // Static files
 app.use('/uploads', express.static('uploads'));
 
-// Routes
+// Mount routes
 app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/orders', orderRoutes);
-app.use('/api/coupons', couponRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api/loyalty', loyaltyRoutes);
 app.use('/api/affiliate', affiliateRoutes);
 app.use('/api/special-offers', specialOffersRoutes);

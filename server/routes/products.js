@@ -1,7 +1,9 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const Product = require('../models/Product');
-const { auth, admin } = require('../middleware/auth');
+const Banner = require('../models/Banner');
+const { auth } = require('../middleware/auth');
+const { admin } = require('../middleware/admin');
 
 const router = express.Router();
 
@@ -94,7 +96,7 @@ router.get('/categories', async (req, res) => {
 });
 
 // Get featured products
-router.get('/featured/featured', async (req, res) => {
+router.get('/featured', async (req, res) => {
   try {
     const featuredProducts = await Product.find({ 
       isFeatured: true, 
@@ -104,6 +106,25 @@ router.get('/featured/featured', async (req, res) => {
     res.json(featuredProducts);
   } catch (error) {
     console.error('Error fetching featured products:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get active banners for public display
+router.get('/banners', async (req, res) => {
+  try {
+    const banners = await Banner.find({ 
+      isActive: true,
+      startDate: { $lte: new Date() },
+      $or: [
+        { endDate: { $gte: new Date() } },
+        { endDate: null }
+      ]
+    }).sort({ priority: 1, createdAt: -1 });
+
+    res.json(banners);
+  } catch (error) {
+    console.error('Error fetching banners:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -228,20 +249,6 @@ router.post('/:id/reviews', auth, [
     await product.save();
 
     res.status(201).json(product);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// Get featured products
-router.get('/featured/featured', async (req, res) => {
-  try {
-    const products = await Product.find({ isFeatured: true, isActive: true })
-      .limit(8)
-      .sort({ createdAt: -1 });
-
-    res.json(products);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });

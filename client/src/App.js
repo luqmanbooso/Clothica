@@ -27,6 +27,7 @@ import Contact from './pages/Contact';
 import About from './pages/About';
 import Profile from './pages/Profile';
 import Orders from './pages/Orders';
+import OrderDetail from './pages/OrderDetail';
 import OrderSuccess from './pages/OrderSuccess';
 import Checkout from './pages/Checkout';
 import LoyaltyDashboard from './pages/LoyaltyDashboard';
@@ -172,6 +173,16 @@ function App() {
                     </ClientRoute>
                   } />
 
+                  <Route path="/order/:id" element={
+                    <ClientRoute>
+                      <ProtectedRoute>
+                        <Header />
+                        <OrderDetail />
+                        <Footer />
+                      </ProtectedRoute>
+                    </ClientRoute>
+                  } />
+
                   <Route path="/order-success" element={
                     <ClientRoute>
                       <OrderSuccess />
@@ -228,27 +239,27 @@ function App() {
                   } />
                   
                   <Route path="/admin/coupons" element={
-                    <ProtectedRoute>
-                      <Header />
-                      <Coupons />
-                      <Footer />
-                    </ProtectedRoute>
+                    <AdminRoute>
+                      <AdminLayout>
+                        <Coupons />
+                      </AdminLayout>
+                    </AdminRoute>
                   } />
                   
                   <Route path="/admin/banners" element={
-                    <ProtectedRoute>
-                      <Header />
-                      <Banners />
-                      <Footer />
-                    </ProtectedRoute>
+                    <AdminRoute>
+                      <AdminLayout>
+                        <Banners />
+                      </AdminLayout>
+                    </AdminRoute>
                   } />
                   
                   <Route path="/admin/monetization" element={
-                    <ProtectedRoute>
-                      <Header />
-                      <MonetizationDashboard />
-                      <Footer />
-                    </ProtectedRoute>
+                    <AdminRoute>
+                      <AdminLayout>
+                        <MonetizationDashboard />
+                      </AdminLayout>
+                    </AdminRoute>
                   } />
                   
                   <Route path="/admin/analytics" element={

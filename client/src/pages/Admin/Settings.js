@@ -1,16 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { FiSettings, FiSave, FiGlobe, FiMail, FiShield, FiCreditCard, FiTruck, FiBell } from 'react-icons/fi';
 import axios from 'axios';
 import { useToast } from '../../contexts/ToastContext';
 
 const AdminSettings = () => {
   const [settings, setSettings] = useState({
-    siteName: 'Clothica',
-    siteDescription: 'Modern Fashion Store',
+    storeName: 'Clothica',
+    storeDescription: 'Premium Fashion & Lifestyle Store',
     contactEmail: 'admin@clothica.com',
+    phone: '+1 (555) 123-4567',
+    address: '123 Fashion Street, Style City, SC 12345',
     currency: 'USD',
     taxRate: 8.5,
-    shippingCost: 5.99
+    shippingMethods: ['standard', 'express', 'overnight'],
+    paymentMethods: ['credit_card', 'paypal', 'stripe'],
+    socialMedia: {
+      facebook: 'https://facebook.com/clothica',
+      instagram: 'https://instagram.com/clothica',
+      twitter: 'https://twitter.com/clothica'
+    }
   });
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -19,9 +27,9 @@ const AdminSettings = () => {
 
   useEffect(() => {
     fetchSettings();
-  }, []);
+  }, [fetchSettings]);
 
-  const fetchSettings = async () => {
+  const fetchSettings = useCallback(async () => {
     try {
       setLoading(true);
       const response = await axios.get('/api/admin/settings');
@@ -32,19 +40,43 @@ const AdminSettings = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showError]);
 
-  const handleSave = async () => {
-    setIsSaving(true);
-    
+  const handleSaveSettings = async () => {
     try {
-      await axios.put('/api/admin/settings', settings);
-      showSuccess('Settings updated successfully!');
+      setIsSaving(true);
+      const response = await axios.put('/api/admin/settings', settings);
+      
+      if (response.data.success) {
+        showSuccess('Settings saved successfully');
+        setSettings(response.data.settings);
+      } else {
+        showError('Failed to save settings');
+      }
     } catch (error) {
       console.error('Error saving settings:', error);
-      showError('Failed to save settings. Please try again.');
+      showError('Failed to save settings');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleResetSettings = async () => {
+    if (window.confirm('Are you sure you want to reset all settings to default?')) {
+      try {
+        setIsSaving(true);
+        const response = await axios.post('/api/admin/settings/reset');
+        
+        if (response.data.success) {
+          setSettings(response.data.settings);
+          showSuccess('Settings reset to default');
+        }
+      } catch (error) {
+        console.error('Error resetting settings:', error);
+        showError('Failed to reset settings');
+      } finally {
+        setIsSaving(false);
+      }
     }
   };
 
@@ -70,7 +102,7 @@ const AdminSettings = () => {
             </p>
           </div>
           <button
-            onClick={handleSave}
+            onClick={handleSaveSettings}
             disabled={isSaving}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors disabled:opacity-50"
           >
@@ -87,12 +119,24 @@ const AdminSettings = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Site Name
+              Store Name
             </label>
             <input
               type="text"
-              value={settings.siteName}
-              onChange={(e) => setSettings({ ...settings, siteName: e.target.value })}
+              value={settings.storeName}
+              onChange={(e) => setSettings({ ...settings, storeName: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Store Description
+            </label>
+            <input
+              type="text"
+              value={settings.storeDescription}
+              onChange={(e) => setSettings({ ...settings, storeDescription: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
@@ -111,6 +155,30 @@ const AdminSettings = () => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
+              Phone
+            </label>
+            <input
+              type="text"
+              value={settings.phone}
+              onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Address
+            </label>
+            <input
+              type="text"
+              value={settings.address}
+              onChange={(e) => setSettings({ ...settings, address: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Currency
             </label>
             <select
@@ -121,7 +189,6 @@ const AdminSettings = () => {
               <option value="USD">USD ($)</option>
               <option value="EUR">EUR (€)</option>
               <option value="GBP">GBP (£)</option>
-              <option value="CAD">CAD (C$)</option>
             </select>
           </div>
 
@@ -131,40 +198,12 @@ const AdminSettings = () => {
             </label>
             <input
               type="number"
+              step="0.1"
               value={settings.taxRate}
               onChange={(e) => setSettings({ ...settings, taxRate: parseFloat(e.target.value) })}
-              min="0"
-              max="100"
-              step="0.1"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Default Shipping Cost
-            </label>
-            <input
-              type="number"
-              value={settings.shippingCost}
-              onChange={(e) => setSettings({ ...settings, shippingCost: parseFloat(e.target.value) })}
-              min="0"
-              step="0.01"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-        </div>
-
-        <div className="mt-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Site Description
-          </label>
-          <textarea
-            value={settings.siteDescription}
-            onChange={(e) => setSettings({ ...settings, siteDescription: e.target.value })}
-            rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
         </div>
       </div>
     </div>

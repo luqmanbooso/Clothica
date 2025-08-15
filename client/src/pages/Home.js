@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   StarIcon, 
@@ -14,20 +14,39 @@ import {
 } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
 import WelcomeModal from '../components/WelcomeModal';
+import Banner from '../components/Banner';
 import { useAuth } from '../contexts/AuthContext';
+import axios from 'axios';
 
 const Home = () => {
   const { user, isAuthenticated } = useAuth();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [featuredProducts, setFeaturedProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setIsVisible(true);
+    loadFeaturedProducts();
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
     }, 5000);
     return () => clearInterval(interval);
+  }, []);
+
+  const loadFeaturedProducts = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get('/api/products/featured');
+      setFeaturedProducts(response.data);
+    } catch (error) {
+      console.error('Error loading featured products:', error);
+      // Fallback to empty array if API fails
+      setFeaturedProducts([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   // Show welcome modal for new users (only on first login, not page refresh)
@@ -71,57 +90,6 @@ const Home = () => {
       image: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80",
       cta: "Learn More",
       color: "from-purple-500 to-pink-500"
-    }
-  ];
-
-  const featuredProducts = [
-    {
-      id: 1,
-      name: "Premium Cotton T-Shirt",
-      price: 29.99,
-      originalPrice: 39.99,
-      image: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-      rating: 4.5,
-      reviews: 128,
-      isNew: true,
-      discount: 25,
-      category: "mens"
-    },
-    {
-      id: 2,
-      name: "Classic Denim Jeans",
-      price: 79.99,
-      originalPrice: 99.99,
-      image: "https://images.unsplash.com/photo-1542272604-787c3835535d?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-      rating: 4.8,
-      reviews: 256,
-      isNew: false,
-      discount: 20,
-      category: "mens"
-    },
-    {
-      id: 3,
-      name: "Summer Dress Collection",
-      price: 59.99,
-      originalPrice: 79.99,
-      image: "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-      rating: 4.6,
-      reviews: 189,
-      isNew: true,
-      discount: 25,
-      category: "womens"
-    },
-    {
-      id: 4,
-      name: "Casual Sneakers",
-      price: 89.99,
-      originalPrice: 119.99,
-      image: "https://images.unsplash.com/photo-1549298916-b41d501d3772?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-      rating: 4.7,
-      reviews: 342,
-      isNew: false,
-      discount: 25,
-      category: "footwear"
     }
   ];
 
@@ -314,6 +282,13 @@ const Home = () => {
         </button>
       </section>
 
+      {/* Banner Section */}
+      <section className="py-12 px-6">
+        <div className="max-w-7xl mx-auto">
+          <Banner />
+        </div>
+      </section>
+
       {/* Categories Section */}
       <section className="py-20 px-6">
         <motion.div 
@@ -387,82 +362,90 @@ const Home = () => {
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8"
             variants={itemVariants}
           >
-            {featuredProducts.map((product, index) => (
-              <motion.div
-                key={product.id}
-                variants={itemVariants}
-                whileHover={{ scale: 1.05, y: -10 }}
-                transition={{ duration: 0.3 }}
-                className="group"
-              >
-                <div className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden">
-                  <div className="relative overflow-hidden">
-                    <img
-                      src={product.image}
-                      alt={product.name}
-                      className="w-full h-80 object-cover group-hover:scale-110 transition-transform duration-700"
-                    />
-                    
-                    {/* Badges */}
-                    <div className="absolute top-4 left-4 flex flex-col gap-2">
-                      {product.isNew && (
-                        <span className="inline-block px-3 py-1 bg-[#6C7A59] text-white text-xs font-semibold rounded-full">
-                          NEW
-                        </span>
-                      )}
-                      {product.discount && (
-                        <span className="inline-block px-3 py-1 bg-[#B35D5D] text-white text-xs font-semibold rounded-full">
-                          -{product.discount}%
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
-                      <button className="p-2 bg-white/90 backdrop-blur-sm rounded-full hover:bg-white transition-colors">
-                        <HeartIcon className="h-5 w-5 text-[#1E1E1E]" />
-                      </button>
-                      <button className="p-2 bg-white/90 backdrop-blur-sm rounded-full hover:bg-white transition-colors">
-                        <EyeIcon className="h-5 w-5 text-[#1E1E1E]" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="p-6">
-                    <Link to={`/product/${product.id}`}>
-                      <h3 className="font-display font-semibold text-[#1E1E1E] mb-2 group-hover:text-[#6C7A59] transition-colors">
-                        {product.name}
-                      </h3>
-                    </Link>
-                    
-                    <div className="flex items-center mb-3">
-                      {renderStars(product.rating)}
-                      <span className="ml-2 text-sm text-[#6C7A59]">
-                        ({product.reviews})
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-xl font-bold text-[#1E1E1E]">
-                          ${product.price}
-                        </span>
-                        {product.originalPrice && (
-                          <span className="text-sm text-[#B35D5D] line-through">
-                            ${product.originalPrice}
+            {loading ? (
+              <p className="col-span-full text-center py-10">Loading products...</p>
+            ) : featuredProducts.length === 0 ? (
+              <p className="col-span-full text-center py-10">No featured products found.</p>
+            ) : (
+              featuredProducts.map((product, index) => (
+                <motion.div
+                  key={product._id}
+                  variants={itemVariants}
+                  whileHover={{ scale: 1.05, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                  className="group"
+                >
+                  <div className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden">
+                    <div className="relative overflow-hidden">
+                      <img
+                        src={product.images?.[0] || "https://via.placeholder.com/400x400"}
+                        alt={product.name}
+                        className="w-full h-80 object-cover group-hover:scale-110 transition-transform duration-700"
+                      />
+                      
+                      {/* Badges */}
+                      <div className="absolute top-4 left-4 flex flex-col gap-2">
+                        {product.isNew && (
+                          <span className="inline-block px-3 py-1 bg-[#6C7A59] text-white text-xs font-semibold rounded-full">
+                            NEW
+                          </span>
+                        )}
+                        {product.discount && (
+                          <span className="inline-block px-3 py-1 bg-[#B35D5D] text-white text-xs font-semibold rounded-full">
+                            -{product.discount}%
                           </span>
                         )}
                       </div>
 
-                      <button className="flex items-center px-4 py-2 bg-[#6C7A59] text-white font-semibold rounded-full hover:bg-[#5A6A4A] transition-all duration-300 transform hover:scale-105">
-                        <ShoppingBagIcon className="h-4 w-4 mr-2" />
-                        Add
-                      </button>
+                      {/* Action Buttons */}
+                      <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                        <button className="p-2 bg-white/90 backdrop-blur-sm rounded-full hover:bg-white transition-colors">
+                          <HeartIcon className="h-5 w-5 text-[#1E1E1E]" />
+                        </button>
+                        <Link to={`/product/${product._id}`}>
+                          <button className="p-2 bg-white/90 backdrop-blur-sm rounded-full hover:bg-white transition-colors">
+                            <EyeIcon className="h-5 w-5 text-[#1E1E1E]" />
+                          </button>
+                        </Link>
+                      </div>
+                    </div>
+
+                    <div className="p-6">
+                      <Link to={`/product/${product._id}`}>
+                        <h3 className="font-display font-semibold text-[#1E1E1E] mb-2 group-hover:text-[#6C7A59] transition-colors">
+                          {product.name}
+                        </h3>
+                      </Link>
+                      
+                      <div className="flex items-center mb-3">
+                        {renderStars(product.rating || 0)}
+                        <span className="ml-2 text-sm text-[#6C7A59]">
+                          ({product.numReviews || product.reviews?.length || 0})
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xl font-bold text-[#1E1E1E]">
+                            ${product.price}
+                          </span>
+                          {product.originalPrice && product.originalPrice > product.price && (
+                            <span className="text-sm text-[#B35D5D] line-through">
+                              ${product.originalPrice}
+                            </span>
+                          )}
+                        </div>
+
+                        <button className="flex items-center px-4 py-2 bg-[#6C7A59] text-white font-semibold rounded-full hover:bg-[#5A6A4A] transition-all duration-300 transform hover:scale-105">
+                          <ShoppingBagIcon className="h-4 w-4 mr-2" />
+                          Add
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              ))
+            )}
           </motion.div>
         </motion.div>
       </section>

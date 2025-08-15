@@ -9,14 +9,41 @@ import {
   TruckIcon, 
   ShieldCheckIcon,
   CheckCircleIcon,
-  ArrowLeftIcon
+  ArrowLeftIcon,
+  ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
+import axios from 'axios';
 
 const Checkout = () => {
   const navigate = useNavigate();
   const { cart, getCartTotal, clearCart } = useCart();
   const { user, isAuthenticated } = useAuth();
-  const { success, error } = useToast();
+  const { showSuccess, showError } = useToast();
+
+  // Sri Lanka specific data
+  const sriLankaProvinces = [
+    'Western Province',
+    'Central Province', 
+    'Southern Province',
+    'Northern Province',
+    'Eastern Province',
+    'North Western Province',
+    'North Central Province',
+    'Uva Province',
+    'Sabaragamuwa Province'
+  ];
+
+  const sriLankaCities = {
+    'Western Province': ['Colombo', 'Gampaha', 'Kalutara', 'Dehiwala', 'Moratuwa', 'Sri Jayawardenepura Kotte'],
+    'Central Province': ['Kandy', 'Matale', 'Nuwara Eliya', 'Peradeniya', 'Gampola'],
+    'Southern Province': ['Galle', 'Matara', 'Hambantota', 'Tangalle', 'Weligama'],
+    'Northern Province': ['Jaffna', 'Vavuniya', 'Mullaitivu', 'Kilinochchi'],
+    'Eastern Province': ['Batticaloa', 'Ampara', 'Trincomalee', 'Kalmunai'],
+    'North Western Province': ['Kurunegala', 'Puttalam', 'Chilaw', 'Kuliyapitiya'],
+    'North Central Province': ['Anuradhapura', 'Polonnaruwa', 'Medawachchiya'],
+    'Uva Province': ['Badulla', 'Monaragala', 'Bandarawela', 'Haputale'],
+    'Sabaragamuwa Province': ['Ratnapura', 'Kegalle', 'Embilipitiya', 'Avissawella']
+  };
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -25,14 +52,17 @@ const Checkout = () => {
     phone: '',
     address: '',
     city: '',
-    state: '',
-    zipCode: '',
-    country: 'Sri Lanka'
+    province: '',
+    postalCode: '',
+    country: 'Sri Lanka',
+    additionalInfo: ''
   });
 
+  const [errors, setErrors] = useState({});
   const [shippingMethod, setShippingMethod] = useState('standard');
   const [paymentMethod, setPaymentMethod] = useState('card');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [availableCities, setAvailableCities] = useState([]);
 
   const shippingMethods = [
     {
@@ -47,6 +77,13 @@ const Checkout = () => {
       name: 'Express Delivery',
       price: 1200,
       delivery: '1-2 business days',
+      icon: TruckIcon
+    },
+    {
+      id: 'same_day',
+      name: 'Same Day Delivery (Colombo Only)',
+      price: 2000,
+      delivery: 'Same day (order before 2 PM)',
       icon: TruckIcon
     }
   ];
@@ -74,6 +111,17 @@ const Checkout = () => {
     }
   }, [isAuthenticated, cart, user, navigate]);
 
+  // Update available cities when province changes
+  useEffect(() => {
+    if (formData.province) {
+      setAvailableCities(sriLankaCities[formData.province] || []);
+      // Reset city if it's not in the new province
+      if (!sriLankaCities[formData.province]?.includes(formData.city)) {
+        setFormData(prev => ({ ...prev, city: '' }));
+      }
+    }
+  }, [formData.province, formData.city]);
+
   const subtotal = getCartTotal() || 0;
   const shipping = shippingMethods.find(m => m.id === shippingMethod)?.price || 0;
   const finalShipping = subtotal >= 10000 ? 0 : shipping; // Free shipping over Rs. 10,000
@@ -85,73 +133,148 @@ const Checkout = () => {
       ...prev,
       [name]: value
     }));
+    
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
   };
 
   const validateForm = () => {
-    const requiredFields = ['firstName', 'lastName', 'email', 'phone', 'address', 'city', 'state', 'zipCode'];
-    for (const field of requiredFields) {
-      if (!formData[field].trim()) {
-        error(`Please fill in ${field.replace(/([A-Z])/g, ' $1').toLowerCase()}`);
-        return false;
-      }
+    const newErrors = {};
+
+    // Required field validation
+    if (!formData.firstName.trim()) {
+      newErrors.firstName = 'First name is required';
+    } else if (formData.firstName.trim().length < 2) {
+      newErrors.firstName = 'First name must be at least 2 characters';
     }
 
-    if (!/^\S+@\S+\.\S+$/.test(formData.email)) {
-      error('Please enter a valid email address');
-      return false;
+    if (!formData.lastName.trim()) {
+      newErrors.lastName = 'Last name is required';
+    } else if (formData.lastName.trim().length < 2) {
+      newErrors.lastName = 'Last name must be at least 2 characters';
     }
 
-    if (!/^(\+94|0)[1-9][0-9]{8}$/.test(formData.phone)) {
-      error('Please enter a valid Sri Lankan phone number');
-      return false;
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email address is required';
+    } else if (!/^\S+@\S+\.\S+$/.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email address';
     }
 
-    return true;
+    if (!formData.phone.trim()) {
+      newErrors.phone = 'Phone number is required';
+    } else if (!/^(\+94|0)[1-9][0-9]{8}$/.test(formData.phone)) {
+      newErrors.phone = 'Please enter a valid Sri Lankan phone number (e.g., +94 11 234 5678 or 011 234 5678)';
+    }
+
+    if (!formData.address.trim()) {
+      newErrors.address = 'Address is required';
+    } else if (formData.address.trim().length < 10) {
+      newErrors.address = 'Please provide a complete address (at least 10 characters)';
+    }
+
+    if (!formData.province) {
+      newErrors.province = 'Please select a province';
+    }
+
+    if (!formData.city) {
+      newErrors.city = 'Please select a city';
+    }
+
+    if (!formData.postalCode.trim()) {
+      newErrors.postalCode = 'Postal code is required';
+    } else if (!/^\d{5}$/.test(formData.postalCode)) {
+      newErrors.postalCode = 'Please enter a valid 5-digit postal code';
+    }
+
+    // Special validation for same day delivery
+    if (shippingMethod === 'same_day' && formData.city !== 'Colombo') {
+      newErrors.shipping = 'Same day delivery is only available for Colombo';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      showError('Please fix the errors below before proceeding');
+      return;
+    }
 
     setIsProcessing(true);
 
     try {
-      // Simulate order processing
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
       // Create order object
-      const order = {
-        user: user.id,
-        items: cart,
-        shipping: {
-          method: shippingMethod,
-          cost: finalShipping,
-          address: formData
+      const orderData = {
+        items: cart.map(item => ({
+          productId: item._id || item.id,
+          quantity: item.quantity || 1,
+          selectedColor: item.selectedColor,
+          selectedSize: item.selectedSize
+        })),
+        shippingAddress: {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          phone: formData.phone,
+          address: formData.address,
+          city: formData.city,
+          province: formData.province,
+          postalCode: formData.postalCode,
+          country: formData.country,
+          additionalInfo: formData.additionalInfo
         },
-        payment: {
-          method: paymentMethod,
-          amount: total
-        },
-        total: total,
-        status: 'pending',
-        createdAt: new Date()
+        paymentMethod: paymentMethod === 'card' ? 'credit_card' : 'cash_on_delivery',
+        shippingMethod: shippingMethod,
+        subtotal: subtotal,
+        shippingCost: finalShipping,
+        total: total
       };
 
-      // Here you would typically send the order to your backend
-      console.log('Order created:', order);
-
-      // Clear cart and show success
-      clearCart();
-      success('Order placed successfully! You will receive a confirmation email shortly.');
+      // Create order via API
+      const response = await axios.post('/api/orders', orderData);
       
-      // Navigate to order confirmation
-      navigate('/order-success', { state: { order } });
+      if (response.data.success) {
+        const order = response.data.order;
+        
+        // Clear cart and show success
+        clearCart();
+        showSuccess('Order placed successfully! You will receive a confirmation email shortly.');
+        
+        // Navigate to order confirmation with order details
+        navigate('/order-success', { 
+          state: { 
+            order,
+            orderId: order._id,
+            invoiceUrl: `/api/orders/${order._id}/invoice`
+          } 
+        });
+      } else {
+        showError(response.data.message || 'Failed to place order. Please try again.');
+      }
     } catch (err) {
-      error('Failed to place order. Please try again.');
+      console.error('Order creation error:', err);
+      if (err.response?.data?.message) {
+        showError(err.response.data.message);
+      } else {
+        showError('Failed to place order. Please check your connection and try again.');
+      }
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const getFieldError = (fieldName) => {
+    return errors[fieldName] ? (
+      <p className="text-red-600 text-sm mt-1 flex items-center">
+        <ExclamationTriangleIcon className="h-4 w-4 mr-1" />
+        {errors[fieldName]}
+      </p>
+    ) : null;
   };
 
   if (!cart || cart.length === 0) {
@@ -208,9 +331,12 @@ const Checkout = () => {
                       name="firstName"
                       value={formData.firstName}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-[#6C7A59] transition-colors"
-                      required
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-[#6C7A59] transition-colors ${
+                        errors.firstName ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      placeholder="Enter your first name"
                     />
+                    {getFieldError('firstName')}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -221,9 +347,12 @@ const Checkout = () => {
                       name="lastName"
                       value={formData.lastName}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-[#6C7A59] transition-colors"
-                      required
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-[#6C7A59] transition-colors ${
+                        errors.lastName ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      placeholder="Enter your last name"
                     />
+                    {getFieldError('lastName')}
                   </div>
                 </div>
 
@@ -237,9 +366,12 @@ const Checkout = () => {
                       name="email"
                       value={formData.email}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-[#6C7A59] transition-colors"
-                      required
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-[#6C7A59] transition-colors ${
+                        errors.email ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      placeholder="your.email@example.com"
                     />
+                    {getFieldError('email')}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -251,9 +383,12 @@ const Checkout = () => {
                       value={formData.phone}
                       onChange={handleInputChange}
                       placeholder="+94 11 234 5678"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-[#6C7A59] transition-colors"
-                      required
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-[#6C7A59] transition-colors ${
+                        errors.phone ? 'border-red-500' : 'border-gray-300'
+                      }`}
                     />
+                    {getFieldError('phone')}
+                    <p className="text-xs text-gray-500 mt-1">Format: +94 11 234 5678 or 011 234 5678</p>
                   </div>
                 </div>
 
@@ -267,66 +402,97 @@ const Checkout = () => {
                     value={formData.address}
                     onChange={handleInputChange}
                     placeholder="Street address, apartment, suite, etc."
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-[#6C7A59] transition-colors"
-                    required
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-[#6C7A59] transition-colors ${
+                      errors.address ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  {getFieldError('address')}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Province *
+                    </label>
+                    <select
+                      name="province"
+                      value={formData.province}
+                      onChange={handleInputChange}
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-[#6C7A59] transition-colors ${
+                        errors.province ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                    >
+                      <option value="">Select Province</option>
+                      {sriLankaProvinces.map(province => (
+                        <option key={province} value={province}>{province}</option>
+                      ))}
+                    </select>
+                    {getFieldError('province')}
+                  </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       City *
                     </label>
-                    <input
-                      type="text"
+                    <select
                       name="city"
                       value={formData.city}
                       onChange={handleInputChange}
-                      placeholder="Colombo"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-[#6C7A59] transition-colors"
-                      required
-                    />
+                      disabled={!formData.province}
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-[#6C7A59] transition-colors ${
+                        errors.city ? 'border-red-500' : 'border-gray-300'
+                      } ${!formData.province ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                    >
+                      <option value="">Select City</option>
+                      {availableCities.map(city => (
+                        <option key={city} value={city}>{city}</option>
+                      ))}
+                    </select>
+                    {getFieldError('city')}
                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      State/Province *
+                      Postal Code *
                     </label>
                     <input
                       type="text"
-                      name="state"
-                      value={formData.state}
-                      onChange={handleInputChange}
-                      placeholder="Western Province"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-[#6C7A59] transition-colors"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      ZIP Code *
-                    </label>
-                    <input
-                      type="text"
-                      name="zipCode"
-                      value={formData.zipCode}
+                      name="postalCode"
+                      value={formData.postalCode}
                       onChange={handleInputChange}
                       placeholder="10300"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-[#6C7A59] transition-colors"
-                      required
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-[#6C7A59] transition-colors ${
+                        errors.postalCode ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                    />
+                    {getFieldError('postalCode')}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Country
+                    </label>
+                    <input
+                      type="text"
+                      name="country"
+                      value={formData.country}
+                      disabled
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
                     />
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Country
+                    Additional Information
                   </label>
-                  <input
-                    type="text"
-                    name="country"
-                    value={formData.country}
-                    disabled
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
+                  <textarea
+                    name="additionalInfo"
+                    value={formData.additionalInfo}
+                    onChange={handleInputChange}
+                    placeholder="Delivery instructions, landmarks, or any other information that might help with delivery"
+                    rows="3"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-[#6C7A59] transition-colors"
                   />
                 </div>
               </form>
@@ -338,6 +504,15 @@ const Checkout = () => {
                 <TruckIcon className="h-6 w-6 text-[#6C7A59] mr-3" />
                 Shipping Method
               </h2>
+
+              {errors.shipping && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-600 text-sm flex items-center">
+                    <ExclamationTriangleIcon className="h-4 w-4 mr-2" />
+                    {errors.shipping}
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-4">
                 {shippingMethods.map((method) => (
@@ -355,6 +530,9 @@ const Checkout = () => {
                         <div>
                           <p className="text-sm font-medium text-gray-900">{method.name}</p>
                           <p className="text-sm text-gray-500">{method.delivery}</p>
+                          {method.id === 'same_day' && (
+                            <p className="text-xs text-orange-600 font-medium">Available only for Colombo</p>
+                          )}
                         </div>
                         <span className="text-sm font-medium text-gray-900">
                           {method.price === 0 ? 'Free' : `Rs. ${method.price.toLocaleString()}`}
@@ -386,6 +564,7 @@ const Checkout = () => {
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-900">Credit/Debit Card</p>
                     <p className="text-sm text-gray-500">Pay securely with your card</p>
+                    <p className="text-xs text-blue-600">Visa, MasterCard, American Express accepted</p>
                   </div>
                 </label>
 
@@ -401,6 +580,7 @@ const Checkout = () => {
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-900">Cash on Delivery</p>
                     <p className="text-sm text-gray-500">Pay when you receive your order</p>
+                    <p className="text-xs text-green-600">Available for orders up to Rs. 25,000</p>
                   </div>
                 </label>
               </div>
@@ -490,6 +670,13 @@ const Checkout = () => {
               <div className="mt-4 flex items-center text-xs text-gray-500">
                 <ShieldCheckIcon className="h-4 w-4 mr-2" />
                 Secure checkout powered by SSL encryption
+              </div>
+
+              {/* Additional Info */}
+              <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                <p className="text-xs text-blue-700">
+                  <strong>Need help?</strong> Contact us at support@clothica.lk or call +94 11 234 5678
+                </p>
               </div>
             </div>
           </div>

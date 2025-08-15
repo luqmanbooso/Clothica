@@ -1,193 +1,205 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   StarIcon, 
   GiftIcon, 
-  FireIcon, 
-  UserGroupIcon,
-  CurrencyDollarIcon,
-  CalendarIcon,
+  SparklesIcon, 
   TrophyIcon,
-  ArrowUpIcon,
-  ArrowDownIcon,
-  PlusIcon,
-  MinusIcon
+  ArrowPathIcon,
+  HeartIcon,
+  ShoppingBagIcon,
+  UserGroupIcon,
+  CogIcon
 } from '@heroicons/react/24/outline';
-import { motion } from 'framer-motion';
-import axios from 'axios';
-import { useToast } from '../contexts/ToastContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
+import axios from 'axios';
 
 const LoyaltyDashboard = () => {
+  const { user } = useAuth();
+  const { showToast } = useToast();
   const [loyaltyData, setLoyaltyData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [redeemAmount, setRedeemAmount] = useState(100);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [selectedMembership, setSelectedMembership] = useState('premium');
+  const [spinning, setSpinning] = useState(false);
+  const [spinResult, setSpinResult] = useState(null);
+  const [showSpinModal, setShowSpinModal] = useState(false);
+  const [activeOffers, setActiveOffers] = useState([]);
   const [referralCode, setReferralCode] = useState('');
-  const { success, error, info } = useToast();
-  const { user } = useAuth();
+  const [referralInput, setReferralInput] = useState('');
 
   useEffect(() => {
     fetchLoyaltyData();
+    fetchActiveOffers();
+    fetchReferralCode();
   }, []);
 
-  const fetchLoyaltyData = async () => {
+  const fetchLoyaltyData = useCallback(async () => {
     try {
-      setLoading(true);
       const response = await axios.get('/api/loyalty/profile');
       setLoyaltyData(response.data);
-      setLoading(false);
-    } catch (err) {
-      console.error('Error fetching loyalty data:', err);
-      error('Failed to load loyalty data');
+    } catch (error) {
+      console.error('Error fetching loyalty data:', error);
+      showToast('Error loading loyalty data', 'error');
+    } finally {
       setLoading(false);
     }
-  };
+  }, [showToast]);
 
-  const handleRedeemPoints = async () => {
+  const fetchActiveOffers = useCallback(async () => {
     try {
-      if (redeemAmount < 100) {
-        error('Minimum redemption is 100 points');
-        return;
-      }
-
-      if (redeemAmount > (loyaltyData.loyaltyPoints || 0)) {
-        error('Insufficient points');
-        return;
-      }
-
-      const response = await axios.post('/api/loyalty/redeem', { points: redeemAmount });
-      success(`Successfully redeemed ${redeemAmount} points for LKR ${response.data.redemptionValue}`);
-      fetchLoyaltyData(); // Refresh data
-      setRedeemAmount(100);
-    } catch (err) {
-      console.error('Error redeeming points:', err);
-      error(err.response?.data?.message || 'Failed to redeem points');
+      const response = await axios.get('/api/special-offers');
+      setActiveOffers(response.data.filter(offer => offer.isActive));
+    } catch (error) {
+      console.error('Error fetching offers:', error);
     }
-  };
+  }, []);
 
-  const handleUpgradeMembership = async () => {
+  const fetchReferralCode = useCallback(async () => {
     try {
-      const response = await axios.post('/api/loyalty/upgrade', { 
-        membershipType: selectedMembership,
-        paymentMethod: 'card'
-      });
+      const response = await axios.get('/api/loyalty/referral-code');
+      setReferralCode(response.data.referralCode);
+    } catch (error) {
+      console.error('Error fetching referral code:', error);
+    }
+  }, []);
+
+  const handleSpin = async () => {
+    if (spinning || !loyaltyData?.availableSpins) return;
+    
+    setSpinning(true);
+    setSpinResult(null);
+    
+    try {
+      const response = await axios.post('/api/loyalty/spin');
+      setSpinResult(response.data.spinResult);
+      setShowSpinModal(true);
       
-      success(`Successfully upgraded to ${selectedMembership} membership! Welcome bonus: ${response.data.welcomeBonus} points`);
-      setShowUpgradeModal(false);
-      fetchLoyaltyData();
-    } catch (err) {
-      console.error('Error upgrading membership:', err);
-      error('Failed to upgrade membership');
+      // Update loyalty data
+      await fetchLoyaltyData();
+      
+      showToast(
+        response.data.spinResult.won 
+          ? `🎉 Congratulations! You won ${response.data.spinResult.discount}% off!` 
+          : 'Better luck next time!',
+        response.data.spinResult.won ? 'success' : 'info'
+      );
+    } catch (error) {
+      console.error('Error during spin:', error);
+      showToast(error.response?.data?.message || 'Error during spin', 'error');
+    } finally {
+      setSpinning(false);
     }
   };
 
   const handleReferral = async () => {
+    if (!referralInput.trim()) return;
+    
     try {
-      if (!referralCode.trim()) {
-        error('Please enter a referral code');
-        return;
-      }
-
-      const response = await axios.post('/api/loyalty/refer', { referralCode: referralCode.trim() });
-      success(`Referral successful! You earned ${response.data.bonusPoints} bonus points`);
-      setReferralCode('');
+      await axios.post('/api/loyalty/refer', { referralCode: referralInput });
+      showToast('Referral applied successfully!', 'success');
+      setReferralInput('');
       fetchLoyaltyData();
-    } catch (err) {
-      console.error('Error processing referral:', err);
-      error(err.response?.data?.message || 'Failed to process referral');
+    } catch (error) {
+      showToast(error.response?.data?.message || 'Error applying referral', 'error');
     }
   };
 
-  const updateLoginStreak = async () => {
+  const handleRedeemPoints = async (points) => {
     try {
-      await axios.post('/api/loyalty/login-streak');
+      await axios.post('/api/loyalty/redeem', { points });
+      showToast('Points redeemed successfully!', 'success');
       fetchLoyaltyData();
-    } catch (err) {
-      console.error('Error updating login streak:', err);
+    } catch (error) {
+      showToast(error.response?.data?.message || 'Error redeeming points', 'error');
     }
   };
 
-  useEffect(() => {
-    if (user) {
-      updateLoginStreak();
+  const handleUpgradeMembership = async (membershipType) => {
+    try {
+      await axios.post('/api/loyalty/upgrade', { membershipType });
+      showToast('Membership upgraded successfully!', 'success');
+      fetchLoyaltyData();
+    } catch (error) {
+      showToast(error.response?.data?.message || 'Error upgrading membership', 'error');
     }
-  }, [user]);
+  };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-  if (!loyaltyData) {
-    return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Loyalty System Unavailable</h2>
-          <p className="text-gray-600">Please try again later.</p>
-        </div>
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-[#6C7A59]"></div>
       </div>
     );
   }
 
-  const membershipTiers = {
-    free: { name: 'Free', color: 'gray', price: 'Free' },
-    premium: { name: 'Premium', color: 'blue', price: 'LKR 9.99/month' },
-    vip: { name: 'VIP', color: 'purple', price: 'LKR 19.99/month' }
+  const getBadgeInfo = (badge) => {
+    const badges = {
+      none: { name: 'No Badge', color: 'gray', icon: '⭐', description: 'Start earning points to get your first badge!' },
+      bronze: { name: 'Bronze', color: 'amber', icon: '🥉', description: 'Great start! You\'re on your way!' },
+      silver: { name: 'Silver', color: 'gray', icon: '🥈', description: 'Impressive! You\'re a loyal customer!' },
+      gold: { name: 'Gold', color: 'yellow', icon: '🥇', description: 'Excellent! You\'re a VIP customer!' },
+      vip: { name: 'VIP', color: 'purple', icon: '👑', description: 'Elite status! You\'re our top customer!' }
+    };
+    return badges[badge] || badges.none;
   };
 
-  const currentTier = membershipTiers[loyaltyData.membership];
+  const currentBadge = getBadgeInfo(loyaltyData?.currentBadge);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Loyalty Rewards</h1>
-          <p className="text-gray-600 mt-2">Earn points, redeem rewards, and unlock exclusive benefits</p>
-        </div>
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center mb-8"
+        >
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+            🎰 Lucky Spin & Loyalty Dashboard
+          </h1>
+          <p className="text-lg text-gray-600">
+            Spin to win amazing discounts and unlock exclusive rewards!
+          </p>
+        </motion.div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Stats */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column - Points & Badge */}
           <div className="lg:col-span-2 space-y-6">
             {/* Points Overview */}
-            <motion.div
+            <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               className="bg-white rounded-xl p-6 shadow-lg"
             >
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold text-gray-900">Your Points</h2>
-                <div className={`px-3 py-1 rounded-full text-sm font-medium bg-${currentTier.color}-100 text-${currentTier.color}-800`}>
-                  {currentTier.name}
+                <div className={`px-3 py-1 rounded-full text-sm font-medium bg-${currentBadge.color}-100 text-${currentBadge.color}-800`}>
+                  {currentBadge.icon} {currentBadge.name}
                 </div>
               </div>
               
               <div className="text-center">
                 <div className="text-5xl font-bold text-blue-600 mb-2">
-                  {(loyaltyData.loyaltyPoints || 0).toLocaleString()}
+                  {(loyaltyData?.loyaltyPoints || 0).toLocaleString()}
                 </div>
                 <p className="text-gray-600 mb-4">Available Points</p>
                 
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div>
                     <div className="text-lg font-semibold text-gray-900">
-                      {(loyaltyData.totalPointsEarned || 0).toLocaleString()}
+                      {(loyaltyData?.totalPointsEarned || 0).toLocaleString()}
                     </div>
                     <div className="text-sm text-gray-600">Total Earned</div>
                   </div>
                   <div>
                     <div className="text-lg font-semibold text-gray-900">
-                      {(loyaltyData.totalPointsRedeemed || 0).toLocaleString()}
+                      {(loyaltyData?.totalPointsRedeemed || 0).toLocaleString()}
                     </div>
                     <div className="text-sm text-gray-600">Total Redeemed</div>
                   </div>
                   <div>
                     <div className="text-lg font-semibold text-green-600">
-                      LKR {(loyaltyData.totalRedemptionValue || 0).toLocaleString()}
+                      LKR {(loyaltyData?.totalRedemptionValue || 0).toLocaleString()}
                     </div>
                     <div className="text-sm text-gray-600">Total Value</div>
                   </div>
@@ -195,290 +207,259 @@ const LoyaltyDashboard = () => {
               </div>
             </motion.div>
 
-            {/* Point Redemption */}
-            <motion.div
+            {/* Spin System */}
+            <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="bg-white rounded-xl p-6 shadow-lg"
+              className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl p-6 shadow-lg text-white"
             >
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Redeem Points</h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Points to Redeem (Min: 100)
-                  </label>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => setRedeemAmount(Math.max(100, redeemAmount - 100))}
-                      className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50"
-                    >
-                      <MinusIcon className="h-4 w-4" />
-                    </button>
-                    <input
-                      type="number"
-                      value={redeemAmount}
-                      onChange={(e) => setRedeemAmount(parseInt(e.target.value) || 100)}
-                      min="100"
-                      step="100"
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                    <button
-                      onClick={() => setRedeemAmount(redeemAmount + 100)}
-                      className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50"
-                    >
-                      <PlusIcon className="h-4 w-4" />
-                    </button>
+              <div className="text-center">
+                <h2 className="text-2xl font-bold mb-2">🎰 Lucky Spin</h2>
+                <p className="text-purple-100 mb-4">
+                  {loyaltyData?.availableSpins > 0 
+                    ? `You have ${loyaltyData.availableSpins} spin${loyaltyData.availableSpins > 1 ? 's' : ''} remaining!`
+                    : 'No spins remaining this month'
+                  }
+                </p>
+                
+                <div className="mb-4">
+                  <div className="text-sm text-purple-200 mb-2">Spin Rewards:</div>
+                  <div className="flex justify-center space-x-2 text-xs">
+                    <span className="px-2 py-1 bg-white/20 rounded">5% off</span>
+                    <span className="px-2 py-1 bg-white/20 rounded">10% off</span>
+                    <span className="px-2 py-1 bg-white/20 rounded">15% off</span>
+                    <span className="px-2 py-1 bg-white/20 rounded">20% off</span>
                   </div>
                 </div>
-                
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <div className="text-sm text-blue-800">
-                    <strong>Redemption Value:</strong> LKR {Math.floor(redeemAmount * (1 + ((loyaltyData.benefits?.redemptionBonus || 10) / 100)))}
-                    <br />
-                    <span className="text-xs">Bonus: +{loyaltyData.benefits?.redemptionBonus || 10}%</span>
-                  </div>
-                </div>
-                
+
                 <button
-                  onClick={handleRedeemPoints}
-                  disabled={redeemAmount < 100 || redeemAmount > (loyaltyData.loyaltyPoints || 0)}
-                  className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                  onClick={handleSpin}
+                  disabled={spinning || !loyaltyData?.availableSpins}
+                  className={`px-8 py-3 rounded-full font-bold text-lg transition-all duration-300 ${
+                    spinning || !loyaltyData?.availableSpins
+                      ? 'bg-gray-400 cursor-not-allowed'
+                      : 'bg-white text-purple-600 hover:bg-purple-100 hover:scale-105 shadow-lg'
+                  }`}
                 >
-                  Redeem Points
+                  {spinning ? (
+                    <ArrowPathIcon className="h-6 w-6 animate-spin mx-auto" />
+                  ) : (
+                    '🎰 SPIN NOW!'
+                  )}
                 </button>
               </div>
             </motion.div>
 
-            {/* Addiction Mechanics */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
+            {/* Active Offers */}
+            {activeOffers.length > 0 && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="bg-white rounded-xl p-6 shadow-lg"
+              >
+                <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                  <GiftIcon className="h-6 w-6 mr-2 text-[#6C7A59]" />
+                  Active Offers
+                </h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {activeOffers.slice(0, 4).map((offer, index) => (
+                    <motion.div
+                      key={offer._id}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.1 * index }}
+                      className="relative overflow-hidden rounded-lg p-4"
+                      style={{
+                        background: offer.displayGradient || `linear-gradient(135deg, ${offer.displayColor} 0%, ${offer.displayColor}dd 100%)`
+                      }}
+                    >
+                      <div className="text-white">
+                        <div className="text-2xl mb-2">{offer.displayIcon}</div>
+                        <h3 className="font-semibold mb-1">{offer.displayTitle || offer.name}</h3>
+                        <p className="text-sm opacity-90">{offer.displayMessage || offer.description}</p>
+                        <div className="mt-2 text-lg font-bold">
+                          {offer.discountType === 'percentage' && `${offer.discountValue}% OFF`}
+                          {offer.discountType === 'fixed' && `LKR ${offer.discountValue} OFF`}
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </div>
+
+          {/* Right Column - Actions & Info */}
+          <div className="space-y-6">
+            {/* Badge Info */}
+            <motion.div 
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1 }}
               className="bg-white rounded-xl p-6 shadow-lg"
             >
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Active Bonuses</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-center space-x-3 p-3 bg-orange-50 rounded-lg">
-                  <FireIcon className="h-6 w-6 text-orange-600" />
-                  <div>
-                    <div className="font-medium text-gray-900">Login Streak</div>
-                    <div className="text-sm text-gray-600">{loyaltyData.loginStreak || 0} days</div>
-                  </div>
-                </div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                <TrophyIcon className="h-6 w-6 mr-2 text-[#6C7A59]" />
+                Your Badge
+              </h2>
+              
+              <div className="text-center">
+                <div className="text-6xl mb-4">{currentBadge.icon}</div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">{currentBadge.name}</h3>
+                <p className="text-gray-600 text-sm mb-4">{currentBadge.description}</p>
                 
-                <div className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg">
-                  <CalendarIcon className="h-6 w-6 text-green-600" />
-                  <div>
-                    <div className="font-medium text-gray-900">Weekend Bonus</div>
-                    <div className="text-sm text-gray-600">2x points active</div>
-                  </div>
-                </div>
-                
-                {loyaltyData.birthday && new Date().getMonth() === new Date(loyaltyData.birthday).getMonth() && (
-                  <div className="flex items-center space-x-3 p-3 bg-purple-50 rounded-lg md:col-span-2">
-                    <GiftIcon className="h-6 w-6 text-purple-600" />
-                    <div>
-                      <div className="font-medium text-gray-900">Birthday Month Bonus</div>
-                      <div className="text-sm text-gray-600">3x points active!</div>
-                    </div>
+                {loyaltyData?.badgeHistory?.length > 0 && (
+                  <div className="text-left">
+                    <h4 className="font-semibold text-gray-900 mb-2">Badge History:</h4>
+                    {loyaltyData.badgeHistory.slice(-3).map((badge, index) => (
+                      <div key={index} className="flex items-center justify-between text-sm py-1">
+                        <span className="capitalize">{badge.badge}</span>
+                        <span className="text-gray-500">
+                          {new Date(badge.earnedAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
             </motion.div>
-          </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Membership Status */}
-            <motion.div
+            {/* Quick Actions */}
+            <motion.div 
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-white rounded-xl p-6 shadow-lg"
+            >
+              <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                <CogIcon className="h-6 w-6 mr-2 text-[#6C7A59]" />
+                Quick Actions
+              </h2>
+              
+              <div className="space-y-3">
+                <button
+                  onClick={() => handleRedeemPoints(100)}
+                  disabled={!loyaltyData?.loyaltyPoints || loyaltyData.loyaltyPoints < 100}
+                  className="w-full px-4 py-2 bg-[#6C7A59] text-white rounded-lg hover:bg-[#5A6B4A] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                >
+                  💰 Redeem 100 Points
+                </button>
+                
+                <button
+                  onClick={() => handleUpgradeMembership('premium')}
+                  disabled={!loyaltyData?.loyaltyPoints || loyaltyData.loyaltyPoints < 500}
+                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                >
+                  ⭐ Upgrade to Premium
+                </button>
+                
+                <button
+                  onClick={() => handleUpgradeMembership('vip')}
+                  disabled={!loyaltyData?.loyaltyPoints || loyaltyData.loyaltyPoints < 1000}
+                  className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                >
+                  👑 Upgrade to VIP
+                </button>
+              </div>
+            </motion.div>
+
+            {/* Referral System */}
+            <motion.div 
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.3 }}
               className="bg-white rounded-xl p-6 shadow-lg"
             >
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Membership</h3>
+              <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                <UserGroupIcon className="h-6 w-6 mr-2 text-[#6C7A59]" />
+                Refer Friends
+              </h2>
               
-              <div className="text-center mb-4">
-                <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium bg-${currentTier.color}-100 text-${currentTier.color}-800 mb-2`}>
-                  {currentTier.name}
-                </div>
-                <div className="text-sm text-gray-600">{currentTier.price}</div>
-              </div>
-
-              {loyaltyData.membership === 'free' && (
-                <button
-                  onClick={() => setShowUpgradeModal(true)}
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-105"
-                >
-                  <ArrowUpIcon className="h-5 w-5 inline mr-2" />
-                  Upgrade Now
-                </button>
-              )}
-
-              {loyaltyData.membership !== 'free' && loyaltyData.membershipExpiry && (
-                <div className="text-center text-sm text-gray-600">
-                  Expires: {new Date(loyaltyData.membershipExpiry).toLocaleDateString()}
-                </div>
-              )}
-            </motion.div>
-
-            {/* Referral System */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.4 }}
-              className="bg-white rounded-xl p-6 shadow-lg"
-            >
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Refer Friends</h3>
-              
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Your Referral Code</label>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="text"
-                    value={loyaltyData.referralCode || 'Loading...'}
-                    readOnly
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
-                  />
-                  <button
-                    onClick={() => navigator.clipboard.writeText(loyaltyData.referralCode)}
-                    className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                  >
-                    Copy
-                  </button>
-                </div>
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Use Referral Code</label>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="text"
-                    value={referralCode}
-                    onChange={(e) => setReferralCode(e.target.value)}
-                    placeholder="Enter code"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  <button
-                    onClick={handleReferral}
-                    className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                  >
-                    Apply
-                  </button>
-                </div>
-              </div>
-
-              <div className="text-center text-sm text-gray-600">
-                Earn 500 bonus points per referral!
-              </div>
-            </motion.div>
-
-            {/* Benefits */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.5 }}
-              className="bg-white rounded-xl p-6 shadow-lg"
-            >
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Benefits</h3>
               <div className="space-y-3">
-                <div className="flex items-center space-x-3">
-                  <StarIcon className="h-5 w-5 text-yellow-500" />
-                  <div className="text-sm">
-                    <div className="font-medium text-gray-900">{loyaltyData.benefits.pointMultiplier}x Points</div>
-                    <div className="text-gray-600">on purchases</div>
+                <div className="text-center">
+                  <p className="text-sm text-gray-600 mb-2">Your Referral Code:</p>
+                  <div className="bg-gray-100 p-3 rounded-lg font-mono text-lg text-center">
+                    {referralCode}
                   </div>
                 </div>
                 
-                <div className="flex items-center space-x-3">
-                  <CurrencyDollarIcon className="h-5 w-5 text-green-500" />
-                  <div className="text-sm">
-                    <div className="font-medium text-gray-900">+{loyaltyData.benefits.redemptionBonus}% Bonus</div>
-                    <div className="text-gray-600">on redemption</div>
+                <div>
+                  <p className="text-sm text-gray-600 mb-2">Apply Referral Code:</p>
+                  <div className="flex space-x-2">
+                    <input
+                      type="text"
+                      value={referralInput}
+                      onChange={(e) => setReferralInput(e.target.value)}
+                      placeholder="Enter code"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6C7A59]"
+                    />
+                    <button
+                      onClick={handleReferral}
+                      className="px-4 py-2 bg-[#6C7A59] text-white rounded-lg hover:bg-[#5A6B4A] transition-colors"
+                    >
+                      Apply
+                    </button>
                   </div>
                 </div>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+
+        {/* Spin Result Modal */}
+        <AnimatePresence>
+          {showSpinModal && spinResult && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+              onClick={() => setShowSpinModal(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.8, opacity: 0 }}
+                className="bg-white rounded-2xl p-8 max-w-md w-full text-center"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="text-6xl mb-4">
+                  {spinResult.won ? spinResult.icon : '😔'}
+                </div>
                 
-                {loyaltyData.benefits.freeShipping && (
-                  <div className="flex items-center space-x-3">
-                    <TrophyIcon className="h-5 w-5 text-blue-500" />
-                    <div className="text-sm">
-                      <div className="font-medium text-gray-900">Free Shipping</div>
-                      <div className="text-gray-600">on all orders</div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  {spinResult.won ? 'Congratulations!' : 'Better Luck Next Time!'}
+                </h2>
+                
+                <p className="text-gray-600 mb-4">
+                  {spinResult.description}
+                </p>
+                
+                {spinResult.won && (
+                  <div className="bg-green-100 border border-green-200 rounded-lg p-4 mb-4">
+                    <div className="text-2xl font-bold text-green-800">
+                      {spinResult.discount}% OFF
+                    </div>
+                    <div className="text-sm text-green-600">
+                      Coupon code: {spinResult.couponCode}
                     </div>
                   </div>
                 )}
-              </div>
+                
+                <button
+                  onClick={() => setShowSpinModal(false)}
+                  className="px-6 py-3 bg-[#6C7A59] text-white rounded-lg hover:bg-[#5A6B4A] transition-colors"
+                >
+                  {spinResult.won ? 'Use Coupon Now!' : 'Close'}
+                </button>
+              </motion.div>
             </motion.div>
-          </div>
-        </div>
+          )}
+        </AnimatePresence>
       </div>
-
-      {/* Upgrade Modal */}
-      {showUpgradeModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
-            <h3 className="text-xl font-semibold text-gray-900 mb-4">Upgrade Membership</h3>
-            
-            <div className="space-y-4 mb-6">
-              <div className="border border-gray-200 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="flex items-center space-x-3">
-                    <input
-                      type="radio"
-                      name="membership"
-                      value="premium"
-                      checked={selectedMembership === 'premium'}
-                      onChange={(e) => setSelectedMembership(e.target.value)}
-                      className="text-blue-600"
-                    />
-                    <span className="font-medium text-gray-900">Premium</span>
-                  </label>
-                  <span className="text-lg font-bold text-blue-600">LKR 9.99/month</span>
-                </div>
-                <div className="text-sm text-gray-600 ml-6">
-                  1.5x points • 15% redemption bonus • Free shipping • Early access
-                </div>
-              </div>
-              
-              <div className="border border-gray-200 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="flex items-center space-x-3">
-                    <input
-                      type="radio"
-                      name="membership"
-                      value="vip"
-                      checked={selectedMembership === 'vip'}
-                      onChange={(e) => setSelectedMembership(e.target.value)}
-                      className="text-purple-600"
-                    />
-                    <span className="font-medium text-gray-900">VIP</span>
-                  </label>
-                  <span className="text-lg font-bold text-purple-600">LKR 19.99/month</span>
-                </div>
-                <div className="text-sm text-gray-600 ml-6">
-                  2x points • 20% redemption bonus • Free shipping • Early access • Exclusive offers
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex space-x-3">
-              <button
-                onClick={() => setShowUpgradeModal(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleUpgradeMembership}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Upgrade Now
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

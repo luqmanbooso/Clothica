@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { StarIcon, ShoppingBagIcon, HeartIcon, EyeIcon, StarIcon as StarIconSolid, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import { useWishlist } from '../contexts/WishlistContext';
+import axios from 'axios';
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -22,140 +23,51 @@ const ProductDetail = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [validationErrors, setValidationErrors] = useState({});
 
-  const productImages = [
-    "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-    "https://images.unsplash.com/photo-1503341504253-dff4815485f1?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-    "https://images.unsplash.com/photo-1562157873-818bc0726f68?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-    "https://images.unsplash.com/photo-1576566588028-4147f3842f27?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
-  ];
-
-  const sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
-  const colors = [
-    { name: 'Black', hex: '#000000' },
-    { name: 'White', hex: '#FFFFFF' },
-    { name: 'Navy', hex: '#1e3a8a' },
-    { name: 'Gray', hex: '#6b7280' }
-  ];
-
-  const reviews = [
-    {
-      id: 1,
-      user: 'Sarah M.',
-      rating: 5,
-      date: '2024-01-15',
-      title: 'Perfect fit and quality!',
-      comment: 'This shirt exceeded my expectations. The fabric is soft and the fit is perfect. Highly recommend!',
-      verified: true
-    },
-    {
-      id: 2,
-      user: 'Mike R.',
-      rating: 4,
-      date: '2024-01-10',
-      title: 'Great quality, runs slightly large',
-      comment: 'The quality is excellent and the material feels premium. I would suggest sizing down if you prefer a more fitted look.',
-      verified: true
-    },
-    {
-      id: 3,
-      user: 'Emma L.',
-      rating: 5,
-      date: '2024-01-05',
-      title: 'Love this shirt!',
-      comment: 'Perfect for everyday wear. The color is exactly as shown and it washes well.',
-      verified: false
-    }
-  ];
-
-  // Mock related products
-  const mockRelatedProducts = [
-    {
-      id: 2,
-      name: "Classic Denim Jeans",
-      price: 79.99,
-      originalPrice: 99.99,
-      image: "https://images.unsplash.com/photo-1542272604-787c3835535d?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-      rating: 4.8,
-      reviews: 256,
-      isNew: false,
-      discount: 20
-    },
-    {
-      id: 3,
-      name: "Summer Dress Collection",
-      price: 59.99,
-      originalPrice: 79.99,
-      image: "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-      rating: 4.6,
-      reviews: 189,
-      isNew: true,
-      discount: 25
-    },
-    {
-      id: 4,
-      name: "Casual Sneakers",
-      price: 89.99,
-      originalPrice: 119.99,
-      image: "https://images.unsplash.com/photo-1549298916-b41d501d3772?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-      rating: 4.7,
-      reviews: 342,
-      isNew: false,
-      discount: 25
-    },
-    {
-      id: 5,
-      name: "Premium Hoodie",
-      price: 69.99,
-      originalPrice: 89.99,
-      image: "https://images.unsplash.com/photo-1556821840-3a63f95609a7?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-      rating: 4.4,
-      reviews: 156,
-      isNew: true,
-      discount: 22
-    }
-  ];
-
   useEffect(() => {
     loadProduct();
-    setRelatedProducts(mockRelatedProducts);
   }, [id]);
 
-  const loadProduct = async () => {
+  useEffect(() => {
+    if (product) {
+      loadRelatedProducts();
+    }
+  }, [product, id]);
+
+  const loadProduct = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/products/${id}`);
-      const data = await response.json();
+      const response = await axios.get(`/api/products/${id}`);
+      const data = response.data;
       setProduct(data);
-      setSelectedColor(data.colors?.[0] || '');
+      
+      // Set default selections if available
+      if (data.colors && data.colors.length > 0) {
+        setSelectedColor(data.colors[0].name || data.colors[0]);
+      }
+      if (data.sizes && data.sizes.length > 0) {
+        setSelectedSize(data.sizes[0].name || data.sizes[0]);
+      }
     } catch (error) {
-      // Fallback data
-      setProduct({
-        id: parseInt(id),
-        name: "Premium Cotton T-Shirt",
-        price: 29.99,
-        originalPrice: 39.99,
-        description: "Experience ultimate comfort with our premium cotton t-shirt. Made from 100% organic cotton, this shirt features a modern fit and soft, breathable fabric that keeps you cool and comfortable all day long. Perfect for everyday wear, casual outings, or layering under jackets and sweaters.",
-        features: [
-          "100% organic cotton",
-          "Modern, comfortable fit",
-          "Breathable and soft fabric",
-          "Machine washable",
-          "Available in multiple colors"
-        ],
-        rating: 4.5,
-        reviews: 128,
-        category: "mens",
-        isNew: true,
-        discount: 25,
-        colors: ['Black', 'White', 'Navy', 'Gray'],
-        sizes: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
-        stock: 45,
-        sku: "TS-001"
-      });
+      console.error('Error loading product:', error);
+      // Don't set fallback data - let the user see the error
+      setProduct(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  const loadRelatedProducts = useCallback(async () => {
+    try {
+      // Fetch related products from the same category
+      if (product?.category) {
+        const response = await axios.get(`/api/products?category=${product.category}&limit=4`);
+        setRelatedProducts(response.data.products.filter(p => p._id !== id));
+      }
+    } catch (error) {
+      console.error('Error loading related products:', error);
+      setRelatedProducts([]);
+    }
+  }, [product?.category, id]);
 
   const renderStars = (rating) => {
     const stars = [];
@@ -214,8 +126,8 @@ const ProductDetail = () => {
   };
 
   const handleWishlist = () => {
-    if (isInWishlist(product.id)) {
-      removeFromWishlist(product.id);
+    if (isInWishlist(product._id)) {
+      removeFromWishlist(product._id);
       setSuccessMessage('Removed from wishlist');
     } else {
       addToWishlist(product);
@@ -290,20 +202,20 @@ const ProductDetail = () => {
             {/* Main Image */}
             <div className="relative aspect-square overflow-hidden rounded-lg bg-white">
               <img
-                src={productImages[selectedImage]}
+                src={product.images?.[selectedImage] || "https://via.placeholder.com/400x400"}
                 alt={product.name}
                 className="w-full h-full object-cover"
               />
               
               {/* Navigation Arrows */}
               <button
-                onClick={() => setSelectedImage((prev) => (prev - 1 + productImages.length) % productImages.length)}
+                onClick={() => setSelectedImage((prev) => (prev - 1 + product.images.length) % product.images.length)}
                 className="absolute left-4 top-1/2 transform -translate-y-1/2 p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white transition-all duration-200"
               >
                 <ChevronLeftIcon className="h-5 w-5" />
               </button>
               <button
-                onClick={() => setSelectedImage((prev) => (prev + 1) % productImages.length)}
+                onClick={() => setSelectedImage((prev) => (prev + 1) % product.images.length)}
                 className="absolute right-4 top-1/2 transform -translate-y-1/2 p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white transition-all duration-200"
               >
                 <ChevronRightIcon className="h-5 w-5" />
@@ -312,7 +224,7 @@ const ProductDetail = () => {
             
             {/* Thumbnail Images */}
             <div className="grid grid-cols-4 gap-2">
-              {productImages.map((image, index) => (
+              {product.images?.map((image, index) => (
                 <button
                   key={index}
                   onClick={() => setSelectedImage(index)}
@@ -351,9 +263,9 @@ const ProductDetail = () => {
               
               <div className="flex items-center gap-4 mb-4">
                 <div className="flex items-center">
-                  {renderStars(product.rating)}
+                  {renderStars(product.rating || 0)}
                   <span className="ml-2 text-sm text-gray-600">
-                    {product.rating} ({product.reviews} reviews)
+                    {product.rating || 0} ({product.numReviews || product.reviews?.length || 0} reviews)
                   </span>
                 </div>
                 <button
@@ -379,42 +291,57 @@ const ProductDetail = () => {
             </div>
 
             {/* Features */}
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Features</h3>
-              <ul className="space-y-1">
-                {product.features?.map((feature, index) => (
-                  <li key={index} className="flex items-center text-gray-600">
-                    <div className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-3"></div>
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-            </div>
+            {product.features && product.features.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Features</h3>
+                <ul className="space-y-1">
+                  {product.features.map((feature, index) => (
+                    <li key={index} className="flex items-center text-gray-600">
+                      <div className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-3"></div>
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Material and Care */}
+            {(product.material || product.care) && (
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Material & Care</h3>
+                <div className="space-y-2">
+                  {product.material && (
+                    <div className="flex items-center text-gray-600">
+                      <span className="font-medium mr-2">Material:</span>
+                      <span>{product.material}</span>
+                    </div>
+                  )}
+                  {product.care && (
+                    <div className="flex items-center text-gray-600">
+                      <span className="font-medium mr-2">Care:</span>
+                      <span>{product.care}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Color Selection */}
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-3">Color</h3>
               <div className="flex gap-3">
-                {colors.map((color) => (
+                {product.colors?.map((color) => (
                   <button
-                    key={color.name}
-                    onClick={() => setSelectedColor(color.name)}
-                    className={`relative p-1 rounded-full border-2 transition-all duration-200 ${
-                      selectedColor === color.name ? 'border-blue-600' : 'border-gray-300 hover:border-gray-400'
+                    key={color.name || color}
+                    onClick={() => setSelectedColor(color.name || color)}
+                    className={`w-8 h-8 rounded-full border-2 transition-all duration-200 ${
+                      selectedColor === (color.name || color)
+                        ? 'border-blue-600 scale-110'
+                        : 'border-gray-300 hover:border-gray-400'
                     }`}
-                  >
-                    <div
-                      className="w-8 h-8 rounded-full border border-gray-200"
-                      style={{ backgroundColor: color.hex }}
-                    ></div>
-                    {selectedColor === color.name && (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="flex items-center justify-center">
-                          <div className="w-2 h-2 bg-white rounded-full"></div>
-                        </div>
-                      </div>
-                    )}
-                  </button>
+                    style={{ backgroundColor: color.hex || color }}
+                    title={color.name || color}
+                  />
                 ))}
               </div>
               {validationErrors.color && (
@@ -423,31 +350,23 @@ const ProductDetail = () => {
             </div>
 
             {/* Size Selection */}
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-lg font-semibold text-gray-900">Size</h3>
-                <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-                  Size guide
-                </button>
-              </div>
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">Size</h3>
               <div className="grid grid-cols-3 gap-2">
-                {sizes.map((size) => (
+                {product.sizes?.map((size) => (
                   <button
-                    key={size}
-                    onClick={() => setSelectedSize(size)}
+                    key={size.name || size}
+                    onClick={() => setSelectedSize(size.name || size)}
                     className={`py-3 px-4 border-2 rounded-lg font-medium transition-all duration-200 ${
-                      selectedSize === size
+                      selectedSize === (size.name || size)
                         ? 'border-blue-600 bg-blue-50 text-blue-600'
                         : 'border-gray-300 text-gray-700 hover:border-gray-400'
                     }`}
                   >
-                    {size}
+                    {size.name || size}
                   </button>
                 ))}
               </div>
-              {validationErrors.size && (
-                <p className="mt-2 text-sm text-red-600">{validationErrors.size}</p>
-              )}
             </div>
 
             {/* Quantity */}
@@ -468,7 +387,7 @@ const ProductDetail = () => {
                   +
                 </button>
                 <span className="text-sm text-gray-500">
-                  {product.stock} available
+                  {product.stock || 0} available
                 </span>
               </div>
             </div>
@@ -487,13 +406,13 @@ const ProductDetail = () => {
                 <button
                   onClick={handleWishlist}
                   className={`flex-1 flex items-center justify-center px-6 py-3 border font-semibold rounded-lg transition-colors ${
-                    isInWishlist(product.id)
+                    isInWishlist(product._id)
                       ? 'border-red-300 bg-red-50 text-red-600 hover:bg-red-100'
                       : 'border-gray-300 text-gray-700 hover:bg-gray-50'
                   }`}
                 >
-                  <HeartIcon className={`h-5 w-5 mr-2 ${isInWishlist(product.id) ? 'fill-current' : ''}`} />
-                  {isInWishlist(product.id) ? 'In Wishlist' : 'Add to Wishlist'}
+                  <HeartIcon className={`h-5 w-5 mr-2 ${isInWishlist(product._id) ? 'fill-current' : ''}`} />
+                  {isInWishlist(product._id) ? 'In Wishlist' : 'Add to Wishlist'}
                 </button>
                 <button className="flex-1 flex items-center justify-center px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors">
                   <EyeIcon className="h-5 w-5 mr-2" />
@@ -505,14 +424,30 @@ const ProductDetail = () => {
             {/* Product Info */}
             <div className="border-t border-gray-200 pt-6">
               <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-gray-500">SKU:</span>
-                  <span className="ml-2 font-medium">{product.sku}</span>
-                </div>
-                <div>
-                  <span className="text-gray-500">Category:</span>
-                  <span className="ml-2 font-medium capitalize">{product.category}</span>
-                </div>
+                {product.sku && (
+                  <div>
+                    <span className="text-gray-500">SKU:</span>
+                    <span className="ml-2 font-medium">{product.sku}</span>
+                  </div>
+                )}
+                {product.category && (
+                  <div>
+                    <span className="text-gray-500">Category:</span>
+                    <span className="ml-2 font-medium capitalize">{product.category}</span>
+                  </div>
+                )}
+                {product.brand && (
+                  <div>
+                    <span className="text-gray-500">Brand:</span>
+                    <span className="ml-2 font-medium">{product.brand}</span>
+                  </div>
+                )}
+                {product.subcategory && (
+                  <div>
+                    <span className="text-gray-500">Subcategory:</span>
+                    <span className="ml-2 font-medium capitalize">{product.subcategory}</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -531,28 +466,40 @@ const ProductDetail = () => {
           </div>
 
           <div className="grid gap-6">
-            {reviews.map((review) => (
-              <div key={review.id} className="bg-white rounded-lg p-6 shadow-sm">
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-semibold text-gray-900">{review.user}</span>
-                      {review.verified && (
-                        <span className="inline-block px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded">
-                          Verified Purchase
+            {product.reviews && product.reviews.length > 0 ? (
+              product.reviews.map((review) => (
+                <div key={review._id} className="bg-white rounded-lg p-6 shadow-sm">
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-semibold text-gray-900">
+                          {review.user?.name || 'Anonymous User'}
                         </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {renderStars(review.rating)}
-                      <span className="text-sm text-gray-500">{review.date}</span>
+                        {review.verified && (
+                          <span className="inline-block px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded">
+                            Verified Purchase
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {renderStars(review.rating)}
+                        <span className="text-sm text-gray-500">
+                          {new Date(review.createdAt || review.date).toLocaleDateString()}
+                        </span>
+                      </div>
                     </div>
                   </div>
+                  {review.title && (
+                    <h4 className="font-semibold text-gray-900 mb-2">{review.title}</h4>
+                  )}
+                  <p className="text-gray-600">{review.comment || review.text}</p>
                 </div>
-                <h4 className="font-semibold text-gray-900 mb-2">{review.title}</h4>
-                <p className="text-gray-600">{review.comment}</p>
+              ))
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-gray-500">No reviews yet. Be the first to review this product!</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
 
@@ -561,10 +508,10 @@ const ProductDetail = () => {
           <h2 className="text-2xl font-bold text-gray-900 mb-8">You might also like</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {relatedProducts.map((product) => (
-              <div key={product.id} className="group">
+              <Link key={product._id} to={`/product/${product._id}`} className="group">
                 <div className="relative overflow-hidden rounded-lg bg-white shadow-sm hover:shadow-lg transition-all duration-300">
                   <img
-                    src={product.image}
+                    src={product.images?.[0] || "https://via.placeholder.com/300x300"}
                     alt={product.name}
                     className="w-full aspect-square object-cover group-hover:scale-110 transition-transform duration-300"
                   />
@@ -574,18 +521,28 @@ const ProductDetail = () => {
                         NEW
                       </span>
                     )}
+                    {product.discount && (
+                      <span className="inline-block px-2 py-1 bg-red-600 text-white text-xs font-semibold rounded">
+                        -{product.discount}%
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="mt-4">
                   <h3 className="font-semibold text-gray-900 mb-1">{product.name}</h3>
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-gray-900">${product.price}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-gray-900">${product.price}</span>
+                      {product.originalPrice && product.originalPrice > product.price && (
+                        <span className="text-sm text-gray-500 line-through">${product.originalPrice}</span>
+                      )}
+                    </div>
                     <div className="flex items-center">
-                      {renderStars(product.rating)}
+                      {renderStars(product.rating || 0)}
                     </div>
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>

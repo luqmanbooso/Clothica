@@ -2,7 +2,8 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const Order = require('../models/Order');
 const Product = require('../models/Product');
-const { auth, admin } = require('../middleware/auth');
+const { auth } = require('../middleware/auth');
+const { admin } = require('../middleware/admin');
 const User = require('../models/User'); // Added for user details
 const Coupon = require('../models/Coupon'); // Added for coupon details
 const { sendOrderConfirmationEmail } = require('../utils/email'); // Added for email sending
@@ -81,9 +82,9 @@ router.post('/', auth, async (req, res) => {
       }
     }
 
-    // Calculate shipping cost
-    const shippingCost = subtotal >= 5000 ? 0 : 500; // Free shipping above LKR 5000
-    const total = subtotal + shippingCost - discount;
+    // Use shipping cost from frontend or calculate default
+    const shippingCost = req.body.shippingCost || (subtotal >= 5000 ? 0 : 500); // Free shipping above LKR 5000
+    const total = req.body.total || (subtotal + shippingCost - discount);
 
     // Create order
     const order = new Order({
@@ -295,6 +296,123 @@ router.put('/:id/cancel', auth, async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Generate invoice for order
+router.get('/:id/invoice', auth, async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id)
+      .populate('user', 'name email')
+      .populate('items.product', 'name images');
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // Check if user owns this order or is admin
+    if (order.user._id.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    // Generate HTML invoice
+    const invoiceHTML = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Invoice - Order ${order._id}</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 40px; color: #333; }
+          .header { text-align: center; border-bottom: 2px solid #6C7A59; padding-bottom: 20px; margin-bottom: 30px; }
+          .company-name { font-size: 24px; font-weight: bold; color: #6C7A59; margin-bottom: 10px; }
+          .invoice-details { display: flex; justify-content: space-between; margin-bottom: 30px; }
+          .customer-info, .order-info { flex: 1; }
+          .section-title { font-weight: bold; margin-bottom: 10px; color: #6C7A59; }
+          table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+          th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+          th { background-color: #f8f9fa; font-weight: bold; }
+          .total-row { font-weight: bold; font-size: 18px; }
+          .footer { margin-top: 40px; text-align: center; color: #666; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="company-name">Clothica Lanka</div>
+          <div>Your Premium Fashion Destination</div>
+          <div>Colombo, Sri Lanka</div>
+        </div>
+        
+        <div class="invoice-details">
+          <div class="customer-info">
+            <div class="section-title">Bill To:</div>
+            <div>${order.shippingAddress.firstName} ${order.shippingAddress.lastName}</div>
+            <div>${order.shippingAddress.address}</div>
+            <div>${order.shippingAddress.city}, ${order.shippingAddress.province}</div>
+            <div>${order.shippingAddress.postalCode}, Sri Lanka</div>
+            <div>Email: ${order.shippingAddress.email}</div>
+            <div>Phone: ${order.shippingAddress.phone}</div>
+          </div>
+          
+          <div class="order-info">
+            <div class="section-title">Order Information:</div>
+            <div><strong>Order ID:</strong> ${order._id}</div>
+            <div><strong>Order Date:</strong> ${new Date(order.createdAt).toLocaleDateString()}</div>
+            <div><strong>Payment Method:</strong> ${order.paymentMethod === 'credit_card' ? 'Credit/Debit Card' : 'Cash on Delivery'}</div>
+            <div><strong>Status:</strong> ${order.status}</div>
+          </div>
+        </div>
+        
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Color</th>
+              <th>Size</th>
+              <th>Quantity</th>
+              <th>Price</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${order.items.map(item => `
+              <tr>
+                <td>${item.name}</td>
+                <td>${item.selectedColor || 'Default'}</td>
+                <td>${item.selectedSize || 'Default'}</td>
+                <td>${item.quantity}</td>
+                <td>Rs. ${((item.price || 0) || 0).toLocaleString()}</td>
+                <td>Rs. ${(((item.price || 0) || 0) * ((item.quantity || 1) || 1)).toLocaleString()}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        
+        <div style="text-align: right; margin-top: 20px;">
+          <div><strong>Subtotal:</strong> Rs. ${((order.subtotal || 0) || 0).toLocaleString()}</div>
+          ${((order.discount || 0) || 0) > 0 ? `<div><strong>Discount:</strong> -Rs. ${((order.discount || 0) || 0).toLocaleString()}</div>` : ''}
+          <div><strong>Shipping:</strong> ${((order.shippingCost || 0) || 0) === 0 ? 'Free' : `Rs. ${((order.shippingCost || 0) || 0).toLocaleString()}`}</div>
+          <div class="total-row"><strong>Total:</strong> Rs. ${((order.total || 0) || 0).toLocaleString()}</div>
+        </div>
+        
+        <div class="footer">
+          <p>Thank you for shopping with Clothica Lanka!</p>
+          <p>For support, contact us at support@clothicalanka.com or call +94 11 234 5678</p>
+          <p>This is a computer-generated invoice. No signature required.</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    // Set response headers for HTML
+    res.setHeader('Content-Type', 'text/html');
+    res.setHeader('Content-Disposition', `inline; filename="invoice-${order._id}.html"`);
+    res.send(invoiceHTML);
+
+  } catch (error) {
+    console.error('Invoice generation error:', error);
+    res.status(500).json({ message: 'Failed to generate invoice' });
   }
 });
 

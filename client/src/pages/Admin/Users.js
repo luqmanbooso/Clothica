@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { FiUsers, FiSearch, FiEye, FiEdit, FiUserCheck, FiUserX, FiMail, FiPhone, FiCalendar, FiXCircle } from 'react-icons/fi';
+import React, { useState, useEffect, useCallback } from 'react';
+import { FiUsers, FiSearch, FiEye, FiEdit, FiUserCheck, FiUserX, FiMail, FiPhone, FiCalendar, FiXCircle, FiUserPlus, FiStar } from 'react-icons/fi';
 import axios from 'axios';
 import { useToast } from '../../contexts/ToastContext';
 import { format } from 'date-fns';
+import { motion } from 'framer-motion';
 
 const AdminUsers = () => {
   const [users, setUsers] = useState([]);
@@ -17,17 +18,30 @@ const AdminUsers = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [selectedUser, setSelectedUser] = useState(null);
   const [showUserModal, setShowUserModal] = useState(false);
+  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [showBulkActions, setShowBulkActions] = useState(false);
+  const [userAnalytics, setUserAnalytics] = useState({
+    totalUsers: 0,
+    activeUsers: 0,
+    newUsersThisMonth: 0,
+    premiumUsers: 0
+  });
 
   const roles = [
     { value: 'user', label: 'Customer' },
     { value: 'admin', label: 'Admin' }
   ];
 
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0 },
+  };
+
   useEffect(() => {
     fetchUsers();
   }, [currentPage, searchTerm, filterRole, filterStatus]);
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       const params = {
@@ -39,15 +53,32 @@ const AdminUsers = () => {
       };
 
       const response = await axios.get('/api/admin/users', { params });
-      setUsers(response.data.users);
-      setTotalPages(response.data.pagination.pages);
+      
+      // Handle different response structures
+      if (response.data && Array.isArray(response.data)) {
+        // If response.data is directly an array
+        setUsers(response.data);
+        setTotalPages(1);
+      } else if (response.data && response.data.users && Array.isArray(response.data.users)) {
+        // If response.data has a users property
+        setUsers(response.data.users);
+        setTotalPages(response.data.pagination?.pages || 1);
+      } else {
+        // Fallback to empty array
+        console.warn('Unexpected API response structure:', response.data);
+        setUsers([]);
+        setTotalPages(1);
+      }
     } catch (error) {
       console.error('Error fetching users:', error);
       showError('Failed to load users');
+      // Set fallback data to prevent errors
+      setUsers([]);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, searchTerm, filterRole, filterStatus, showError]);
 
   const toggleUserStatus = async (userId, currentStatus) => {
     try {
@@ -73,6 +104,46 @@ const AdminUsers = () => {
     setFilterRole('all');
     setFilterStatus('all');
     setCurrentPage(1);
+  };
+
+  // Advanced User Management Functions
+  const handleBulkAction = async (action) => {
+    if (selectedUsers.length === 0) {
+      showError('Please select users first');
+      return;
+    }
+
+    try {
+      const response = await axios.post('/api/admin/users/bulk-action', {
+        userIds: selectedUsers,
+        action: action
+      });
+
+      if (response.data.success) {
+        showSuccess(`${action} completed for ${selectedUsers.length} users`);
+        setSelectedUsers([]);
+        fetchUsers(); // Refresh the list
+      }
+    } catch (error) {
+      console.error('Bulk action error:', error);
+      showError(`Failed to ${action} users`);
+    }
+  };
+
+  const toggleUserSelection = (userId) => {
+    setSelectedUsers(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
+  };
+
+  const selectAllUsers = () => {
+    if (selectedUsers.length === users.length) {
+      setSelectedUsers([]);
+    } else {
+      setSelectedUsers(users.map(user => user._id));
+    }
   };
 
   if (loading) {
@@ -165,6 +236,110 @@ const AdminUsers = () => {
         </form>
       </div>
 
+      {/* User Analytics */}
+      <motion.div 
+        className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6"
+        variants={itemVariants}
+      >
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total Users</p>
+              <p className="text-2xl font-display font-bold text-[#1E1E1E]">
+                {userAnalytics.totalUsers}
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center">
+              <FiUsers className="h-6 w-6 text-white" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Active Users</p>
+              <p className="text-2xl font-display font-bold text-green-600">
+                {userAnalytics.activeUsers}
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center">
+              <FiUserCheck className="h-6 w-6 text-white" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">New This Month</p>
+              <p className="text-2xl font-display font-bold text-purple-600">
+                {userAnalytics.newUsersThisMonth}
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+              <FiUserPlus className="h-6 w-6 text-white" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Premium Users</p>
+              <p className="text-2xl font-display font-bold text-yellow-600">
+                {userAnalytics.premiumUsers}
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl flex items-center justify-center">
+              <FiStar className="h-6 w-6 text-white" />
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Bulk Actions */}
+      {selectedUsers.length > 0 && (
+        <motion.div 
+          className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-6"
+          variants={itemVariants}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <span className="text-blue-800 font-medium">
+                {selectedUsers.length} user(s) selected
+              </span>
+              <button
+                onClick={() => setSelectedUsers([])}
+                className="text-blue-600 hover:text-blue-800 text-sm"
+              >
+                Clear Selection
+              </button>
+            </div>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => handleBulkAction('activate')}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+              >
+                Activate All
+              </button>
+              <button
+                onClick={() => handleBulkAction('deactivate')}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
+              >
+                Deactivate All
+              </button>
+              <button
+                onClick={() => handleBulkAction('delete')}
+                className="px-4 py-2 bg-red-800 text-white rounded-lg hover:bg-red-900 transition-colors text-sm"
+              >
+                Delete All
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
       {/* Users Table */}
       <div className="bg-white rounded-xl shadow-lg overflow-hidden">
         <div className="overflow-x-auto">
@@ -192,85 +367,97 @@ const AdminUsers = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {users.map((user) => (
-                <tr key={user._id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="h-10 w-10 flex-shrink-0">
-                        <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                          {user.avatar ? (
-                            <img
-                              className="h-10 w-10 rounded-full object-cover"
-                              src={user.avatar}
-                              alt={user.name}
-                            />
-                          ) : (
-                            <span className="text-sm font-medium text-gray-700">
-                              {user.name.charAt(0).toUpperCase()}
-                            </span>
-                          )}
+              {Array.isArray(users) && users.length > 0 ? (
+                users.map((user) => (
+                  <tr key={user._id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="h-10 w-10 flex-shrink-0">
+                          <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
+                            {user.avatar ? (
+                              <img
+                                className="h-10 w-10 rounded-full object-cover"
+                                src={user.avatar}
+                                alt={user.name}
+                              />
+                            ) : (
+                              <span className="text-sm font-medium text-gray-700">
+                                {user.name.charAt(0).toUpperCase()}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">
+                            {user.name}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            ID: {user._id.slice(-8).toUpperCase()}
+                          </div>
                         </div>
                       </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">
-                          {user.name}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          ID: {user._id.slice(-8).toUpperCase()}
-                        </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{user.email}</div>
+                      {user.phone && (
+                        <div className="text-sm text-gray-500">{user.phone}</div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        user.role === 'admin' 
+                          ? 'bg-purple-100 text-purple-800' 
+                          : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {user.role === 'admin' ? 'Admin' : 'Customer'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        user.isActive 
+                          ? 'text-green-600 bg-green-100' 
+                          : 'text-red-600 bg-red-100'
+                      }`}>
+                        {user.isActive ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {format(new Date(user.createdAt), 'MMM dd, yyyy')}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => {
+                            setSelectedUser(user);
+                            setShowUserModal(true);
+                          }}
+                          className="text-blue-600 hover:text-blue-900"
+                          title="View Details"
+                        >
+                          <FiEye className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => toggleUserStatus(user._id, user.isActive)}
+                          className={user.isActive ? "text-red-600 hover:text-red-900" : "text-green-600 hover:text-green-900"}
+                          title={user.isActive ? "Deactivate User" : "Activate User"}
+                        >
+                          {user.isActive ? <FiUserX className="h-4 w-4" /> : <FiUserCheck className="h-4 w-4" />}
+                        </button>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{user.email}</div>
-                    {user.phone && (
-                      <div className="text-sm text-gray-500">{user.phone}</div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      user.role === 'admin' 
-                        ? 'bg-purple-100 text-purple-800' 
-                        : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {user.role === 'admin' ? 'Admin' : 'Customer'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      user.isActive 
-                        ? 'text-green-600 bg-green-100' 
-                        : 'text-red-600 bg-red-100'
-                    }`}>
-                      {user.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {format(new Date(user.createdAt), 'MMM dd, yyyy')}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => {
-                          setSelectedUser(user);
-                          setShowUserModal(true);
-                        }}
-                        className="text-blue-600 hover:text-blue-900"
-                        title="View Details"
-                      >
-                        <FiEye className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => toggleUserStatus(user._id, user.isActive)}
-                        className={user.isActive ? "text-red-600 hover:text-red-900" : "text-green-600 hover:text-green-900"}
-                        title={user.isActive ? "Deactivate User" : "Activate User"}
-                      >
-                        {user.isActive ? <FiUserX className="h-4 w-4" /> : <FiUserCheck className="h-4 w-4" />}
-                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                    <div className="flex flex-col items-center">
+                      <FiUsers className="h-12 w-12 text-gray-400 mb-4" />
+                      <p className="text-lg font-medium text-gray-900 mb-2">No users found</p>
+                      <p className="text-gray-600">Try adjusting your search or filter criteria</p>
                     </div>
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>

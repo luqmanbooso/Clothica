@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { StarIcon, ShoppingBagIcon, HeartIcon, EyeIcon, FunnelIcon, Squares2X2Icon, ListBulletIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
@@ -6,6 +6,7 @@ import axios from 'axios';
 import { useWishlist } from '../contexts/WishlistContext';
 import { useCart } from '../contexts/CartContext';
 import { useToast } from '../contexts/ToastContext';
+import { motion } from 'framer-motion';
 
 const Shop = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -159,7 +160,7 @@ const Shop = () => {
     }
   }, [searchParams, categories]);
 
-  const loadProducts = async () => {
+  const loadProducts = useCallback(async () => {
     setLoading(true);
     try {
       const params = {
@@ -236,9 +237,9 @@ const Shop = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, filters, searchParams, warning, error]);
 
-  const updateCategoryCounts = async () => {
+  const updateCategoryCounts = useCallback(async () => {
     try {
       const response = await axios.get('/api/products/categories');
       const categoryCounts = response.data;
@@ -251,7 +252,7 @@ const Shop = () => {
       console.error('Error loading category counts:', error);
       // Keep the default counts if API fails
     }
-  };
+  }, []);
 
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({
@@ -312,141 +313,176 @@ const Shop = () => {
             className="w-full h-full object-cover group-hover:scale-110 group-hover:brightness-75 transition-all duration-300"
           />
         </div>
-
-        {/* Badges */}
-        <div className="absolute top-3 left-3 flex flex-col gap-2">
-          {product.isNew && (
-            <span className="inline-block px-2 py-1 bg-blue-600 text-white text-xs font-semibold rounded">
-              NEW
+      
+      {/* Badges */}
+      <div className="absolute top-3 left-3 flex flex-col gap-2">
+        {product.isNew && (
+          <span className="inline-block px-2 py-1 bg-blue-600 text-white text-xs font-semibold rounded">
+            NEW
+          </span>
+        )}
+        {product.discount && (
+          <span className="inline-block px-2 py-1 bg-red-600 text-white text-xs font-semibold rounded">
+            -{product.discount}%
+          </span>
+        )}
+        {/* Spin Opportunity Badge */}
+        {product.spinEligible && (
+          <span className="inline-block px-2 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-semibold rounded animate-pulse">
+            🎰 SPIN
+          </span>
+        )}
+      </div>
+      
+      {/* Quick Actions */}
+      <div className="absolute top-3 right-3 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <button
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAddToWishlist(product); }}
+          className={`p-2 bg-white/90 backdrop-blur-sm rounded-full hover:bg-white transition-colors ${isInWishlist(product._id) ? 'text-red-500' : 'text-gray-600'}`}
+          title={isInWishlist(product._id) ? 'Remove from Wishlist' : 'Add to Wishlist'}
+        >
+          <HeartIcon className={`h-5 w-5 ${isInWishlist(product._id) ? 'fill-current' : ''}`} />
+        </button>
+      </div>
+      
+      {/* Add to Cart Button */}
+      <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 via-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <button
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAddToCart(product); }}
+          className="w-full flex items-center justify-center px-4 py-3 bg-white text-gray-900 font-semibold rounded-lg hover:bg-gray-100 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+        >
+          <ShoppingBagIcon className="h-5 w-5 mr-2" />
+          Add to Cart
+        </button>
+      </div>
+    </div>
+    
+    {/* Product Info */}
+    <div className="mt-4">
+      <h3 className="font-semibold text-gray-900 mb-1 group-hover:text-[#6C7A59] transition-colors">
+        {product.name}
+      </h3>
+      
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center space-x-2">
+          <span className="text-lg font-bold text-gray-900">
+            Rs. {product.price?.toLocaleString()}
+          </span>
+          {product.originalPrice && (
+            <span className="text-sm text-gray-500 line-through">
+              Rs. {product.originalPrice?.toLocaleString()}
             </span>
           )}
-          {product.discount && (
-            <span className="inline-block px-2 py-1 bg-red-600 text-white text-xs font-semibold rounded">
-              -{product.discount}%
-            </span>
-          )}
         </div>
-
-        {/* Quick Actions */}
-        <div className="absolute top-3 right-3 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-          <button 
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handleAddToWishlist(product);
-            }}
-            className={`p-2 bg-white/90 backdrop-blur-sm rounded-full hover:bg-white transition-colors ${
-              isInWishlist(product._id) ? 'text-red-500' : 'text-gray-600'
-            }`}
-            title={isInWishlist(product._id) ? 'Remove from Wishlist' : 'Add to Wishlist'}
-          >
-            <HeartIcon className={`h-5 w-5 ${isInWishlist(product._id) ? 'fill-current' : ''}`} />
-          </button>
-        </div>
-
-        {/* Add to Cart Button */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 via-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-          <button 
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handleAddToCart(product);
-            }}
-            className="w-full flex items-center justify-center px-4 py-3 bg-white text-gray-900 font-semibold rounded-lg hover:bg-gray-100 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-          >
-            <ShoppingBagIcon className="h-5 w-5 mr-2" />
-            Add to Cart
-          </button>
+        <div className="flex items-center">
+          {renderStars(product.rating || 0)}
+          <span className="ml-1 text-sm text-gray-500">
+            ({product.numReviews || 0})
+          </span>
         </div>
       </div>
-
-      {/* Product Info */}
-      <div className="mt-4">
-        <h3 className="font-semibold text-gray-900 mb-1 group-hover:text-[#6C7A59] transition-colors">
-          {product.name}
-        </h3>
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center space-x-2">
-            <span className="text-lg font-bold text-gray-900">
-              Rs. {product.price?.toLocaleString()}
-            </span>
-            {product.originalPrice && (
-              <span className="text-sm text-gray-500 line-through">
-                Rs. {product.originalPrice?.toLocaleString()}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center">
-            {renderStars(product.rating || 0)}
-            <span className="ml-1 text-sm text-gray-500">
-              ({product.numReviews || 0})
-            </span>
-          </div>
-        </div>
-        
-        {/* Color and Size Options */}
-        <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
-          <span>{product.colors?.length || 0} colors</span>
-          <span>{product.sizes?.length || 0} sizes</span>
-        </div>
+      
+      <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
+        <span>{product.colors?.length || 0} colors</span>
+        <span>{product.sizes?.length || 0} sizes</span>
       </div>
-    </Link>
-  );
+      
+      {/* Special Offers Display */}
+      {product.specialOffers && product.specialOffers.length > 0 && (
+        <div className="mt-3 space-y-2">
+          {product.specialOffers.slice(0, 2).map((offer, index) => (
+            <motion.div
+              key={offer._id}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.1 * index }}
+              className="relative overflow-hidden rounded-lg p-2 text-xs"
+              style={{
+                background: offer.displayGradient || `linear-gradient(135deg, ${offer.displayColor} 0%, ${offer.displayColor}dd 100%)`
+              }}
+            >
+              <div className="text-white flex items-center justify-between">
+                <div className="flex items-center space-x-1">
+                  <span>{offer.displayIcon}</span>
+                  <span className="font-medium">{offer.displayTitle || offer.name}</span>
+                </div>
+                <span className="font-bold">
+                  {offer.discountType === 'percentage' && `${offer.discountValue}% OFF`}
+                  {offer.discountType === 'fixed' && `LKR ${offer.discountValue} OFF`}
+                </span>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
+      
+      {/* Spin Opportunity Message */}
+      {product.spinEligible && (
+        <div className="mt-3 p-2 bg-gradient-to-r from-purple-100 to-pink-100 rounded-lg border border-purple-200">
+          <div className="flex items-center space-x-2 text-xs text-purple-800">
+            <span className="text-lg">🎰</span>
+            <span>Unlock spin chances with this purchase!</span>
+          </div>
+        </div>
+      )}
+    </div>
+  </Link>
+);
 
   const ProductListItem = ({ product }) => (
     <Link to={`/product/${product._id}`} className="block">
-      <div className="group bg-white rounded-lg shadow-sm hover:shadow-lg transition-all duration-300 p-4">
-        <div className="flex gap-4">
-          {/* Product Image */}
-          <div className="relative w-32 h-32 flex-shrink-0">
-            <img
+    <div className="group bg-white rounded-lg shadow-sm hover:shadow-lg transition-all duration-300 p-4">
+      <div className="flex gap-4">
+        {/* Product Image */}
+        <div className="relative w-32 h-32 flex-shrink-0">
+          <img
               src={product.images?.[0] || product.image}
-              alt={product.name}
-              className="w-full h-full object-cover rounded-lg"
-            />
-            {/* Badges */}
-            <div className="absolute top-2 left-2 flex flex-col gap-1">
-              {product.isNew && (
-                <span className="inline-block px-1 py-0.5 bg-blue-600 text-white text-xs font-semibold rounded">
-                  NEW
-                </span>
-              )}
-              {product.discount && (
-                <span className="inline-block px-1 py-0.5 bg-red-600 text-white text-xs font-semibold rounded">
-                  -{product.discount}%
-                </span>
-              )}
-            </div>
+            alt={product.name}
+            className="w-full h-full object-cover rounded-lg"
+          />
+          {/* Badges */}
+          <div className="absolute top-2 left-2 flex flex-col gap-1">
+            {product.isNew && (
+              <span className="inline-block px-1 py-0.5 bg-blue-600 text-white text-xs font-semibold rounded">
+                NEW
+              </span>
+            )}
+            {product.discount && (
+              <span className="inline-block px-1 py-0.5 bg-red-600 text-white text-xs font-semibold rounded">
+                -{product.discount}%
+              </span>
+            )}
           </div>
+        </div>
 
-          {/* Product Details */}
-          <div className="flex-1">
+        {/* Product Details */}
+        <div className="flex-1">
             <h3 className="font-semibold text-gray-900 mb-2 group-hover:text-[#6C7A59] transition-colors">
               {product.name}
             </h3>
-            
-            <div className="flex items-center mb-2">
+          
+          <div className="flex items-center mb-2">
               {renderStars(product.rating || 0)}
-              <span className="ml-2 text-sm text-gray-500">
+            <span className="ml-2 text-sm text-gray-500">
                 ({product.numReviews || 0} reviews)
-              </span>
-            </div>
+            </span>
+          </div>
 
-            <p className="text-sm text-gray-600 mb-3">
+          <p className="text-sm text-gray-600 mb-3">
               Available in {product.colors?.length || 0} colors and {product.sizes?.length || 0} sizes
-            </p>
+          </p>
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <span className="text-xl font-bold text-gray-900">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <span className="text-xl font-bold text-gray-900">
                   Rs. {product.price?.toLocaleString()}
-                </span>
-                {product.originalPrice && (
-                  <span className="text-sm text-gray-500 line-through">
+              </span>
+              {product.originalPrice && (
+                <span className="text-sm text-gray-500 line-through">
                     Rs. {product.originalPrice?.toLocaleString()}
-                  </span>
-                )}
-              </div>
+                </span>
+              )}
+            </div>
 
               <div className="flex items-center space-x-3">
                 <button 
@@ -463,7 +499,7 @@ const Shop = () => {
                   title={isInWishlist(product._id) ? 'Remove from Wishlist' : 'Add to Wishlist'}
                 >
                   <HeartIcon className={`h-4 w-4 ${isInWishlist(product._id) ? 'fill-current' : ''}`} />
-                </button>
+              </button>
                 
                 <button 
                   onClick={(e) => {
@@ -473,14 +509,14 @@ const Shop = () => {
                   }}
                   className="flex items-center px-4 py-2 bg-[#6C7A59] text-white font-semibold rounded-lg hover:bg-[#5A6A4A] transition-colors"
                 >
-                  <ShoppingBagIcon className="h-5 w-5 mr-2" />
-                  Add to Cart
-                </button>
-              </div>
+                <ShoppingBagIcon className="h-5 w-5 mr-2" />
+                Add to Cart
+              </button>
             </div>
           </div>
         </div>
       </div>
+    </div>
     </Link>
   );
 
@@ -527,20 +563,20 @@ const Shop = () => {
                     }
                   }}
                 >
-                  <div className="group relative overflow-hidden bg-gradient-to-br from-[#6C7A59] to-[#D6BFAF] p-6 rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 transform hover:scale-105">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-semibold text-white mb-1">{category.name}</h3>
-                        <p className="text-white/80 text-sm">{category.count} products</p>
-                      </div>
-                    </div>
-                    <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors"></div>
+              <div className="group relative overflow-hidden bg-gradient-to-br from-[#6C7A59] to-[#D6BFAF] p-6 rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 transform hover:scale-105">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-white mb-1">{category.name}</h3>
+                    <p className="text-white/80 text-sm">{category.count} products</p>
                   </div>
-                </Link>
+                </div>
+                <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors"></div>
+              </div>
+            </Link>
               )}
             </div>
           ))}
-        </div>
+            </div>
 
         {/* Filters and Sort */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-8">

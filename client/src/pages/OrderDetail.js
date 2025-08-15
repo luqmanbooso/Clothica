@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { FiPackage, FiTruck, FiCalendar, FiDollarSign, FiMapPin, FiArrowLeft, FiPrinter } from 'react-icons/fi';
 import axios from 'axios';
@@ -16,9 +16,9 @@ const OrderDetail = () => {
 
   useEffect(() => {
     fetchOrder();
-  }, [id]);
+  }, [fetchOrder]);
 
-  const fetchOrder = async () => {
+  const fetchOrder = useCallback(async () => {
     try {
       setLoading(true);
       const response = await axios.get(`/api/orders/${id}`);
@@ -29,7 +29,7 @@ const OrderDetail = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, showError]);
 
   const getStatusColor = (status) => {
     switch (status) {
