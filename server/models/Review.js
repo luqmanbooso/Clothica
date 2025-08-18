@@ -6,52 +6,70 @@ const reviewSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  order: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Order',
+    required: true
+  },
   product: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Product',
     required: true
   },
   rating: {
-    type: Number,
-    required: true,
-    min: 1,
-    max: 5
+    product: {
+      type: Number,
+      required: true,
+      min: 1,
+      max: 5
+    },
+    delivery: {
+      type: Number,
+      required: true,
+      min: 1,
+      max: 5
+    },
+    customerService: {
+      type: Number,
+      min: 1,
+      max: 5
+    }
   },
-  title: {
-    type: String,
-    trim: true,
-    maxlength: 100
+  review: {
+    product: {
+      type: String,
+      maxlength: 1000
+    },
+    delivery: {
+      type: String,
+      maxlength: 500
+    },
+    customerService: {
+      type: String,
+      maxlength: 500
+    }
   },
-  comment: {
-    type: String,
-    required: true,
-    trim: true,
-    minlength: 10,
-    maxlength: 1000
-  },
-  verified: {
+  images: [{
+    url: String,
+    alt: String
+  }],
+  isVerified: {
     type: Boolean,
     default: false
-  },
-  isActive: {
-    type: Boolean,
-    default: true
   },
   helpful: [{
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User'
     },
-    helpful: {
-      type: Boolean,
-      default: true
-    }
+    helpful: Boolean
   }],
-  images: [{
-    url: String,
-    alt: String
-  }],
-  tags: [String],
+  status: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending'
+  },
+  adminNotes: String,
   createdAt: {
     type: Date,
     default: Date.now
@@ -60,41 +78,15 @@ const reviewSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   }
-}, {
-  timestamps: true
 });
 
-// Index for efficient queries
-reviewSchema.index({ product: 1, createdAt: -1 });
-reviewSchema.index({ user: 1, product: 1 }, { unique: true });
-
-// Pre-save middleware to update updatedAt
+// Update timestamp on save
 reviewSchema.pre('save', function(next) {
   this.updatedAt = new Date();
   next();
 });
 
-// Static method to get average rating for a product
-reviewSchema.statics.getAverageRating = async function(productId) {
-  const result = await this.aggregate([
-    { $match: { product: productId, isActive: true } },
-    { $group: { _id: null, avgRating: { $avg: '$rating' }, count: { $sum: 1 } } }
-  ]);
-  
-  return result.length > 0 ? { rating: result[0].avgRating, count: result[0].count } : { rating: 0, count: 0 };
-};
-
-// Instance method to mark review as helpful
-reviewSchema.methods.markHelpful = function(userId, isHelpful = true) {
-  const existingIndex = this.helpful.findIndex(h => h.user.toString() === userId.toString());
-  
-  if (existingIndex > -1) {
-    this.helpful[existingIndex].helpful = isHelpful;
-  } else {
-    this.helpful.push({ user: userId, helpful: isHelpful });
-  }
-  
-  return this.save();
-};
+// Ensure one review per user per order per product
+reviewSchema.index({ user: 1, order: 1, product: 1 }, { unique: true });
 
 module.exports = mongoose.model('Review', reviewSchema);

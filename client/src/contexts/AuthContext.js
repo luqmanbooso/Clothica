@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../utils/api';
 
 const AuthContext = createContext();
 
@@ -22,51 +22,24 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      // Token is handled by api interceptor
       checkAuthStatus();
     } else {
       setLoading(false);
     }
 
-    // Add response interceptor to handle token refresh
-    const responseInterceptor = axios.interceptors.response.use(
-      (response) => response,
-      async (error) => {
-        const originalRequest = error.config;
-        
-        if (error.response?.status === 401 && !originalRequest._retry) {
-          originalRequest._retry = true;
-          
-                  // Handle token expiration gracefully
-        console.log('Token expired, logging out user');
-        
-        // Only redirect if not already on login page
-        if (window.location.pathname !== '/login') {
-          // Store the current path for post-login redirect
-          sessionStorage.setItem('redirectAfterLogin', window.location.pathname);
-        }
-        
-        logout();
-        
-        // Redirect to login page
-        window.location.href = '/login';
-          
-          return Promise.reject(error);
-        }
-        
-        return Promise.reject(error);
-      }
-    );
-
-    // Cleanup interceptor on unmount
-    return () => {
-      axios.interceptors.response.eject(responseInterceptor);
-    };
+    // Token management is handled by api interceptor
   }, []);
 
   const checkAuthStatus = async () => {
     try {
-      const response = await axios.get('/api/auth/me');
+      // Ensure token is set in headers before making the request
+      const token = localStorage.getItem('token');
+      if (token) {
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      }
+      
+      const response = await api.get('/api/auth/me');
       setUser(response.data);
       setIsAuthenticated(true);
       setIsAdmin(response.data.role === 'admin');
@@ -81,7 +54,7 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       setAuthError(null);
-      const response = await axios.post('/api/auth/register', userData);
+      const response = await api.post('/api/auth/register', userData);
       
       const { token, user: newUser, message, requiresOTPVerification } = response.data;
       
@@ -89,7 +62,9 @@ export const AuthProvider = ({ children }) => {
       if (!requiresOTPVerification && token) {
         // Store token
         localStorage.setItem('token', token);
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        
+        // Set token in API headers immediately
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         
         // Set user state
         setUser(newUser);
@@ -108,7 +83,7 @@ export const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     try {
       setAuthError(null);
-      const response = await axios.post('/api/auth/login', credentials);
+      const response = await api.post('/api/auth/login', credentials);
       
       const { token, refreshToken, user: userData } = response.data;
       
@@ -117,7 +92,9 @@ export const AuthProvider = ({ children }) => {
       if (refreshToken) {
         localStorage.setItem('refreshToken', refreshToken);
       }
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      // Set token in API headers immediately
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       
       // Set user state
       setUser(userData);
@@ -142,13 +119,15 @@ export const AuthProvider = ({ children }) => {
   const googleSignup = async (idToken) => {
     try {
       setAuthError(null);
-      const response = await axios.post('/api/auth/google/signup', { idToken });
+      const response = await api.post('/api/auth/google/signup', { idToken });
       
       const { token, user: userData, requiresProfileCompletion } = response.data;
       
       // Store token
       localStorage.setItem('token', token);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      // Set token in API headers immediately
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       
       // Set user state
       setUser(userData);
@@ -166,21 +145,32 @@ export const AuthProvider = ({ children }) => {
   const googleLogin = async (idToken) => {
     try {
       setAuthError(null);
-      const response = await axios.post('/api/auth/google/login', { idToken });
+      const response = await api.post('/api/auth/google/login', { idToken });
       
       const { token, user: userData, requiresProfileCompletion } = response.data;
       
-      // Store token
+      if (!token) {
+        throw new Error('No token received from server');
+      }
+      
+      // Store token in localStorage
       localStorage.setItem('token', token);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      // Update API instance with new token
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       
       // Set user state
       setUser(userData);
       setIsAuthenticated(true);
       setIsAdmin(userData.role === 'admin');
       
+      // Verify token is properly set in headers
+      console.log('Google login successful:', { user: userData, token: token.substring(0, 20) + '...' });
+      console.log('API headers after login:', api.defaults.headers.common['Authorization']);
+      
       return { success: true, requiresProfileCompletion };
     } catch (error) {
+      console.error('Google login error:', error);
       const message = error.response?.data?.message || 'Google login failed';
       setAuthError(message);
       return { success: false, message };
@@ -190,7 +180,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
-    delete axios.defaults.headers.common['Authorization'];
+    // Token cleanup handled by api interceptor
     setUser(null);
     setIsAuthenticated(false);
     setIsAdmin(false);
@@ -200,7 +190,7 @@ export const AuthProvider = ({ children }) => {
   const updateProfile = async (profileData) => {
     try {
       setAuthError(null);
-      const response = await axios.put('/api/auth/profile', profileData);
+      const response = await api.put('/api/auth/profile', profileData);
       
       setUser(response.data.user);
       return { success: true, message: response.data.message };
@@ -214,7 +204,7 @@ export const AuthProvider = ({ children }) => {
   const changePassword = async (passwordData) => {
     try {
       setAuthError(null);
-      const response = await axios.put('/api/auth/change-password', passwordData);
+      const response = await api.put('/api/auth/change-password', passwordData);
       return { success: true, message: response.data.message };
     } catch (error) {
       const message = error.response?.data?.message || 'Password change failed';
@@ -226,7 +216,7 @@ export const AuthProvider = ({ children }) => {
   const sendOTP = async (phone) => {
     try {
       setAuthError(null);
-      const response = await axios.post('/api/auth/send-otp', { phone });
+      const response = await api.post('/api/auth/send-otp', { phone });
       return { success: true, message: response.data.message };
     } catch (error) {
       const message = error.response?.data?.message || 'Failed to send OTP';
@@ -238,7 +228,7 @@ export const AuthProvider = ({ children }) => {
   const verifyOTP = async (otp) => {
     try {
       setAuthError(null);
-      const response = await axios.post('/api/auth/verify-otp', { otp });
+      const response = await api.post('/api/auth/verify-otp', { otp });
       
       // Update user state to reflect phone verification
       if (response.data.message === 'Phone verified successfully!') {
@@ -256,7 +246,7 @@ export const AuthProvider = ({ children }) => {
   const resendVerification = async (email) => {
     try {
       setAuthError(null);
-      const response = await axios.post('/api/auth/resend-verification', { email });
+      const response = await api.post('/api/auth/resend-verification', { email });
       return { success: true, message: response.data.message };
     } catch (error) {
       const message = error.response?.data?.message || 'Failed to resend verification';
@@ -268,7 +258,7 @@ export const AuthProvider = ({ children }) => {
   const verifyEmail = async (token) => {
     try {
       setAuthError(null);
-      const response = await axios.post('/api/auth/verify-email', { token });
+      const response = await api.post('/api/auth/verify-email', { token });
       
       // Update user state to reflect email verification
       if (response.data.message === 'Email verified successfully!') {
@@ -286,7 +276,7 @@ export const AuthProvider = ({ children }) => {
   const forgotPassword = async (email) => {
     try {
       setAuthError(null);
-      const response = await axios.post('/api/auth/forgot-password', { email });
+      const response = await api.post('/api/auth/forgot-password', { email });
       return { success: true, message: response.data.message };
     } catch (error) {
       const message = error.response?.data?.message || 'Failed to process password reset request';
@@ -298,7 +288,7 @@ export const AuthProvider = ({ children }) => {
   const resetPassword = async (token, password) => {
     try {
       setAuthError(null);
-      const response = await axios.post('/api/auth/reset-password', { token, password });
+      const response = await api.post('/api/auth/reset-password', { token, password });
       return { success: true, message: response.data.message };
     } catch (error) {
       const message = error.response?.data?.message || 'Password reset failed';
@@ -310,13 +300,15 @@ export const AuthProvider = ({ children }) => {
   const verifyEmailOTP = async (email, otp) => {
     try {
       setAuthError(null);
-      const response = await axios.post('/api/auth/verify-email-otp', { email, otp });
+      const response = await api.post('/api/auth/verify-email-otp', { email, otp });
       
       const { token, user: newUser } = response.data;
       
       // Store token
       localStorage.setItem('token', token);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      // Set token in API headers immediately
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       
       // Set user state
       setUser(newUser);
@@ -335,10 +327,21 @@ export const AuthProvider = ({ children }) => {
     setAuthError(null);
   };
 
+  // Helper function to ensure token is properly set
+  const ensureTokenSet = () => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      console.log('Token ensured in headers:', api.defaults.headers.common['Authorization']?.substring(0, 20) + '...');
+      return true;
+    }
+    return false;
+  };
+
   const completeProfile = async (profileData) => {
     try {
       setAuthError(null);
-      const response = await axios.put('/api/auth/complete-profile', profileData);
+      const response = await api.put('/api/auth/complete-profile', profileData);
       
       // Update user state
       setUser(response.data.user);
@@ -372,7 +375,8 @@ export const AuthProvider = ({ children }) => {
     forgotPassword,
     resetPassword,
     verifyEmailOTP,
-    clearError
+    clearError,
+    ensureTokenSet
   };
 
   return (

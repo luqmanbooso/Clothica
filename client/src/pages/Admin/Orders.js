@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   MagnifyingGlassIcon,
-  FunnelIcon,
   EyeIcon,
   TruckIcon,
   CheckCircleIcon,
@@ -12,7 +11,7 @@ import {
   ShoppingBagIcon
 } from '@heroicons/react/24/outline';
 import { motion } from 'framer-motion';
-import axios from 'axios';
+import api from '../../utils/api';
 import { useToast } from '../../contexts/ToastContext';
 import { AnimatePresence } from 'framer-motion';
 
@@ -24,7 +23,6 @@ const Orders = () => {
   const [sortBy, setSortBy] = useState('date');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
-  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [generatingInvoice, setGeneratingInvoice] = useState(false);
   const { success: showSuccess, error: showError } = useToast();
 
@@ -44,12 +42,12 @@ const Orders = () => {
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [priceRange, setPriceRange] = useState({ min: '', max: '' });
   const [customerFilter, setCustomerFilter] = useState('');
-  const [paymentMethodFilter, setPaymentMethodFilter] = useState('all');
+  const [paymentMethodFilter] = useState('all');
 
   const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/admin/orders');
+      const response = await api.get('/api/admin/orders');
       setOrders(response.data || []);
     } catch (error) {
       console.error('Error fetching orders:', error);
@@ -63,17 +61,19 @@ const Orders = () => {
   const generateInvoice = async (orderId) => {
     try {
       setGeneratingInvoice(true);
-      const response = await axios.get(`/api/admin/orders/${orderId}/invoice`, {
+      const response = await api.get(`/api/admin/orders/${orderId}/invoice`, {
         responseType: 'blob'
       });
       
-      // Create blob and download
+      // Create blob and download - now properly handles PDF from backend
       const blob = new Blob([response.data], { type: 'application/pdf' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       link.download = `invoice-${orderId}.pdf`;
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
       
       showSuccess('Invoice generated successfully');
@@ -92,7 +92,7 @@ const Orders = () => {
   // Enhanced order status update with workflow
   const updateOrderStatus = async (orderId, newStatus, notes = '') => {
     try {
-      const response = await axios.put(`/api/admin/orders/${orderId}/status`, {
+      await api.put(`/api/admin/orders/${orderId}/status`, {
         status: newStatus,
         notes: notes,
         updatedAt: new Date().toISOString()
@@ -126,7 +126,7 @@ const Orders = () => {
     }
 
     try {
-      await axios.post(`/api/admin/orders/${selectedOrderForFulfillment._id}/fulfill`, {
+      await api.post(`/api/admin/orders/${selectedOrderForFulfillment._id}/fulfill`, {
         trackingNumber: fulfillmentData.trackingNumber,
         carrier: fulfillmentData.carrier,
         estimatedDelivery: fulfillmentData.estimatedDelivery,
@@ -157,7 +157,7 @@ const Orders = () => {
   // Get order details
   const fetchOrderDetails = async (orderId) => {
     try {
-      const response = await axios.get(`/api/admin/orders/${orderId}`);
+      const response = await api.get(`/api/admin/orders/${orderId}`);
       setOrderDetails(response.data);
       setShowOrderDetailsModal(true);
     } catch (error) {

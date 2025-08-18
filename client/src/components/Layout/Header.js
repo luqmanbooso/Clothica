@@ -21,7 +21,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { useWishlist } from '../../contexts/WishlistContext';
 import LoyaltyBadge from '../Loyalty/LoyaltyBadge';
-import axios from 'axios';
+import NotificationBell from '../NotificationBell';
+import api from '../../utils/api';
 
 const Header = () => {
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
@@ -56,24 +57,28 @@ const Header = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Fetch category counts
+  // Fetch category counts only when authenticated
   useEffect(() => {
-    fetchCategoryCounts();
-  }, []);
+    if (isAuthenticated) {
+      fetchCategoryCounts();
+    }
+  }, [isAuthenticated]);
 
   const fetchCategoryCounts = async () => {
     try {
-      const response = await axios.get('/api/products/categories');
+      const response = await api.get('/api/products/categories');
       setCategoryCounts(response.data);
     } catch (error) {
       console.error('Error fetching category counts:', error);
       // Fallback to default counts
       setCategoryCounts({
         all: 8,
-        mens: 3,
-        womens: 1,
+        men: 3,
+        women: 1,
+        kids: 0,
         accessories: 2,
-        footwear: 1
+        shoes: 1,
+        bags: 1
       });
     }
   };
@@ -199,25 +204,25 @@ const Header = () => {
                     
                     <div className="space-y-2">
                       <Link 
-                        to="/shop?category=mens" 
+                        to="/shop?category=men" 
                         className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors"
                       >
                         <div className="flex items-center space-x-3">
                           <div>
                             <div className="font-semibold text-gray-900">Men's Fashion</div>
-                            <div className="text-sm text-gray-500">{categoryCounts.mens} products</div>
+                            <div className="text-sm text-gray-500">{categoryCounts.men} products</div>
                           </div>
                         </div>
                       </Link>
                       
                       <Link 
-                        to="/shop?category=womens" 
+                        to="/shop?category=women" 
                         className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors"
                       >
                         <div className="flex items-center space-x-3">
                           <div>
                             <div className="font-semibold text-gray-900">Women's Fashion</div>
-                            <div className="text-sm text-gray-500">{categoryCounts.womens} products</div>
+                            <div className="text-sm text-gray-500">{categoryCounts.women} products</div>
                           </div>
                         </div>
                       </Link>
@@ -235,13 +240,37 @@ const Header = () => {
                       </Link>
                       
                       <Link 
-                        to="/shop?category=footwear" 
+                        to="/shop?category=shoes" 
                         className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors"
                       >
                         <div className="flex items-center space-x-3">
                           <div>
-                            <div className="font-semibold text-gray-900">Footwear</div>
-                            <div className="text-sm text-gray-500">{categoryCounts.footwear} products</div>
+                            <div className="font-semibold text-gray-900">Shoes</div>
+                            <div className="text-sm text-gray-500">{categoryCounts.shoes} products</div>
+                          </div>
+                        </div>
+                      </Link>
+                      
+                      <Link 
+                        to="/shop?category=kids" 
+                        className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div>
+                            <div className="font-semibold text-gray-900">Kids</div>
+                            <div className="text-sm text-gray-500">{categoryCounts.kids} products</div>
+                          </div>
+                        </div>
+                      </Link>
+                      
+                      <Link 
+                        to="/shop?category=bags" 
+                        className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div>
+                            <div className="font-semibold text-gray-900">Bags</div>
+                            <div className="text-sm text-gray-500">{categoryCounts.bags} products</div>
                           </div>
                         </div>
                       </Link>
@@ -367,6 +396,11 @@ const Header = () => {
               </Link>
               )}
 
+              {/* Notification Bell */}
+              {isAuthenticated && (
+                <NotificationBell />
+              )}
+
               {/* User Menu */}
               {isAuthenticated ? (
                 <div className="relative group">
@@ -389,6 +423,10 @@ const Header = () => {
                       <Link to="/loyalty" className="flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-gray-50 text-gray-700 hover:text-[#6C7A59] transition-colors">
                         <StarIcon className="w-5 h-5" />
                         <span>Loyalty</span>
+                      </Link>
+                      <Link to="/reviews-issues" className="flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-gray-50 text-gray-700 hover:text-[#6C7A59] transition-colors">
+                        <StarIcon className="w-5 h-5" />
+                        <span>Reviews & Issues</span>
                       </Link>
                       {isAdmin && (
                         <Link to="/admin/dashboard" className="flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-gray-50 text-gray-700 hover:text-[#6C7A59] transition-colors">

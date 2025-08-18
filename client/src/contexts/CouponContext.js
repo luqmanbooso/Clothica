@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import api from '../utils/api';
 
 const CouponContext = createContext();
 
@@ -16,15 +17,18 @@ export const CouponProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Fetch available coupons
+  // Fetch available coupons (public endpoint for active coupons)
   const fetchCoupons = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/admin/coupons');
+      // Use the api instance and public coupons endpoint
+      const response = await api.get('/api/coupons/available');
       setCoupons(response.data);
     } catch (error) {
       console.error('Failed to fetch coupons:', error);
       setError('Failed to load coupons');
+      // Don't set coupons to empty array, just log the error
+      // Some functionality can still work without coupons
     } finally {
       setLoading(false);
     }

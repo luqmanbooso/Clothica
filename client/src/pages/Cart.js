@@ -16,29 +16,55 @@ const Cart = () => {
   const [shippingMethod, setShippingMethod] = useState('standard');
   const [couponLoading, setCouponLoading] = useState(false);
 
-  const shippingMethods = [
-    {
-      id: 'standard',
-      name: 'Standard Islandwide Delivery',
-      price: 500,
-      delivery: '3-5 business days',
-      icon: TruckIcon
-    },
-    {
-      id: 'express',
-      name: 'Express Delivery',
-      price: 1200,
-      delivery: '1-2 business days',
-      icon: TruckIcon
-    },
-    {
-      id: 'free',
-      name: 'Free Shipping',
-      price: 0,
-      delivery: '5-7 business days',
-      icon: TruckIcon
+  const [shippingMethods, setShippingMethods] = useState([]);
+
+  useEffect(() => {
+    loadShippingMethods();
+  }, []);
+
+  const loadShippingMethods = async () => {
+    try {
+      // In a real app, this would come from an API
+      // For now, we'll use default methods but make them configurable
+      const defaultMethods = [
+        {
+          id: 'standard',
+          name: 'Standard Islandwide Delivery',
+          price: 500,
+          delivery: '3-5 business days',
+          icon: TruckIcon
+        },
+        {
+          id: 'express',
+          name: 'Express Delivery',
+          price: 1200,
+          delivery: '1-2 business days',
+          icon: TruckIcon
+        },
+        {
+          id: 'free',
+          name: 'Free Shipping',
+          price: 0,
+          delivery: '5-7 business days',
+          icon: TruckIcon,
+          minOrder: 10000
+        }
+      ];
+      setShippingMethods(defaultMethods);
+    } catch (error) {
+      console.error('Error loading shipping methods:', error);
+      // Fallback to basic methods
+      setShippingMethods([
+        {
+          id: 'standard',
+          name: 'Standard Delivery',
+          price: 500,
+          delivery: '3-5 business days',
+          icon: TruckIcon
+        }
+      ]);
     }
-  ];
+  };
 
   const subtotal = getCartTotal();
   const shipping = shippingMethods.find(m => m.id === shippingMethod)?.price || 0;
@@ -94,7 +120,7 @@ const Cart = () => {
     success('Coupon removed');
   };
 
-  if (cart.length === 0) {
+  if (!cart || !Array.isArray(cart) || cart.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center max-w-md mx-auto px-4">
@@ -127,7 +153,7 @@ const Cart = () => {
         <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Shopping Cart</h1>
             <p className="text-gray-600">
-              {cart.length} item{cart.length !== 1 ? 's' : ''} in your cart
+              {cart?.length || 0} item{(cart?.length || 0) !== 1 ? 's' : ''} in your cart
           </p>
         </div>
 
@@ -140,14 +166,14 @@ const Cart = () => {
               </div>
               
                 <div className="divide-y divide-gray-200">
-                  {cart.map((item, index) => (
+                  {cart?.map((item, index) => (
                     <div key={index} className="p-6">
                     <div className="flex items-center space-x-4">
                       {/* Product Image */}
                       <div className="flex-shrink-0">
                         <img
-                          src={item.product.images?.[0] || item.product.image || '/placeholder-product.jpg'}
-                          alt={item.product.name}
+                          src={item.images?.[0] || item.image || '/placeholder-product.jpg'}
+                          alt={item.name}
                           className="w-20 h-20 object-cover rounded-lg"
                           onError={(e) => {
                             e.target.src = '/placeholder-product.jpg';
@@ -160,11 +186,11 @@ const Cart = () => {
                         <div className="flex items-start justify-between">
                             <div>
                               <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                                {item.product.name}
+                                {item.name}
                             </h3>
                               <div className="flex items-center space-x-4 text-sm text-gray-600">
-                                <span>Size: {item.size || 'One Size'}</span>
-                                <span>Color: {item.color || 'Default'}</span>
+                                <span>Size: {item.selectedSize || 'One Size'}</span>
+                                <span>Color: {item.selectedColor || 'Default'}</span>
                             </div>
                           </div>
                           
@@ -174,9 +200,9 @@ const Cart = () => {
                                 <span className="text-lg font-bold text-gray-900">
                                   Rs. {(item.price * item.quantity).toFixed(2)}
                                 </span>
-                                {item.product.originalPrice && (
+                                {item.originalPrice && (
                                   <span className="text-sm text-gray-500 line-through">
-                                    Rs. {(item.product.originalPrice * item.quantity).toFixed(2)}
+                                    Rs. {(item.originalPrice * item.quantity).toFixed(2)}
                                   </span>
                                 )}
                               </div>
@@ -217,15 +243,15 @@ const Cart = () => {
                           {/* Action Buttons */}
                           <div className="flex items-center space-x-2">
                             <button
-                              onClick={() => handleAddToWishlist(item.product)}
+                              onClick={() => handleAddToWishlist(item)}
                               className={`p-2 rounded-lg transition-colors ${
-                                isInWishlist(item.product._id) 
+                                isInWishlist(item._id) 
                                   ? 'bg-red-100 text-red-600' 
                                   : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
                               }`}
                               title="Add to Wishlist"
                             >
-                              <svg className="w-5 h-5" fill={isInWishlist(item.product._id) ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-5 h-5" fill={isInWishlist(item._id) ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                               </svg>
                             </button>

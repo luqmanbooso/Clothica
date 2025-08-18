@@ -28,12 +28,14 @@ const Home = () => {
 
   useEffect(() => {
     setIsVisible(true);
-    loadFeaturedProducts();
+    if (isAuthenticated) {
+      loadFeaturedProducts();
+    }
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
     }, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [isAuthenticated]);
 
   const loadFeaturedProducts = useCallback(async () => {
     try {

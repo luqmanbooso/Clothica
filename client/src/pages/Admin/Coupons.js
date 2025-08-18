@@ -19,7 +19,7 @@ import { FiTag, FiCheckCircle, FiUsers, FiDollarSign } from 'react-icons/fi';
 import { useToast } from '../../contexts/ToastContext';
 
 const Coupons = () => {
-  const { showSuccess, showError } = useToast();
+  const { success: showSuccess, error: showError } = useToast();
   const [coupons, setCoupons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -112,32 +112,8 @@ const Coupons = () => {
       setCoupons(response.data);
     } catch (error) {
       console.error('Error fetching coupons:', error);
-      // Fallback to sample data if API fails
-      setCoupons([
-        {
-          _id: 1,
-          code: 'WELCOME10',
-          name: 'Welcome Discount',
-          description: '10% off for new customers',
-          type: 'percentage',
-          value: 10,
-          minimumOrderAmount: 50,
-          maxDiscount: 100,
-          usageLimit: 1000,
-          usedCount: 234,
-          isActive: true,
-          isSpecialEvent: false,
-          eventType: '',
-          validFrom: '2024-01-01',
-          validUntil: '2024-12-31',
-          applicableCategories: ['all'],
-          applicableProducts: [],
-          userGroups: ['new'],
-          userUsageLimit: 1,
-          autoGenerate: false,
-          createdAt: '2024-01-01'
-        }
-      ]);
+      // Set empty array if API fails
+      setCoupons([]);
     } finally {
       setLoading(false);
     }

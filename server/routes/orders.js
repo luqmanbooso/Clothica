@@ -7,6 +7,7 @@ const { admin } = require('../middleware/admin');
 const User = require('../models/User'); // Added for user details
 const Coupon = require('../models/Coupon'); // Added for coupon details
 const { sendOrderConfirmationEmail } = require('../utils/email'); // Added for email sending
+const notificationService = require('../services/notificationService'); // Added for notifications
 
 const router = express.Router();
 
@@ -39,13 +40,19 @@ router.post('/', auth, async (req, res) => {
     const orderItems = [];
 
     for (const item of items) {
-      const product = await Product.findById(item.productId);
+      // Handle both cart item structure and direct product data
+      const productId = item.productId || item._id || item.id;
+      const product = await Product.findById(productId);
       if (!product) {
-        return res.status(400).json({ message: `Product ${item.productId} not found` });
+        return res.status(400).json({ message: `Product ${productId} not found` });
       }
 
-      if (product.stock < item.quantity) {
-        return res.status(400).json({ message: `Insufficient stock for ${product.name}` });
+      // Check available stock using the new stock management methods
+      const availableStock = product.getAvailableStock();
+      if (availableStock < item.quantity) {
+        return res.status(400).json({ 
+          message: `Insufficient stock for ${product.name}. Available: ${availableStock}, Requested: ${item.quantity}` 
+        });
       }
 
       const itemTotal = product.price * item.quantity;
@@ -62,9 +69,15 @@ router.post('/', auth, async (req, res) => {
         total: itemTotal
       });
 
-      // Update product stock
-      product.stock -= item.quantity;
-      await product.save();
+      // Reserve stock for this order
+      try {
+        product.reserveStock(item.quantity);
+        await product.save();
+      } catch (stockError) {
+        return res.status(400).json({ 
+          message: `Stock reservation failed for ${product.name}: ${stockError.message}` 
+        });
+      }
     }
 
     // Apply coupon if provided
@@ -83,9 +96,13 @@ router.post('/', auth, async (req, res) => {
     }
 
     // Use shipping cost from frontend or calculate default
-    const shippingCost = req.body.shippingCost || (subtotal >= 5000 ? 0 : 500); // Free shipping above LKR 5000
+    const shippingCost = req.body.shippingCost || (subtotal >= 10000 ? 0 : 500); // Free shipping above LKR 10,000
     const total = req.body.total || (subtotal + shippingCost - discount);
 
+    // Calculate estimated delivery (3-5 business days for standard shipping)
+    const estimatedDelivery = new Date();
+    estimatedDelivery.setDate(estimatedDelivery.getDate() + 5); // 5 business days
+    
     // Create order
     const order = new Order({
       user: user._id,
@@ -97,33 +114,101 @@ router.post('/', auth, async (req, res) => {
       shippingAddress,
       paymentMethod,
       coupon: coupon?._id,
-      status: paymentMethod === 'cash_on_delivery' ? 'pending' : 'processing'
+      status: paymentMethod === 'cash_on_delivery' ? 'pending' : 'processing',
+      estimatedDelivery
     });
 
     await order.save();
+
+    // Create notification for order creation
+    try {
+      await notificationService.createOrderNotification(user._id, {
+        orderId: order._id,
+        status: order.status,
+        amount: order.total
+      });
+    } catch (notificationError) {
+      console.error('Error creating order notification:', notificationError);
+      // Don't fail the order if notification fails
+    }
+
+    // Confirm stock deduction for all items
+    for (const item of orderItems) {
+      const product = await Product.findById(item.product);
+      if (product) {
+        try {
+          product.confirmStockDeduction(item.quantity);
+          await product.save();
+        } catch (stockError) {
+          console.error(`Stock confirmation failed for product ${product.name}:`, stockError);
+          // Don't fail the order if stock confirmation fails
+        }
+      }
+    }
 
     // Clear user's cart
     user.cart = [];
     await user.save();
 
-    // Award loyalty points for the purchase (only for paid orders, not cash on delivery)
-    if (paymentMethod !== 'cash_on_delivery') {
-      try {
-        await user.earnPoints(Math.floor(total), 'purchase');
-        console.log(`Awarded ${Math.floor(total)} loyalty points to user ${user._id}`);
-      } catch (loyaltyError) {
-        console.error('Error awarding loyalty points:', loyaltyError);
-        // Don't fail the order if loyalty points fail
+    // ========================================
+    // LOYALTY SYSTEM INTEGRATION (Simplified)
+    // ========================================
+    
+    try {
+      // Initialize user stats if they don't exist
+      if (!user.stats) {
+        user.stats = {
+          totalOrders: 0,
+          totalSpent: 0,
+          purchaseStreak: 0,
+          lastPurchaseDate: null
+        };
       }
-    } else {
-      console.log(`Cash on delivery order - loyalty points will be awarded upon delivery`);
+      
+      // Update user stats
+      user.stats.totalOrders += 1;
+      user.stats.totalSpent += total;
+      user.stats.lastPurchaseDate = new Date();
+      
+      // Simple loyalty points calculation (1 point per LKR 100 spent)
+      const pointsEarned = Math.floor(total / 100);
+      
+      // Update order with basic loyalty information
+      order.loyaltyPoints = {
+        earned: pointsEarned,
+        multiplier: 1,
+        applied: 0
+      };
+      
+      // Check if user is eligible for spin token (every 1000 points)
+      order.spinTokenEligible = pointsEarned >= 10;
+      
+      await user.save();
+      
+      console.log(`Loyalty system: Awarded ${pointsEarned} points to user ${user._id}`);
+      
+    } catch (loyaltyError) {
+      console.error('Error in loyalty system integration:', loyaltyError);
+      // Don't fail the order if loyalty system fails
     }
 
-    // Send confirmation email
+
+
+    // Send confirmation email with PDF invoice
     try {
-      await sendOrderConfirmationEmail(user.email, order);
+      const emailService = require('../services/emailService');
+      await emailService.sendOrderConfirmationWithInvoice(user.email, order);
+      console.log('Order confirmation email with PDF invoice sent successfully');
     } catch (emailError) {
-      console.error('Error sending order confirmation email:', emailError);
+      console.error('Error sending order confirmation email with invoice:', emailError);
+      // Fallback to regular email without invoice
+      try {
+        const emailService = require('../services/emailService');
+        await emailService.sendOrderConfirmationEmail(user.email, order);
+        console.log('Fallback order confirmation email sent successfully');
+      } catch (fallbackError) {
+        console.error('Error sending fallback order confirmation email:', fallbackError);
+      }
       // Don't fail the order if email fails
     }
 

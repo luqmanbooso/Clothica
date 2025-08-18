@@ -19,7 +19,7 @@ import axios from 'axios';
 const Register = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { register, googleSignup, authError, clearError, verifyEmailOTP } = useAuth();
+  const { register, googleSignup, authError, clearError, verifyEmailOTP, ensureTokenSet } = useAuth();
   const { success: showSuccess, error: showError, info: showInfo } = useToast();
   
   const [formData, setFormData] = useState({
@@ -133,24 +133,19 @@ const Register = () => {
 
     try {
       if (isGoogleSignup && googleUserData) {
-        // For Google signup, we need to use the actual Google credential
+        // For Google signup, use the proper Google signup endpoint
         try {
-          // We need to get the credential from the Google response
-          // Since we don't have the original credential, we'll need to handle this differently
-          // For now, let's create a Google account without the ID token
-          const result = await register({
-            name: formData.name.trim(),
-            email: formData.email.trim().toLowerCase(),
-            password: '', // No password for Google accounts
-            phone: formData.phone.trim() || undefined,
-            isGoogleAccount: true,
-            googleId: googleUserData.sub || 'temp-google-id', // Temporary ID
-            avatar: googleUserData.picture
-          });
+          const result = await googleSignup(googleUserData.idToken);
           
           if (result.success) {
             showSuccess('Google account created successfully!');
-            navigate('/');
+            // Ensure token is properly set before navigation
+            ensureTokenSet();
+            
+            // Wait for state to update and token to be properly set
+            setTimeout(() => {
+              navigate('/');
+            }, 500);
           } else {
             showError(result.message);
           }
@@ -175,7 +170,13 @@ const Register = () => {
             showInfo('Registration successful! Please check your email for OTP verification.');
           } else {
             showSuccess(result.message);
-            navigate('/');
+            // Ensure token is properly set before navigation
+            ensureTokenSet();
+            
+            // Wait for state to update and token to be properly set
+            setTimeout(() => {
+              navigate('/');
+            }, 500);
           }
         } else {
           showError(result.message);
@@ -197,7 +198,9 @@ const Register = () => {
       setGoogleUserData({
         name: decoded.name,
         email: decoded.email,
-        picture: decoded.picture
+        picture: decoded.picture,
+        sub: decoded.sub, // Store the actual Google ID
+        idToken: credentialResponse.credential // Store the ID token for backend verification
       });
       setIsGoogleSignup(true);
       
@@ -230,7 +233,13 @@ const Register = () => {
       
       if (result.success) {
         showSuccess('Email verified successfully! Welcome to Clothica!');
-        navigate('/');
+        // Ensure token is properly set before navigation
+        ensureTokenSet();
+        
+        // Wait for state to update and token to be properly set
+        setTimeout(() => {
+          navigate('/');
+        }, 500);
       } else {
         showError(result.message);
       }

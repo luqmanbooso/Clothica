@@ -8,7 +8,7 @@ import {
   DocumentArrowDownIcon,
   EyeIcon
 } from '@heroicons/react/24/outline';
-import axios from 'axios';
+import api from '../utils/api';
 
 const OrderSuccess = () => {
   const location = useLocation();
@@ -24,12 +24,30 @@ const OrderSuccess = () => {
   console.log('OrderSuccess - Received order:', order);
   console.log('OrderSuccess - Order ID:', orderId);
   console.log('OrderSuccess - Invoice URL:', invoiceUrl);
+  console.log('OrderSuccess - Location state:', location.state);
 
-  if (!order) {
+  if (!order && !orderId) {
     console.log('OrderSuccess - No order data, redirecting to home');
     navigate('/');
     return null;
   }
+
+  // If we don't have the full order object, create a minimal one from available data
+  const displayOrder = order || {
+    _id: orderId,
+    id: orderId,
+    total: location.state?.total || 0,
+    subtotal: location.state?.total || 0,
+    shippingCost: location.state?.shippingCost || 0,
+    discount: 0,
+    status: 'processing',
+    paymentMethod: location.state?.paymentMethod || 'unknown',
+    shippingMethod: location.state?.shippingMethod || 'standard',
+    shippingAddress: location.state?.shippingAddress || {},
+    items: location.state?.items || [],
+    createdAt: new Date(),
+    estimatedDelivery: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000)
+  };
 
   const handleGenerateInvoice = async () => {
     if (!orderId) {
@@ -40,7 +58,7 @@ const OrderSuccess = () => {
     setIsGeneratingInvoice(true);
     try {
       // Generate invoice
-      const response = await axios.get(`/api/orders/${orderId}/invoice`, {
+      const response = await api.get(`/api/orders/${orderId}/invoice`, {
         responseType: 'blob'
       });
 
@@ -88,15 +106,15 @@ const OrderSuccess = () => {
           <p className="text-lg text-gray-600">
             Thank you for your purchase! We're excited to deliver your Sri Lankan fashion items.
           </p>
-          {orderId && (
+          {displayOrder._id && (
             <p className="text-sm text-gray-500 mt-2">
-              Order ID: <span className="font-mono bg-gray-100 px-2 py-1 rounded">{orderId}</span>
+              Order ID: <span className="font-mono bg-gray-100 px-2 py-1 rounded">{displayOrder._id}</span>
             </p>
           )}
         </div>
 
         {/* Invoice Actions */}
-        {orderId && (
+        {displayOrder._id && (
           <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
               <DocumentArrowDownIcon className="h-6 w-6 text-[#6C7A59] mr-3" />
@@ -144,32 +162,32 @@ const OrderSuccess = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <h3 className="text-sm font-medium text-gray-500 mb-2">Order Total</h3>
-              <p className="text-2xl font-bold text-gray-900">Rs. {(order.total || 0).toLocaleString()}</p>
+              <p className="text-2xl font-bold text-gray-900">Rs. {(displayOrder.total || 0).toLocaleString()}</p>
             </div>
             
             <div>
               <h3 className="text-sm font-medium text-gray-500 mb-2">Order Status</h3>
               <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
-                {order.status || 'Processing'}
+                {displayOrder.status || 'Processing'}
               </span>
             </div>
             
             <div>
               <h3 className="text-sm font-medium text-gray-500 mb-2">Payment Method</h3>
               <p className="text-gray-900 capitalize">
-                {order.paymentMethod === 'credit_card' ? 'Credit/Debit Card' : 
-                 order.paymentMethod === 'cash_on_delivery' ? 'Cash on Delivery' : 
-                 order.payment?.method === 'card' ? 'Credit/Debit Card' : 'Cash on Delivery'}
+                {displayOrder.paymentMethod === 'credit_card' ? 'Credit/Debit Card' : 
+                 displayOrder.paymentMethod === 'cash_on_delivery' ? 'Cash on Delivery' : 
+                 displayOrder.payment?.method === 'card' ? 'Credit/Debit Card' : 'Cash on Delivery'}
               </p>
             </div>
             
             <div>
               <h3 className="text-sm font-medium text-gray-500 mb-2">Shipping Method</h3>
               <p className="text-gray-900">
-                {order.shippingMethod === 'standard' ? 'Standard Islandwide Delivery' : 
-                 order.shippingMethod === 'express' ? 'Express Delivery' :
-                 order.shippingMethod === 'same_day' ? 'Same Day Delivery' :
-                 order.shipping?.method === 'standard' ? 'Standard Islandwide Delivery' : 'Express Delivery'}
+                {displayOrder.shippingMethod === 'standard' ? 'Standard Islandwide Delivery' : 
+                 displayOrder.shippingMethod === 'express' ? 'Express Delivery' :
+                 displayOrder.shippingMethod === 'same_day' ? 'Same Day Delivery' :
+                 displayOrder.shipping?.method === 'standard' ? 'Standard Islandwide Delivery' : 'Express Delivery'}
               </p>
             </div>
           </div>
@@ -187,38 +205,38 @@ const OrderSuccess = () => {
               <div>
                 <p className="text-sm font-medium text-gray-500">Name</p>
                 <p className="text-gray-900">
-                  {order.shippingAddress?.firstName || order.shipping?.address?.firstName || 'N/A'} {order.shippingAddress?.lastName || order.shipping?.address?.lastName || 'N/A'}
+                  {displayOrder.shippingAddress?.firstName || displayOrder.shipping?.address?.firstName || 'N/A'} {displayOrder.shippingAddress?.lastName || displayOrder.shipping?.address?.lastName || 'N/A'}
                 </p>
               </div>
               
               <div>
                 <p className="text-sm font-medium text-gray-500">Email</p>
-                <p className="text-gray-900">{order.shippingAddress?.email || order.shipping?.address?.email || 'N/A'}</p>
+                <p className="text-gray-900">{displayOrder.shippingAddress?.email || displayOrder.shipping?.address?.email || 'N/A'}</p>
               </div>
               
               <div>
                 <p className="text-sm font-medium text-gray-500">Phone</p>
-                <p className="text-gray-900">{order.shippingAddress?.phone || order.shipping?.address?.phone || 'N/A'}</p>
+                <p className="text-gray-900">{displayOrder.shippingAddress?.phone || displayOrder.shipping?.address?.phone || 'N/A'}</p>
               </div>
               
               <div>
                 <p className="text-sm font-medium text-gray-500">City</p>
-                <p className="text-gray-900">{order.shippingAddress?.city || order.shipping?.address?.city || 'N/A'}</p>
+                <p className="text-gray-900">{displayOrder.shippingAddress?.city || displayOrder.shipping?.address?.city || 'N/A'}</p>
               </div>
               
               <div className="md:col-span-2">
                 <p className="text-sm font-medium text-gray-500">Address</p>
-                <p className="text-gray-900">{order.shippingAddress?.address || order.shipping?.address?.address || 'N/A'}</p>
+                <p className="text-gray-900">{displayOrder.shippingAddress?.address || displayOrder.shipping?.address?.address || 'N/A'}</p>
               </div>
               
               <div>
                 <p className="text-sm font-medium text-gray-500">Province</p>
-                <p className="text-gray-900">{order.shippingAddress?.province || order.shipping?.address?.province || order.shipping?.address?.state || 'N/A'}</p>
+                <p className="text-gray-900">{displayOrder.shippingAddress?.province || displayOrder.shipping?.address?.province || displayOrder.shipping?.address?.state || 'N/A'}</p>
               </div>
               
               <div>
                 <p className="text-sm font-medium text-gray-500">Postal Code</p>
-                <p className="text-gray-900">{order.shippingAddress?.postalCode || order.shipping?.address?.postalCode || order.shipping?.address?.zipCode || 'N/A'}</p>
+                <p className="text-gray-900">{displayOrder.shippingAddress?.postalCode || displayOrder.shipping?.address?.postalCode || displayOrder.shipping?.address?.zipCode || 'N/A'}</p>
               </div>
             </div>
           </div>
@@ -229,7 +247,7 @@ const OrderSuccess = () => {
           <h2 className="text-xl font-semibold text-gray-900 mb-6">Order Items</h2>
           
           <div className="space-y-4">
-            {order.items && order.items.length > 0 ? order.items.map((item, index) => (
+            {displayOrder.items && displayOrder.items.length > 0 ? displayOrder.items.map((item, index) => (
               <div key={`${item._id || item.id || index}-${item.selectedSize || 'default'}-${item.selectedColor || 'default'}`} className="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg">
                 <img
                   src={item.images?.[0] || item.image || '/placeholder-product.jpg'}
@@ -251,7 +269,9 @@ const OrderSuccess = () => {
               </div>
             )) : (
               <div className="text-center py-4 text-gray-500">
-                No items found in order
+                <p>Order items not available</p>
+                <p className="text-sm mt-1">Order ID: {displayOrder._id || 'N/A'}</p>
+                <p className="text-sm">Total: Rs. {(displayOrder.total || 0).toLocaleString()}</p>
               </div>
             )}
           </div>
@@ -264,27 +284,27 @@ const OrderSuccess = () => {
           <div className="space-y-3">
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Subtotal</span>
-              <span className="font-medium">Rs. {(order.subtotal || 0).toLocaleString()}</span>
+              <span className="font-medium">Rs. {(displayOrder.subtotal || 0).toLocaleString()}</span>
             </div>
             
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Shipping</span>
               <span className="font-medium">
-                {order.shippingCost === 0 ? 'Free' : `Rs. ${(order.shippingCost || 0).toLocaleString()}`}
+                {displayOrder.shippingCost === 0 ? 'Free' : `Rs. ${(displayOrder.shippingCost || 0).toLocaleString()}`}
               </span>
             </div>
 
-            {order.discount && order.discount > 0 && (
+            {displayOrder.discount && displayOrder.discount > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Discount</span>
-                <span className="font-medium text-green-600">-Rs. {order.discount.toLocaleString()}</span>
+                <span className="font-medium text-green-600">-Rs. {displayOrder.discount.toLocaleString()}</span>
               </div>
             )}
 
             <div className="border-t border-gray-200 pt-3">
               <div className="flex justify-between">
                 <span className="text-lg font-semibold text-gray-900">Total</span>
-                <span className="text-lg font-bold text-gray-900">Rs. {(order.total || 0).toLocaleString()}</span>
+                <span className="text-lg font-bold text-gray-900">Rs. {(displayOrder.total || 0).toLocaleString()}</span>
               </div>
             </div>
           </div>

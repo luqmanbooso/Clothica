@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
+import { useAuth } from '../contexts/AuthContext';
 
 const Banner = () => {
+  const { isAuthenticated } = useAuth();
   const [banners, setBanners] = useState([]);
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchBanners();
-  }, []);
+    if (isAuthenticated) {
+      fetchBanners();
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (banners.length > 1) {

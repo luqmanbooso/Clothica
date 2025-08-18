@@ -14,7 +14,7 @@ import { useToast } from '../contexts/ToastContext';
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, googleLogin, authError, clearError } = useAuth();
+  const { login, googleLogin, authError, clearError, ensureTokenSet } = useAuth();
   const { success, error, info } = useToast();
   
   const [formData, setFormData] = useState({
@@ -53,8 +53,14 @@ const Login = () => {
       const result = await login(formData);
       if (result.success) {
         success('Login successful!');
-        const redirectTo = location.state?.from || '/';
-        navigate(redirectTo, { replace: true });
+        // Ensure token is properly set before navigation
+        ensureTokenSet();
+        
+        // Wait for state to update and token to be properly set
+        setTimeout(() => {
+          const redirectTo = location.state?.from || '/';
+          navigate(redirectTo, { replace: true });
+        }, 500);
       } else {
         error(result.message);
       }
@@ -67,16 +73,29 @@ const Login = () => {
 
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
+      console.log('Google OAuth response received:', credentialResponse);
+      
       const result = await googleLogin(credentialResponse.credential);
+      console.log('Google login result:', result);
+      
       if (result.success) {
         success('Google login successful!');
-        const redirectTo = location.state?.from || '/';
-        navigate(redirectTo, { replace: true });
+        
+        // Ensure token is properly set before navigation
+        ensureTokenSet();
+        
+        // Wait for state to update and token to be properly set
+        setTimeout(() => {
+          const redirectTo = location.state?.from || '/';
+          console.log('Redirecting to:', redirectTo);
+          navigate(redirectTo, { replace: true });
+        }, 500);
       } else {
-        error(result.message);
+        error(result.message || 'Google login failed');
       }
     } catch (error) {
-      error('Google login failed');
+      console.error('Google login error:', error);
+      error('Google login failed: ' + error.message);
     }
   };
 

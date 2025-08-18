@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { FiPackage, FiTruck, FiCalendar, FiDollarSign, FiMapPin, FiArrowLeft, FiPrinter } from 'react-icons/fi';
-import axios from 'axios';
+import api from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import Invoice from '../components/Invoice/Invoice';
+import ReviewModal from '../components/ReviewModal';
+import IssueModal from '../components/IssueModal';
 
 const OrderDetail = () => {
   const { id } = useParams();
@@ -12,16 +14,14 @@ const OrderDetail = () => {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showInvoice, setShowInvoice] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState({ show: false, item: null, orderId: null });
+  const [showIssueModal, setShowIssueModal] = useState({ show: false, item: null, orderId: null });
   const { user } = useAuth();
-
-  useEffect(() => {
-    fetchOrder();
-  }, [fetchOrder]);
 
   const fetchOrder = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`/api/orders/${id}`);
+      const response = await api.get(`/api/orders/${id}`);
       setOrder(response.data);
     } catch (error) {
       console.error('Error fetching order:', error);
@@ -31,12 +31,17 @@ const OrderDetail = () => {
     }
   }, [id, showError]);
 
+  useEffect(() => {
+    fetchOrder();
+  }, [fetchOrder]);
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'pending': return 'text-yellow-600 bg-yellow-100';
       case 'processing': return 'text-blue-600 bg-blue-100';
       case 'shipped': return 'text-purple-600 bg-purple-100';
-      case 'delivered': return 'text-green-600 bg-green-100';
+      case 'complete': return 'text-green-600 bg-green-100';
+      case 'completed': return 'text-green-600 bg-green-100';
       case 'cancelled': return 'text-red-600 bg-red-100';
       default: return 'text-gray-600 bg-gray-100';
     }
@@ -136,7 +141,7 @@ const OrderDetail = () => {
                     <div>
                       <p className="text-xs text-secondary-600">Total Amount</p>
                       <p className="text-sm font-medium text-secondary-900">
-                        ${order.total.toFixed(2)}
+                        Rs. {order.total.toLocaleString()}
                       </p>
                     </div>
                   </div>
@@ -161,16 +166,37 @@ const OrderDetail = () => {
                   {order.items.map((item, index) => (
                     <div key={index} className="flex items-center space-x-4 p-4 border border-secondary-200 rounded-lg">
                       <img
-                        src={item.product.images[0]}
-                        alt={item.product.name}
+                        src={(() => {
+                          // The image data is in item.product.images, not item.image
+                          let imageUrl = null;
+                          
+                          if (item.product && item.product.images && item.product.images.length > 0) {
+                            // Handle array of image objects
+                            if (typeof item.product.images[0] === 'object' && item.product.images[0].url) {
+                              imageUrl = item.product.images[0].url;
+                            } else if (typeof item.product.images[0] === 'string') {
+                              imageUrl = item.product.images[0];
+                            }
+                          } else if (item.image) {
+                            // Fallback to item.image if it exists
+                            if (typeof item.image === 'object' && item.image.url) {
+                              imageUrl = item.image.url;
+                            } else if (typeof item.image === 'string') {
+                              imageUrl = item.image;
+                            }
+                          }
+                          
+                          return imageUrl && imageUrl.startsWith('http') ? imageUrl : 'https://via.placeholder.com/64';
+                        })()}
+                        alt={item.name || 'Product'}
                         className="w-16 h-16 object-cover rounded-lg"
                       />
                       <div className="flex-1">
                         <h3 className="font-semibold text-secondary-900">
-                          {item.product.name}
+                          {item.name}
                         </h3>
                         <p className="text-sm text-secondary-600">
-                          {item.product.brand} • Size: {item.size} • Color: {item.color}
+                          Size: {item.selectedSize || 'One Size'} • Color: {item.selectedColor || 'Default'}
                         </p>
                         <p className="text-sm text-secondary-600">
                           Quantity: {item.quantity}
@@ -178,19 +204,98 @@ const OrderDetail = () => {
                       </div>
                       <div className="text-right">
                         <p className="font-semibold text-secondary-900">
-                          ${(item.price * item.quantity).toFixed(2)}
+                          Rs. {(item.price * item.quantity).toLocaleString()}
                         </p>
                         <p className="text-sm text-secondary-600">
-                          ${item.price} each
+                          Rs. {item.price.toLocaleString()} each
                         </p>
                       </div>
                     </div>
                   ))}
                 </div>
-              </div>
 
-              {/* Shipping Information */}
-              <div className="bg-white rounded-xl shadow-soft p-6">
+              {/* Review and Issue Management */}
+              
+              {(order.status === 'complete' || order.status === 'Complete' || order.status === 'completed' || order.status === 'Completed' || order.status?.toLowerCase() === 'complete' || order.status?.toLowerCase() === 'completed') && (
+                <div className="bg-white rounded-xl shadow-soft p-6">
+                  <h2 className="text-xl font-semibold text-secondary-900 mb-4">
+                    Review & Issue Management
+                  </h2>
+                  
+                  <div className="space-y-4">
+                    {order.items.map((item, index) => (
+                      <div key={index} className="border border-secondary-200 rounded-lg p-4">
+                        <div className="flex items-center space-x-4 mb-4">
+                          <img
+                            src={(() => {
+                              let imageUrl = null;
+                              if (item.product && item.product.images && item.product.images.length > 0) {
+                                if (typeof item.product.images[0] === 'object' && item.product.images[0].url) {
+                                  imageUrl = item.product.images[0].url;
+                                } else if (typeof item.product.images[0] === 'string') {
+                                  imageUrl = item.product.images[0];
+                                }
+                              } else if (item.image) {
+                                if (typeof item.image === 'object' && item.image.url) {
+                                  imageUrl = item.image.url;
+                                } else if (typeof item.image === 'string') {
+                                  imageUrl = item.image;
+                                }
+                              }
+                              return imageUrl && imageUrl.startsWith('http') ? imageUrl : 'https://via.placeholder.com/64';
+                            })()}
+                            alt={item.name || 'Product'}
+                            className="w-16 h-16 object-cover rounded-lg"
+                          />
+                          <div className="flex-1">
+                            <h3 className="text-xl font-semibold text-secondary-900">{item.name}</h3>
+                            <p className="text-sm text-secondary-600">
+                              Size: {item.selectedSize || 'One Size'} • Color: {item.selectedColor || 'Default'}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex space-x-3">
+                          <button
+                            onClick={() => setShowReviewModal({ show: true, item, orderId: order._id })}
+                            className="flex-1 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
+                          >
+                            Write Review
+                          </button>
+                          <button
+                            onClick={() => setShowIssueModal({ show: true, item, orderId: order._id })}
+                            className="flex-1 px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 transition-colors"
+                          >
+                            Report Issue
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Issue Management for Non-Complete Orders */}
+              {order.status !== 'complete' && order.status !== 'Complete' && order.status !== 'completed' && order.status !== 'Completed' && order.status !== 'cancelled' && order.status !== 'Cancelled' && (
+                <div className="bg-white rounded-xl shadow-soft p-6">
+                  <h2 className="text-xl font-semibold text-secondary-900 mb-4">
+                    Need Help?
+                  </h2>
+                  <p className="text-secondary-600 mb-4">
+                    Having an issue with your order? We're here to help!
+                  </p>
+                  <button
+                    onClick={() => setShowIssueModal({ show: true, item: null, orderId: order._id })}
+                    className="px-6 py-2 bg-orange-600 text-white font-medium rounded-lg hover:bg-orange-700 transition-colors"
+                  >
+                    Report Issue
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Shipping Information */}
+            <div className="bg-white rounded-xl shadow-soft p-6">
                 <div className="flex items-center space-x-2 mb-4">
                   <FiMapPin className="h-5 w-5 text-primary-600" />
                   <h2 className="text-xl font-semibold text-secondary-900">
@@ -231,20 +336,20 @@ const OrderDetail = () => {
                 <div className="space-y-3">
                   <div className="flex justify-between text-secondary-600">
                     <span>Subtotal</span>
-                    <span>${order.subtotal.toFixed(2)}</span>
+                    <span>Rs. {order.subtotal.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-secondary-600">
                     <span>Shipping</span>
-                    <span>{order.shippingCost === 0 ? 'Free' : `$${order.shippingCost.toFixed(2)}`}</span>
+                    <span>{order.shippingCost === 0 ? 'Free' : `Rs. ${order.shippingCost.toLocaleString()}`}</span>
                   </div>
                   <div className="flex justify-between text-secondary-600">
                     <span>Tax</span>
-                    <span>${order.tax.toFixed(2)}</span>
+                    <span>Rs. {(order.tax || 0).toLocaleString()}</span>
                   </div>
                   <div className="border-t border-secondary-200 pt-3">
                     <div className="flex justify-between text-lg font-semibold text-secondary-900">
                       <span>Total</span>
-                      <span>${order.total.toFixed(2)}</span>
+                      <span>Rs. {order.total.toLocaleString()}</span>
                     </div>
                   </div>
                 </div>
@@ -269,6 +374,32 @@ const OrderDetail = () => {
         <Invoice
           order={order}
           onClose={() => setShowInvoice(false)}
+        />
+      )}
+
+      {/* Review Modal */}
+      {showReviewModal.show && showReviewModal.item && (
+        <ReviewModal
+          item={showReviewModal.item}
+          orderId={showReviewModal.orderId}
+          onClose={() => setShowReviewModal({ show: false, item: null, orderId: null })}
+          onSuccess={() => {
+            setShowReviewModal({ show: false, item: null, orderId: null });
+            // Optionally refresh order data or show success message
+          }}
+        />
+      )}
+
+      {/* Issue Modal */}
+      {showIssueModal.show && (
+        <IssueModal
+          item={showIssueModal.item}
+          orderId={showIssueModal.orderId}
+          onClose={() => setShowIssueModal({ show: false, item: null, orderId: null })}
+          onSuccess={() => {
+            setShowIssueModal({ show: false, item: null, orderId: null });
+            // Optionally refresh order data or show success message
+          }}
         />
       )}
     </>

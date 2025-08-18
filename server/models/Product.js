@@ -25,7 +25,6 @@ const productSchema = new mongoose.Schema({
   },
   barcode: {
     type: String,
-    unique: true,
     sparse: true
   },
   qrCode: String,
@@ -34,10 +33,6 @@ const productSchema = new mongoose.Schema({
   price: {
     type: Number,
     required: true,
-    min: 0
-  },
-  originalPrice: {
-    type: Number,
     min: 0
   },
   costPrice: {
@@ -69,12 +64,23 @@ const productSchema = new mongoose.Schema({
     trim: true
   }],
   
+  // Colors & Sizes (Top-level for simple products)
+  colors: [{
+    name: String,
+    hex: String,
+    available: Boolean
+  }],
+  sizes: [{
+    name: String,
+    available: Boolean,
+    stock: Number
+  }],
+  
   // Variants & Attributes
   variants: [{
     sku: {
       type: String,
-      required: true,
-      unique: true
+      required: true
     },
     color: {
       name: String,
@@ -103,6 +109,16 @@ const productSchema = new mongoose.Schema({
   // Inventory Management
   inventory: {
     totalStock: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    availableStock: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    reservedStock: {
       type: Number,
       default: 0,
       min: 0
@@ -253,15 +269,7 @@ const productSchema = new mongoose.Schema({
     default: false
   },
   
-  // Discounts & Promotions
-  discount: {
-    type: Number,
-    default: 0,
-    min: 0,
-    max: 100
-  },
-  discountStartDate: Date,
-  discountEndDate: Date,
+
   
   // Product Specifications
   specifications: {
@@ -364,11 +372,7 @@ productSchema.virtual('stockStatus').get(function() {
   return 'in-stock';
 });
 
-// Virtual for discount percentage
-productSchema.virtual('discountPercentage').get(function() {
-  if (!this.originalPrice || this.originalPrice <= this.price) return 0;
-  return Math.round(((this.originalPrice - this.price) / this.originalPrice) * 100);
-});
+
 
 // Pre-save middleware to generate SKU if not provided
 productSchema.pre('save', async function(next) {
@@ -457,5 +461,83 @@ productSchema.statics.getProductsNeedingReorder = function() {
     }
   });
 };
+
+// Stock management methods
+productSchema.methods.calculateTotalStock = function() {
+  if (this.sizes && this.sizes.length > 0) {
+    // Calculate total stock from sizes
+    return this.sizes.reduce((total, size) => total + (size.stock || 0), 0);
+  }
+  return this.inventory?.totalStock || 0;
+};
+
+productSchema.methods.getAvailableStock = function() {
+  return this.inventory?.availableStock || this.calculateTotalStock();
+};
+
+productSchema.methods.reserveStock = function(quantity) {
+  const availableStock = this.getAvailableStock();
+  if (availableStock < quantity) {
+    throw new Error(`Insufficient stock. Available: ${availableStock}, Requested: ${quantity}`);
+  }
+  
+  if (!this.inventory) {
+    this.inventory = {};
+  }
+  
+  this.inventory.availableStock = availableStock - quantity;
+  this.inventory.reservedStock = (this.inventory.reservedStock || 0) + quantity;
+  
+  return this.inventory.availableStock;
+};
+
+productSchema.methods.releaseReservedStock = function(quantity) {
+  if (!this.inventory) {
+    this.inventory = {};
+  }
+  
+  this.inventory.reservedStock = Math.max(0, (this.inventory.reservedStock || 0) - quantity);
+  this.inventory.availableStock = this.calculateTotalStock() - this.inventory.reservedStock;
+  
+  return this.inventory.availableStock;
+};
+
+productSchema.methods.confirmStockDeduction = function(quantity) {
+  if (!this.inventory) {
+    this.inventory = {};
+  }
+  
+  // Release reserved stock and update total stock
+  this.inventory.reservedStock = Math.max(0, (this.inventory.reservedStock || 0) - quantity);
+  
+  // Update sizes stock if they exist
+  if (this.sizes && this.sizes.length > 0) {
+    // For now, reduce from the first available size
+    // In a real system, you'd track which specific size was ordered
+    const firstSize = this.sizes.find(size => size.stock > 0);
+    if (firstSize) {
+      firstSize.stock = Math.max(0, firstSize.stock - quantity);
+    }
+  }
+  
+  // Update total stock
+  this.inventory.totalStock = this.calculateTotalStock();
+  this.inventory.availableStock = this.inventory.totalStock - this.inventory.reservedStock;
+  
+  return this.inventory.availableStock;
+};
+
+// Pre-save middleware to sync inventory with sizes
+productSchema.pre('save', function(next) {
+  if (this.sizes && this.sizes.length > 0) {
+    const totalStock = this.calculateTotalStock();
+    if (!this.inventory) {
+      this.inventory = {};
+    }
+    this.inventory.totalStock = totalStock;
+    this.inventory.availableStock = totalStock - (this.inventory.reservedStock || 0);
+  }
+  next();
+});
 
 module.exports = mongoose.model('Product', productSchema); 

@@ -21,24 +21,8 @@ const AdminBanners = () => {
       setBanners(response.data);
     } catch (error) {
       console.error('Error fetching banners:', error);
-      // Fallback to sample data if API fails
-      setBanners([
-        {
-          _id: 1,
-          title: 'Summer Collection',
-          subtitle: 'New Arrivals',
-          description: 'Discover the latest summer styles',
-          image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800',
-          link: '/shop?category=summer',
-          isActive: true,
-          priority: 1,
-          startDate: '2024-06-01',
-          endDate: '2024-08-31',
-          targetAudience: 'all',
-          clicks: 1250,
-          impressions: 15000
-        }
-      ]);
+      // Set empty array if API fails
+      setBanners([]);
     } finally {
       setLoading(false);
     }

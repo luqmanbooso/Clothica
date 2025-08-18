@@ -1,476 +1,816 @@
 const express = require('express');
-const router = express.Router();
+const { body, validationResult } = require('express-validator');
+const Loyalty = require('../models/Loyalty');
+const User = require('../models/User');
+const Badge = require('../models/Badge');
+const SpinWheel = require('../models/SpinWheel');
+const Coupon = require('../models/Coupon');
 const { auth } = require('../middleware/auth');
 const { admin } = require('../middleware/admin');
-const User = require('../models/User');
-const Coupon = require('../models/Coupon');
-const SpecialOffer = require('../models/SpecialOffer');
 
-// Get user loyalty profile
+const router = express.Router();
+
+// ========================================
+// LOYALTY PROFILE MANAGEMENT
+// ========================================
+
+// Get user's loyalty profile
 router.get('/profile', auth, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+    let loyaltyProfile = await Loyalty.findByUserId(req.user.id);
+    
+    if (!loyaltyProfile) {
+      // Create loyalty profile if it doesn't exist
+      loyaltyProfile = await Loyalty.createForUser(req.user.id);
+      
+      // Update user with loyalty profile reference
+      await User.findByIdAndUpdate(req.user.id, {
+        loyaltyProfile: loyaltyProfile._id
+      });
     }
-
-    // Update badge and spins if needed
-    await user.updateBadgeAndSpins();
-    await user.resetMonthlySpins();
-
-    const loyaltyData = {
-      loyaltyPoints: user.loyaltyPoints,
-      currentBadge: user.currentBadge,
-      loyaltyMembership: user.loyaltyMembership,
-      totalPointsEarned: user.totalPointsEarned,
-      totalPointsRedeemed: user.totalPointsRedeemed,
-      totalRedemptionValue: user.totalRedemptionValue,
-      spinChances: user.spinChances,
-      spinsUsed: user.spinsUsed,
-      availableSpins: user.spinChances - user.spinsUsed,
-      lastSpinReset: user.lastSpinReset,
-      badgeHistory: user.badgeHistory,
-      spinHistory: user.spinHistory,
-      loyaltyHistory: user.loyaltyHistory.slice(-10) // Last 10 transactions
-    };
-
-    res.json(loyaltyData);
+    
+    // Populate user details
+    await loyaltyProfile.populate('user', 'name email avatar');
+    
+    res.json({
+      success: true,
+      data: loyaltyProfile
+    });
   } catch (error) {
     console.error('Error fetching loyalty profile:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch loyalty profile'
+    });
+  }
+});
+
+// Update loyalty settings
+router.put('/settings', auth, [
+  body('emailNotifications').optional().isBoolean(),
+  body('smsNotifications').optional().isBoolean(),
+  body('autoSpin').optional().isBoolean()
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: errors.array()
+      });
+    }
+
+    const loyaltyProfile = await Loyalty.findByUserId(req.user.id);
+    if (!loyaltyProfile) {
+      return res.status(404).json({
+        success: false,
+        message: 'Loyalty profile not found'
+      });
+    }
+
+    // Update settings
+    Object.assign(loyaltyProfile.settings, req.body);
+    await loyaltyProfile.save();
+
+    res.json({
+      success: true,
+      message: 'Settings updated successfully',
+      data: loyaltyProfile.settings
+    });
+  } catch (error) {
+    console.error('Error updating loyalty settings:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update settings'
+    });
+  }
+});
+
+// ========================================
+// POINTS SYSTEM
+// ========================================
+
+// Get points history
+router.get('/points/history', auth, async (req, res) => {
+  try {
+    const { page = 1, limit = 20 } = req.query;
+    const loyaltyProfile = await Loyalty.findByUserId(req.user.id);
+    
+    if (!loyaltyProfile) {
+      return res.status(404).json({
+        success: false,
+        message: 'Loyalty profile not found'
+      });
+    }
+
+    const skip = (page - 1) * limit;
+    const pointsHistory = loyaltyProfile.pointsHistory
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .slice(skip, skip + parseInt(limit));
+
+    res.json({
+      success: true,
+      data: {
+        currentPoints: loyaltyProfile.points.current,
+        totalPoints: loyaltyProfile.points.total,
+        multiplier: loyaltyProfile.points.multiplier,
+        history: pointsHistory,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: loyaltyProfile.pointsHistory.length
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching points history:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch points history'
+    });
+  }
+});
+
+// ========================================
+// TIER SYSTEM
+// ========================================
+
+// Get tier information
+router.get('/tier', auth, async (req, res) => {
+  try {
+    const loyaltyProfile = await Loyalty.findByUserId(req.user.id);
+    
+    if (!loyaltyProfile) {
+      return res.status(404).json({
+        success: false,
+        message: 'Loyalty profile not found'
+      });
+    }
+
+    const tierBenefits = loyaltyProfile.tierBenefits;
+    
+    res.json({
+      success: true,
+      data: {
+        currentTier: loyaltyProfile.tier.current,
+        nextTier: loyaltyProfile.tier.nextTier,
+        progress: loyaltyProfile.tier.progress,
+        threshold: loyaltyProfile.tier.threshold,
+        benefits: tierBenefits
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching tier information:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch tier information'
+    });
+  }
+});
+
+// ========================================
+// SPIN TOKEN SYSTEM
+// ========================================
+
+// Get spin tokens information
+router.get('/spin-tokens', auth, async (req, res) => {
+  try {
+    const loyaltyProfile = await Loyalty.findByUserId(req.user.id);
+    
+    if (!loyaltyProfile) {
+      return res.status(404).json({
+        success: false,
+        message: 'Loyalty profile not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        available: loyaltyProfile.spinTokens.available,
+        total: loyaltyProfile.spinTokens.total,
+        lastEarned: loyaltyProfile.spinTokens.lastEarned,
+        pointsThreshold: loyaltyProfile.spinTokens.pointsThreshold,
+        pointsToNextToken: loyaltyProfile.spinTokens.pointsThreshold - loyaltyProfile.points.current
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching spin tokens:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch spin tokens'
+    });
+  }
+});
+
+// ========================================
+// BADGE SYSTEM
+// ========================================
+
+// Get user's badges
+router.get('/badges', auth, async (req, res) => {
+  try {
+    const loyaltyProfile = await Loyalty.findByUserId(req.user.id);
+    
+    if (!loyaltyProfile) {
+      return res.status(404).json({
+        success: false,
+        message: 'Loyalty profile not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        badges: loyaltyProfile.badges.sort((a, b) => 
+          new Date(b.earnedAt) - new Date(a.earnedAt)
+        ),
+        totalBadges: loyaltyProfile.badges.length,
+        categories: loyaltyProfile.badges.reduce((acc, badge) => {
+          acc[badge.category] = (acc[badge.category] || 0) + 1;
+          return acc;
+        }, {})
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching badges:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch badges'
+    });
+  }
+});
+
+// Get available badges
+router.get('/badges/available', auth, async (req, res) => {
+  try {
+    const loyaltyProfile = await Loyalty.findByUserId(req.user.id);
+    const user = await User.findById(req.user.id);
+    
+    if (!loyaltyProfile || !user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Profile not found'
+      });
+    }
+
+    // Prepare user data for badge eligibility check
+    const userData = {
+      purchaseCount: user.stats.totalOrders,
+      totalSpent: user.stats.totalSpent,
+      purchaseStreak: user.stats.purchaseStreak,
+      loyaltyPoints: loyaltyProfile.points.total,
+      currentTier: loyaltyProfile.tier.current,
+      spinCount: user.stats.spinCount,
+      reviewCount: user.stats.reviewCount,
+      referralCount: user.stats.referralCount
+    };
+
+    // Get all active badges
+    const allBadges = await Badge.getActiveBadges();
+    
+    // Check which badges the user is eligible for but doesn't have
+    const eligibleBadges = allBadges.filter(badge => {
+      const hasBadge = loyaltyProfile.badges.some(userBadge => userBadge.id === badge.id);
+      return !hasBadge && badge.checkEligibility(userData);
+    });
+
+    res.json({
+      success: true,
+      data: {
+        eligibleBadges,
+        totalEligible: eligibleBadges.length
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching available badges:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch available badges'
+    });
+  }
+});
+
+// ========================================
+// SPIN WHEEL SYSTEM
+// ========================================
+
+// Get available spin wheels
+router.get('/spin-wheels', auth, async (req, res) => {
+  try {
+    const loyaltyProfile = await Loyalty.findByUserId(req.user.id);
+    
+    if (!loyaltyProfile) {
+      return res.status(404).json({
+        success: false,
+        message: 'Loyalty profile not found'
+      });
+    }
+
+    const spinWheels = await SpinWheel.getActiveWheels();
+    
+    // Filter wheels based on user eligibility
+    let eligibleWheels = spinWheels.filter(wheel => {
+      // Check if user has required tokens
+      if (wheel.usage.requireAuthentication && loyaltyProfile.spinTokens.available === 0) {
+        return false;
+      }
+      
+      return true;
+    });
+
+    // Check minimum order value requirement for eligible wheels
+    if (eligibleWheels.some(wheel => wheel.usage.minOrderValue > 0)) {
+      const user = await User.findById(req.user.id);
+      eligibleWheels = eligibleWheels.filter(wheel => {
+        if (wheel.usage.minOrderValue > 0) {
+          return user.stats.totalSpent >= wheel.usage.minOrderValue;
+        }
+        return true;
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        wheels: eligibleWheels,
+        userTokens: loyaltyProfile.spinTokens.available,
+        canSpin: loyaltyProfile.spinTokens.available > 0
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching spin wheels:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch spin wheels'
+    });
   }
 });
 
 // Spin the wheel
-router.post('/spin', auth, async (req, res) => {
+router.post('/spin-wheel/:wheelId', auth, async (req, res) => {
   try {
+    const { wheelId } = req.params;
+    const loyaltyProfile = await Loyalty.findByUserId(req.user.id);
+    
+    if (!loyaltyProfile) {
+      return res.status(404).json({
+        success: false,
+        message: 'Loyalty profile not found'
+      });
+    }
+
+    // Check if user has tokens
+    if (loyaltyProfile.spinTokens.available === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No spin tokens available'
+      });
+    }
+
+    // Get the spin wheel
+    const spinWheel = await SpinWheel.findById(wheelId);
+    if (!spinWheel || !spinWheel.isActive) {
+      return res.status(404).json({
+        success: false,
+        message: 'Spin wheel not found or inactive'
+      });
+    }
+
+    // Check daily spin limit
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todaySpins = loyaltyProfile.spinHistory.filter(spin => 
+      new Date(spin.date) >= today
+    ).length;
+
+    if (todaySpins >= spinWheel.usage.maxSpinsPerDay) {
+      return res.status(400).json({
+        success: false,
+        message: 'Daily spin limit reached'
+      });
+    }
+
+    // Use a token and spin
+    if (!loyaltyProfile.useSpinToken()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Failed to use spin token'
+      });
+    }
+
+    // Perform the spin
+    const spinResult = spinWheel.spin(loyaltyProfile.tier.current);
+    
+    // Record the spin result
+    loyaltyProfile.recordSpinResult(spinResult.reward, spinResult.rewardValue);
+    
+    // Update user stats
     const user = await User.findById(req.user.id);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+    user.stats.spinCount += 1;
+    
+    // Process the reward
+    let rewardDetails = null;
+    
+    switch (spinResult.reward) {
+      case 'coupon':
+        // Create a coupon for the user
+        const coupon = new Coupon({
+          code: `SPIN_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+          name: `Spin Reward - ${spinResult.name}`,
+          description: `Won from spin wheel: ${spinResult.description}`,
+          type: 'percentage',
+          value: spinResult.rewardValue,
+          validFrom: new Date(),
+          validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+          usageLimit: 1,
+          perUserLimit: 1,
+          isActive: true,
+          eventType: 'spin',
+          isSpinGenerated: true,
+          generatedFor: req.user.id
+        });
+        await coupon.save();
+        rewardDetails = { couponId: coupon._id, code: coupon.code };
+        break;
+        
+      case 'free_shipping':
+        // Set free shipping flag for next order
+        loyaltyProfile.settings.freeShipping = true;
+        rewardDetails = { type: 'free_shipping', validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) };
+        break;
+        
+      case 'double_points':
+        // Set double points for next purchase
+        loyaltyProfile.points.multiplier = 2;
+        loyaltyProfile.points.multiplierExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+        rewardDetails = { type: 'double_points', expiresAt: loyaltyProfile.points.multiplierExpires };
+        break;
+        
+      case 'bonus_points':
+        // Award bonus points
+        const bonusPoints = loyaltyProfile.addPoints(spinResult.rewardValue, 'Spin wheel bonus');
+        rewardDetails = { type: 'bonus_points', points: bonusPoints };
+        break;
+        
+      case 'try_again':
+        // No reward, just consume token
+        rewardDetails = { type: 'try_again' };
+        break;
     }
-
-    // Update badge and spins
-    await user.updateBadgeAndSpins();
-    await user.resetMonthlySpins();
-
-    // Check if user can spin
-    if (!user.canSpin()) {
-      return res.status(400).json({ 
-        message: 'No spin chances remaining',
-        availableSpins: 0,
-        nextReset: user.lastSpinReset
-      });
-    }
-
-    // Get active spin events
-    const spinEvents = await SpecialOffer.getSpinEvents();
-    let spinResult = null;
-
-    if (spinEvents.length > 0) {
-      // Use event-specific spin logic
-      const activeEvent = spinEvents[0]; // Get the most recent active event
-      spinResult = await performEventSpin(activeEvent);
-    } else {
-      // Use default spin logic
-      spinResult = await performDefaultSpin();
-    }
-
-    // Use the spin
-    await user.useSpin();
-
-    // Add to spin history
-    user.spinHistory.push({
-      date: new Date(),
-      won: spinResult.won,
-      couponCode: spinResult.couponCode || null,
-      discount: spinResult.discount || 0,
-      description: spinResult.description
+    
+    // Save all changes
+    await Promise.all([
+      loyaltyProfile.save(),
+      user.save(),
+      spinWheel.updateStats(spinResult)
+    ]);
+    
+    res.json({
+      success: true,
+      data: {
+        reward: spinResult.reward,
+        rewardName: spinResult.name,
+        rewardDescription: spinResult.description,
+        rewardDetails,
+        remainingTokens: loyaltyProfile.spinTokens.available,
+        spinHistory: loyaltyProfile.spinHistory.slice(-5) // Last 5 spins
+      }
     });
+  } catch (error) {
+    console.error('Error spinning wheel:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to spin wheel'
+    });
+  }
+});
 
-    // If won a coupon, generate it
-    if (spinResult.won && spinResult.discount > 0) {
-      const coupon = await Coupon.generateSpinCoupon(user._id, {
-        discount: spinResult.discount,
-        rarity: spinResult.rarity,
-        color: spinResult.color,
-        icon: spinResult.icon
+// Get spin history
+router.get('/spin-history', auth, async (req, res) => {
+  try {
+    const { page = 1, limit = 20 } = req.query;
+    const loyaltyProfile = await Loyalty.findByUserId(req.user.id);
+    
+    if (!loyaltyProfile) {
+      return res.status(404).json({
+        success: false,
+        message: 'Loyalty profile not found'
       });
-      await coupon.save();
-      spinResult.couponCode = coupon.code;
     }
 
-    await user.save();
+    const skip = (page - 1) * limit;
+    const spinHistory = loyaltyProfile.spinHistory
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .slice(skip, skip + parseInt(limit));
 
     res.json({
       success: true,
-      spinResult,
-      availableSpins: user.spinChances - user.spinsUsed,
-      message: spinResult.won ? 'Congratulations! You won a coupon!' : 'Better luck next time!'
+      data: {
+        history: spinHistory,
+        stats: loyaltyProfile.stats,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: loyaltyProfile.spinHistory.length
+        }
+      }
     });
-
   } catch (error) {
-    console.error('Error during spin:', error);
-    res.status(500).json({ message: 'Server error during spin' });
+    console.error('Error fetching spin history:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch spin history'
+    });
   }
 });
 
-// Perform event-specific spin
-async function performEventSpin(event) {
-  const rewards = event.spinEventRewards || [];
-  if (rewards.length === 0) {
-    return performDefaultSpin();
-  }
+// ========================================
+// LEADERBOARD
+// ========================================
 
-  // Calculate total probability
-  const totalProbability = rewards.reduce((sum, reward) => sum + reward.probability, 0);
-  const random = Math.random() * totalProbability;
-
-  let currentSum = 0;
-  for (const reward of rewards) {
-    currentSum += reward.probability;
-    if (random <= currentSum) {
-      return {
-        won: true,
-        discount: reward.discount,
-        rarity: reward.rarity,
-        color: reward.color,
-        icon: reward.icon,
-        description: `Won ${reward.discount}% off from ${event.name}!`,
-        eventName: event.name
-      };
-    }
-  }
-
-  // No win
-  return {
-    won: false,
-    description: 'No luck this time!',
-    eventName: event.name
-  };
-}
-
-// Perform default spin
-async function performDefaultSpin() {
-  const random = Math.random() * 100;
-  
-  // 40% chance: No coupon
-  if (random < 40) {
-    return {
-      won: false,
-      description: 'No luck this time! Try again next month!'
-    };
-  }
-  
-  // 30% chance: 5% off
-  if (random < 70) {
-    return {
-      won: true,
-      discount: 5,
-      rarity: 'common',
-      color: '#6C7A59',
-      icon: '🎉',
-      description: 'Won 5% off! A small but sweet discount!'
-    };
-  }
-  
-  // 20% chance: 10% off
-  if (random < 90) {
-    return {
-      won: true,
-      discount: 10,
-      rarity: 'uncommon',
-      color: '#FF6B6B',
-      icon: '🎊',
-      description: 'Won 10% off! Nice discount!'
-    };
-  }
-  
-  // 8% chance: 15% off
-  if (random < 98) {
-    return {
-      won: true,
-      discount: 15,
-      rarity: 'rare',
-      color: '#4ECDC4',
-      icon: '💎',
-      description: 'Won 15% off! Great discount!'
-    };
-  }
-  
-  // 2% chance: 20% off
-  return {
-    won: true,
-    discount: 20,
-    rarity: 'epic',
-    color: '#FFE66D',
-    icon: '🏆',
-    description: 'Won 20% off! Amazing discount!'
-  };
-}
-
-// Earn points (admin only)
-router.post('/earn', auth, admin, async (req, res) => {
+// Get loyalty leaderboard
+router.get('/leaderboard', async (req, res) => {
   try {
-    const { userId, amount, action } = req.body;
+    const { limit = 10, category = 'points' } = req.query;
     
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+    let leaderboard;
+    
+    switch (category) {
+      case 'points':
+        leaderboard = await Loyalty.getLeaderboard(parseInt(limit));
+        break;
+      case 'tier':
+        leaderboard = await Loyalty.aggregate([
+          { $sort: { 'tier.current': -1, 'points.total': -1 } },
+          { $limit: parseInt(limit) },
+          { $lookup: { from: 'users', localField: 'user', foreignField: '_id', as: 'user' } },
+          { $unwind: '$user' },
+          { $project: { user: 1, tier: 1, points: 1, badges: 1 } }
+        ]);
+        break;
+      case 'badges':
+        leaderboard = await Loyalty.aggregate([
+          { $addFields: { badgeCount: { $size: '$badges' } } },
+          { $sort: { badgeCount: -1, 'points.total': -1 } },
+          { $limit: parseInt(limit) },
+          { $lookup: { from: 'users', localField: 'user', foreignField: '_id', as: 'user' } },
+          { $unwind: '$user' },
+          { $project: { user: 1, badgeCount: 1, points: 1, tier: 1 } }
+        ]);
+        break;
+      default:
+        leaderboard = await Loyalty.getLeaderboard(parseInt(limit));
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        leaderboard,
+        category,
+        totalUsers: await Loyalty.countDocuments()
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching leaderboard:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch leaderboard'
+    });
+  }
+});
+
+// ========================================
+// ADMIN ROUTES
+// ========================================
+
+// Get all loyalty profiles (admin only)
+router.get('/admin/profiles', auth, admin, async (req, res) => {
+  try {
+    const { page = 1, limit = 20, search, tier, sortBy = 'points.total', sortOrder = 'desc' } = req.query;
+    
+    const query = {};
+    
+    if (search) {
+      query.$or = [
+        { 'user.name': { $regex: search, $options: 'i' } },
+        { 'user.email': { $regex: search, $options: 'i' } }
+      ];
+    }
+    
+    if (tier) {
+      query['tier.current'] = tier;
+    }
+    
+    const sort = {};
+    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+    
+    const skip = (page - 1) * limit;
+    
+    const profiles = await Loyalty.find(query)
+      .populate('user', 'name email avatar')
+      .sort(sort)
+      .skip(skip)
+      .limit(parseInt(limit));
+    
+    const total = await Loyalty.countDocuments(query);
+    
+    res.json({
+      success: true,
+      data: {
+        profiles,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          pages: Math.ceil(total / limit)
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching loyalty profiles:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch loyalty profiles'
+    });
+  }
+});
+
+// Manually award points (admin only)
+router.post('/admin/award-points', auth, admin, [
+  body('userId').isMongoId(),
+  body('points').isInt({ min: 1 }),
+  body('reason').notEmpty()
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: errors.array()
+      });
     }
 
-    await user.earnPoints(amount, action);
-    await user.updateBadgeAndSpins();
-
-    res.json({ 
-      message: 'Points awarded successfully',
-      newPoints: user.loyaltyPoints,
-      newBadge: user.currentBadge,
-      spinChances: user.spinChances
+    const { userId, points, reason } = req.body;
+    
+    let loyaltyProfile = await Loyalty.findByUserId(userId);
+    if (!loyaltyProfile) {
+      loyaltyProfile = await Loyalty.createForUser(userId);
+    }
+    
+    const pointsAwarded = loyaltyProfile.addPoints(points, reason);
+    await loyaltyProfile.save();
+    
+    res.json({
+      success: true,
+      message: `${points} points awarded successfully`,
+      data: {
+        pointsAwarded,
+        currentPoints: loyaltyProfile.points.current,
+        totalPoints: loyaltyProfile.points.total
+      }
     });
   } catch (error) {
     console.error('Error awarding points:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({
+      success: false,
+      message: 'Failed to award points'
+    });
   }
 });
 
-// Redeem points
-router.post('/redeem', auth, async (req, res) => {
+// Manually award badge (admin only)
+router.post('/admin/award-badge', auth, admin, [
+  body('userId').isMongoId(),
+  body('badgeId').notEmpty()
+], async (req, res) => {
   try {
-    const { points } = req.body;
-    const user = await User.findById(req.user.id);
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: errors.array()
+      });
+    }
+
+    const { userId, badgeId } = req.body;
     
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+    const badge = await Badge.getBadgeById(badgeId);
+    if (!badge) {
+      return res.status(404).json({
+        success: false,
+        message: 'Badge not found'
+      });
     }
-
-    if (points > user.loyaltyPoints) {
-      return res.status(400).json({ message: 'Insufficient points' });
+    
+    let loyaltyProfile = await Loyalty.findByUserId(userId);
+    if (!loyaltyProfile) {
+      loyaltyProfile = await Loyalty.createForUser(userId);
     }
-
-    if (points < 100) {
-      return res.status(400).json({ message: 'Minimum 100 points required for redemption' });
+    
+    const badgeAdded = loyaltyProfile.addBadge(
+      badge.id,
+      badge.name,
+      badge.description,
+      badge.icon,
+      badge.category,
+      badge.rarity
+    );
+    
+    if (badgeAdded) {
+      await badge.awardToUser(userId);
+      await loyaltyProfile.save();
+      
+      res.json({
+        success: true,
+        message: 'Badge awarded successfully',
+        data: { badge: badge.name }
+      });
+    } else {
+      res.json({
+        success: false,
+        message: 'User already has this badge'
+      });
     }
-
-    // Calculate redemption value with bonus
-    const baseValue = points;
-    const bonus = Math.floor(points * 0.1); // 10% bonus
-    const totalValue = baseValue + bonus;
-
-    // Deduct points
-    user.loyaltyPoints -= points;
-    user.totalPointsRedeemed += points;
-    user.totalRedemptionValue += totalValue;
-
-    // Add to history
-    user.loyaltyHistory.push({
-      action: 'redemption',
-      points: -points,
-      description: `Redeemed ${points} points for LKR ${totalValue} value`
-    });
-
-    await user.save();
-
-    res.json({
-      message: 'Points redeemed successfully',
-      pointsRedeemed: points,
-      redemptionValue: totalValue,
-      remainingPoints: user.loyaltyPoints
-    });
   } catch (error) {
-    console.error('Error redeeming points:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// Update login streak
-router.post('/login-streak', auth, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    await user.updateLoginStreak();
-    await user.updateBadgeAndSpins();
-
-    res.json({
-      message: 'Login streak updated',
-      loginStreak: user.loginStreak,
-      currentBadge: user.currentBadge,
-      spinChances: user.spinChances
+    console.error('Error awarding badge:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to award badge'
     });
-  } catch (error) {
-    console.error('Error updating login streak:', error);
-    res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Upgrade membership
-router.post('/upgrade', auth, async (req, res) => {
+// Get loyalty analytics (admin only)
+router.get('/admin/analytics', auth, admin, async (req, res) => {
   try {
-    const { membershipType } = req.body;
-    const user = await User.findById(req.user.id);
+    const { timeRange = '30' } = req.query;
     
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    // Check if user can upgrade
-    if (membershipType === 'premium' && user.loyaltyPoints < 500) {
-      return res.status(400).json({ message: 'Need 500+ points for Premium membership' });
-    }
+    const now = new Date();
+    const startDate = new Date(now.getTime() - (parseInt(timeRange) * 24 * 60 * 60 * 1000));
     
-    if (membershipType === 'vip' && user.loyaltyPoints < 1000) {
-      return res.status(400).json({ message: 'Need 1000+ points for VIP membership' });
-    }
-
-    user.loyaltyMembership = membershipType;
-    user.membershipExpiry = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 1 year
-
-    await user.save();
-    await user.updateBadgeAndSpins();
-
-    res.json({
-      message: 'Membership upgraded successfully',
-      newMembership: user.loyaltyMembership,
-      newBadge: user.currentBadge,
-      spinChances: user.spinChances
+    // Get basic stats
+    const totalUsers = await Loyalty.countDocuments();
+    const activeUsers = await Loyalty.countDocuments({
+      'pointsHistory.date': { $gte: startDate }
     });
-  } catch (error) {
-    console.error('Error upgrading membership:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// Referral system
-router.post('/refer', auth, async (req, res) => {
-  try {
-    const { referralCode } = req.body;
-    const user = await User.findById(req.user.id);
     
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    if (user.referredBy) {
-      return res.status(400).json({ message: 'Already referred by someone' });
-    }
-
-    const referrer = await User.findOne({ referralCode });
-    if (!referrer) {
-      return res.status(400).json({ message: 'Invalid referral code' });
-    }
-
-    if (referrer._id.toString() === user._id.toString()) {
-      return res.status(400).json({ message: 'Cannot refer yourself' });
-    }
-
-    // Apply referral
-    user.referredBy = referrer._id;
-    await user.addReferral(referrer._id);
-    
-    // Award points to both users
-    await user.earnPoints(50, 'referral_bonus');
-    await referrer.earnPoints(100, 'referral_reward');
-    
-    await user.updateBadgeAndSpins();
-    await referrer.updateBadgeAndSpins();
-
-    res.json({
-      message: 'Referral applied successfully',
-      pointsEarned: 50,
-      referrerPointsEarned: 100
-    });
-  } catch (error) {
-    console.error('Error applying referral:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// Get referral code
-router.get('/referral-code', auth, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    if (!user.referralCode) {
-      user.referralCode = user.generateReferralCode();
-      await user.save();
-    }
-
-    res.json({
-      referralCode: user.referralCode,
-      referrals: user.referrals.length,
-      totalEarned: user.totalPointsEarned
-    });
-  } catch (error) {
-    console.error('Error getting referral code:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// Get loyalty stats (admin only)
-router.get('/stats', auth, admin, async (req, res) => {
-  try {
-    const totalUsers = await User.countDocuments();
-    const bronzeUsers = await User.countDocuments({ currentBadge: 'bronze' });
-    const silverUsers = await User.countDocuments({ currentBadge: 'silver' });
-    const goldUsers = await User.countDocuments({ currentBadge: 'gold' });
-    const vipUsers = await User.countDocuments({ currentBadge: 'vip' });
-
-    const totalPoints = await User.aggregate([
-      { $group: { _id: null, total: { $sum: '$loyaltyPoints' } } }
+    // Get tier distribution
+    const tierDistribution = await Loyalty.aggregate([
+      { $group: { _id: '$tier.current', count: { $sum: 1 } } },
+      { $sort: { _id: 1 } }
     ]);
-
-    const totalEarned = await User.aggregate([
-      { $group: { _id: null, total: { $sum: '$totalPointsEarned' } } }
-    ]);
-
-    const totalRedeemed = await User.aggregate([
-      { $group: { _id: null, total: { $sum: '$totalPointsRedeemed' } } }
-    ]);
-
-    const totalRedemptionValue = await User.aggregate([
-      { $group: { _id: null, total: { $sum: '$totalRedemptionValue' } } }
-    ]);
-
-    // Spin statistics
-    const spinStats = await User.aggregate([
+    
+    // Get points distribution
+    const pointsStats = await Loyalty.aggregate([
       {
         $group: {
           _id: null,
-          totalSpins: { $sum: '$spinsUsed' },
-          totalSpinChances: { $sum: '$spinChances' },
-          avgSpinChances: { $avg: '$spinChances' }
+          totalPoints: { $sum: '$points.total' },
+          avgPoints: { $avg: '$points.total' },
+          maxPoints: { $max: '$points.total' }
         }
       }
     ]);
-
+    
+    // Get spin statistics
+    const spinStats = await Loyalty.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalSpins: { $sum: '$stats.totalSpins' },
+          successfulSpins: { $sum: '$stats.successfulSpins' },
+          avgSpinsPerUser: { $avg: '$stats.totalSpins' }
+        }
+      }
+    ]);
+    
     res.json({
-      userStats: {
-        total: totalUsers,
-        bronze: bronzeUsers,
-        silver: silverUsers,
-        gold: goldUsers,
-        vip: vipUsers
-      },
-      pointStats: {
-        totalPoints: totalPoints[0]?.total || 0,
-        totalEarned: totalEarned[0]?.total || 0,
-        totalRedeemed: totalRedeemed[0]?.total || 0,
-        totalRedemptionValue: totalRedemptionValue[0]?.total || 0
-      },
-      spinStats: {
-        totalSpins: spinStats[0]?.totalSpins || 0,
-        totalSpinChances: spinStats[0]?.totalSpinChances || 0,
-        avgSpinChances: Math.round(spinStats[0]?.avgSpinChances || 0)
+      success: true,
+      data: {
+        overview: {
+          totalUsers,
+          activeUsers,
+          timeRange: `${timeRange} days`
+        },
+        tierDistribution,
+        pointsStats: pointsStats[0] || {},
+        spinStats: spinStats[0] || {},
+        timeRange: {
+          start: startDate,
+          end: now
+        }
       }
     });
   } catch (error) {
-    console.error('Error fetching loyalty stats:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error fetching loyalty analytics:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch analytics'
+    });
   }
 });
 

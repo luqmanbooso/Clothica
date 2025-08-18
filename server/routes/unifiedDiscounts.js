@@ -328,3 +328,9 @@ router.get('/analytics/insights', auth, admin, async (req, res) => {
 });
 
 module.exports = router;
+
+
+
+
+
+

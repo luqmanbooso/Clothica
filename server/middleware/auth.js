@@ -24,4 +24,20 @@ const auth = async (req, res, next) => {
   }
 };
 
-module.exports = { auth }; 
+const admin = async (req, res, next) => {
+  try {
+    // First authenticate the user
+    await auth(req, res, () => {});
+    
+    // Check if user is admin
+    if (!req.user || req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied. Admin role required.' });
+    }
+    
+    next();
+  } catch (error) {
+    res.status(403).json({ message: 'Access denied. Admin role required.' });
+  }
+};
+
+module.exports = { auth, admin }; 

@@ -17,6 +17,12 @@ const specialOffersRoutes = require('./routes/specialOffers');
 const eventsRoutes = require('./routes/events');
 const unifiedDiscountsRoutes = require('./routes/unifiedDiscounts');
 const smartInventoryRoutes = require('./routes/smartInventory');
+const paymentRoutes = require('./routes/payments');
+const cartRoutes = require('./routes/cart');
+const notificationRoutes = require('./routes/notifications');
+const reviewRoutes = require('./routes/reviews');
+const issueRoutes = require('./routes/issues');
+const couponRoutes = require('./routes/coupons');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -24,12 +30,18 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(helmet());
 app.use(morgan('combined'));
-app.use(cors());
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Static files
 app.use('/uploads', express.static('uploads'));
+app.use('/public', express.static('public'));
 
 // Mount routes
 app.use('/api/auth', authRoutes);
@@ -43,10 +55,47 @@ app.use('/api/special-offers', specialOffersRoutes);
 app.use('/api/events', eventsRoutes);
 app.use('/api/unified-discounts', unifiedDiscountsRoutes);
 app.use('/api/smart-inventory', smartInventoryRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/cart', cartRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/issues', issueRoutes);
+app.use('/api/coupons', couponRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Clothica API is running' });
+});
+
+// Email service test route
+app.get('/api/email/status', (req, res) => {
+  const emailService = require('./services/emailService');
+  const status = emailService.getStatus();
+  res.json(status);
+});
+
+app.post('/api/email/test', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+    
+    const emailService = require('./services/emailService');
+    const result = await emailService.testEmail(email);
+    
+    res.json({ 
+      success: true, 
+      message: 'Test email sent successfully',
+      result 
+    });
+  } catch (error) {
+    console.error('Error sending test email:', error);
+    res.status(500).json({ 
+      error: 'Failed to send test email', 
+      details: error.message 
+    });
+  }
 });
 
 // Error handling middleware

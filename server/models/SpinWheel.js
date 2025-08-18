@@ -1,184 +1,318 @@
 const mongoose = require('mongoose');
 
-const spinWheelSegmentSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  type: {
-    type: String,
-    enum: ['discount', 'points', 'free_shipping', 'cashback', 'product'],
-    required: true
-  },
-  value: {
-    type: mongoose.Schema.Types.Mixed,
-    required: true
-  },
-  probability: {
-    type: Number,
-    required: true,
-    min: 0,
-    max: 100
-  },
-  color: {
-    type: String,
-    default: '#6C7A59'
-  },
-  isActive: {
-    type: Boolean,
-    default: true
-  }
-});
-
-const userSpinSchema = new mongoose.Schema({
-  user: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  spinDate: {
-    type: Date,
-    default: Date.now
-  },
-  segment: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'SpinWheelSegment'
-  },
-  reward: {
-    type: mongoose.Schema.Types.Mixed
-  },
-  isClaimed: {
-    type: Boolean,
-    default: false
-  }
-});
-
 const spinWheelSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
     trim: true
   },
-  description: {
-    type: String,
-    trim: true
-  },
-  eventType: {
-    type: String,
-    enum: ['daily', 'weekly', 'monthly', 'special', 'one_time'],
-    default: 'daily'
-  },
+  
+  description: String,
+  
+  // Wheel Configuration
   isActive: {
     type: Boolean,
     default: true
   },
-  startDate: {
-    type: Date,
+  
+  // Reward Slots Configuration
+  slots: [{
+    id: {
+      type: String,
+      required: true
+    },
+    name: {
+      type: String,
+      required: true
+    },
+    description: String,
+    icon: String,
+    color: {
+      type: String,
+      default: '#6C7A59'
+    },
+    probability: {
+      type: Number,
+      required: true,
+      min: 0,
+      max: 100
+    },
+    reward: {
+      type: String,
+      enum: ['coupon', 'free_shipping', 'double_points', 'try_again', 'bonus_points', 'product_discount', 'cashback'],
+      required: true
+    },
+    rewardValue: {
+      type: mongoose.Schema.Types.Mixed,
+      required: false
+    },
+    rarity: {
+      type: String,
+      enum: ['common', 'uncommon', 'rare', 'epic', 'legendary'],
+      default: 'common'
+    },
+    isActive: {
+      type: Boolean,
+      default: true
+    }
+  }],
+  
+  // Tier-based Probability Modifiers
+  tierModifiers: {
+    bronze: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {}
+    },
+    silver: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {}
+    },
+    gold: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {}
+    },
+    platinum: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {}
+    },
+    diamond: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {}
+    }
+  },
+  
+  // Campaign Integration
+  campaign: {
+    id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Event'
+    },
+    name: String,
+    startDate: Date,
+    endDate: Date
+  },
+  
+  // Usage Limits
+  usage: {
+    maxSpinsPerDay: {
+      type: Number,
+      default: 3
+    },
+    maxSpinsPerUser: {
+      type: Number,
+      default: null
+    },
+    requireAuthentication: {
+      type: Boolean,
+      default: true
+    },
+    minOrderValue: {
+      type: Number,
+      default: 0
+    }
+  },
+  
+  // Statistics
+  stats: {
+    totalSpins: {
+      type: Number,
+      default: 0
+    },
+    totalRewards: {
+      type: Number,
+      default: 0
+    },
+    rewardDistribution: {
+      type: Map,
+      of: Number,
+      default: new Map()
+    },
+    averageSpinsPerUser: {
+      type: Number,
+      default: 0
+    }
+  },
+  
+  // Settings
+  settings: {
+    animationDuration: {
+      type: Number,
+      default: 3000
+    },
+    soundEnabled: {
+      type: Boolean,
+      default: true
+    },
+    showProbability: {
+      type: Boolean,
+      default: false
+    },
+    allowMultipleSpins: {
+      type: Boolean,
+      default: false
+    }
+  },
+  
+  // Metadata
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
     required: true
   },
-  endDate: {
-    type: Date,
-    required: true
-  },
-  requiredBadge: {
-    type: String,
-    enum: ['none', 'bronze', 'silver', 'gold', 'platinum'],
-    default: 'none'
-  },
-  requiredPoints: {
-    type: Number,
-    default: 0
-  },
-  spinsPerUser: {
+  
+  tags: [String],
+  
+  version: {
     type: Number,
     default: 1
-  },
-  totalSpinsAllowed: {
-    type: Number,
-    default: null // null means unlimited
-  },
-  currentSpinsUsed: {
-    type: Number,
-    default: 0
-  },
-  segments: [spinWheelSegmentSchema],
-  isSpecialEvent: {
-    type: Boolean,
-    default: false
-  },
-  userSpins: [userSpinSchema],
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
   }
 }, {
   timestamps: true
 });
 
-// Indexes for efficient queries
-spinWheelSchema.index({ isActive: 1, startDate: 1, endDate: 1 });
-spinWheelSchema.index({ eventType: 1, isActive: 1 });
+// Indexes for performance
+spinWheelSchema.index({ isActive: 1 });
+spinWheelSchema.index({ 'campaign.id': 1 });
+spinWheelSchema.index({ createdBy: 1 });
 
-// Pre-save middleware to update updatedAt
+// Virtual for total probability validation
+spinWheelSchema.virtual('totalProbability').get(function() {
+  return this.slots
+    .filter(slot => slot.isActive)
+    .reduce((sum, slot) => sum + slot.probability, 0);
+});
+
+// Virtual for active slots count
+spinWheelSchema.virtual('activeSlotsCount').get(function() {
+  return this.slots.filter(slot => slot.isActive).length;
+});
+
+// Methods
+spinWheelSchema.methods.spin = function(userTier = 'bronze') {
+  // Validate total probability equals 100
+  if (this.totalProbability !== 100) {
+    throw new Error('Total probability must equal 100%');
+  }
+  
+  // Get active slots
+  const activeSlots = this.slots.filter(slot => slot.isActive);
+  
+  // Apply tier modifiers if they exist
+  let modifiedSlots = [...activeSlots];
+  if (this.tierModifiers[userTier]) {
+    modifiedSlots = activeSlots.map(slot => {
+      const modifier = this.tierModifiers[userTier][slot.id];
+      if (modifier) {
+        return {
+          ...slot.toObject(),
+          probability: Math.max(0, Math.min(100, slot.probability + modifier))
+        };
+      }
+      return slot;
+    });
+    
+    // Recalculate probabilities to ensure they sum to 100
+    const totalModified = modifiedSlots.reduce((sum, slot) => sum + slot.probability, 0);
+    if (totalModified !== 100) {
+      const factor = 100 / totalModified;
+      modifiedSlots = modifiedSlots.map(slot => ({
+        ...slot,
+        probability: Math.round(slot.probability * factor)
+      }));
+    }
+  }
+  
+  // Generate random number
+  const random = Math.random() * 100;
+  
+  // Find winning slot
+  let cumulativeProbability = 0;
+  for (const slot of modifiedSlots) {
+    cumulativeProbability += slot.probability;
+    if (random <= cumulativeProbability) {
+      return slot;
+    }
+  }
+  
+  // Fallback to last slot (shouldn't happen with proper probabilities)
+  return modifiedSlots[modifiedSlots.length - 1];
+};
+
+spinWheelSchema.methods.updateStats = function(spinResult) {
+  this.stats.totalSpins++;
+  
+  if (spinResult.reward !== 'try_again') {
+    this.stats.totalRewards++;
+  }
+  
+  // Update reward distribution
+  const currentCount = this.stats.rewardDistribution.get(spinResult.reward) || 0;
+  this.stats.rewardDistribution.set(spinResult.reward, currentCount + 1);
+  
+  return this.save();
+};
+
+spinWheelSchema.methods.validateConfiguration = function() {
+  const errors = [];
+  
+  // Check if slots exist
+  if (!this.slots || this.slots.length === 0) {
+    errors.push('At least one slot must be configured');
+  }
+  
+  // Check probability sum
+  if (this.totalProbability !== 100) {
+    errors.push(`Total probability must equal 100% (current: ${this.totalProbability}%)`);
+  }
+  
+  // Check slot configuration
+  this.slots.forEach((slot, index) => {
+    if (!slot.name || !slot.reward) {
+      errors.push(`Slot ${index + 1} is missing required fields`);
+    }
+    
+    if (slot.probability < 0 || slot.probability > 100) {
+      errors.push(`Slot ${index + 1} has invalid probability: ${slot.probability}%`);
+    }
+  });
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
+
+// Static methods
+spinWheelSchema.statics.getActiveWheels = function() {
+  return this.find({ isActive: true }).populate('campaign', 'name startDate endDate');
+};
+
+spinWheelSchema.statics.getWheelByName = function(name) {
+  return this.findOne({ name, isActive: true });
+};
+
+spinWheelSchema.statics.getWheelsByCampaign = function(campaignId) {
+  return this.find({ 'campaign.id': campaignId, isActive: true });
+};
+
+// Pre-save middleware
 spinWheelSchema.pre('save', function(next) {
-  this.updatedAt = new Date();
+  // Validate configuration before saving
+  const validation = this.validateConfiguration();
+  if (!validation.isValid) {
+    return next(new Error(`Invalid wheel configuration: ${validation.errors.join(', ')}`));
+  }
+  
+  // Update version
+  this.version += 1;
+  
   next();
 });
 
-// Static method to get active spin wheels
-spinWheelSchema.statics.getActiveSpinWheels = function() {
-  const now = new Date();
-  return this.find({
-    isActive: true,
-    startDate: { $lte: now },
-    endDate: { $gte: now }
-  });
-};
-
-// Instance method to check if user can spin
-spinWheelSchema.methods.canUserSpin = function(user) {
-  if (!this.isActive) return false;
-  
-  const now = new Date();
-  if (now < this.startDate || now > this.endDate) return false;
-  
-  // Check badge requirement
-  if (this.requiredBadge !== 'none' && user.loyaltyMembership !== this.requiredBadge) {
-    return false;
-  }
-  
-  // Check points requirement
-  if (this.requiredPoints > 0 && user.loyaltyPoints < this.requiredPoints) {
-    return false;
-  }
-  
-  // Check total spins limit
-  if (this.totalSpinsAllowed && this.currentSpinsUsed >= this.totalSpinsAllowed) {
-    return false;
-  }
-  
-  // Check user's spins
-  const userSpinCount = this.userSpins.filter(spin => 
-    spin.user.toString() === user._id.toString()
-  ).length;
-  
-  return userSpinCount < this.spinsPerUser;
-};
-
-// Instance method to add user spin
-spinWheelSchema.methods.addUserSpin = function(userId, segment, reward) {
-  this.userSpins.push({
-    user: userId,
-    segment: segment._id,
-    reward: reward
-  });
-  this.currentSpinsUsed += 1;
-  return this.save();
-};
+// Pre-remove middleware
+spinWheelSchema.pre('remove', function(next) {
+  // Clean up related data if needed
+  next();
+});
 
 module.exports = mongoose.model('SpinWheel', spinWheelSchema);

@@ -7,6 +7,7 @@ import { WishlistProvider } from './contexts/WishlistContext';
 import { LoyaltyProvider } from './contexts/LoyaltyContext';
 import { CouponProvider } from './contexts/CouponContext';
 import { ToastProvider } from './contexts/ToastContext';
+import { NotificationProvider } from './contexts/NotificationContext';
 
 // Layout Components
 import Header from './components/Layout/Header';
@@ -31,6 +32,7 @@ import OrderDetail from './pages/OrderDetail';
 import OrderSuccess from './pages/OrderSuccess';
 import Checkout from './pages/Checkout';
 import LoyaltyDashboard from './pages/LoyaltyDashboard';
+import ReviewsAndIssues from './pages/ReviewsAndIssues';
 
 // Admin Pages
 import Dashboard from './pages/Admin/Dashboard';
@@ -38,6 +40,8 @@ import Products from './pages/Admin/Products';
 import OrdersAdmin from './pages/Admin/Orders';
 import Users from './pages/Admin/Users';
 import Categories from './pages/Admin/Categories';
+import Coupons from './pages/Admin/Coupons';
+import Banners from './pages/Admin/Banners';
 import MonetizationDashboard from './pages/Admin/MonetizationDashboard';
 import Analytics from './pages/Admin/Analytics';
 import Settings from './pages/Admin/Settings';
@@ -49,15 +53,20 @@ import AdminRoute from './components/Auth/AdminRoute';
 import ClientRoute from './components/Auth/ClientRoute';
 
 function App() {
+  // Debug: Log the Google Client ID
+  console.log('🔍 [DEBUG] Google Client ID loaded:', process.env.REACT_APP_GOOGLE_CLIENT_ID);
+  console.log('🔍 [DEBUG] All environment variables:', process.env);
+  
   return (
     <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID}>
       <ToastProvider>
         <AuthProvider>
-          <CartProvider>
-            <WishlistProvider>
-              <LoyaltyProvider>
-                <CouponProvider>
-                  <div className="App">
+          <NotificationProvider>
+            <CartProvider>
+              <WishlistProvider>
+                <LoyaltyProvider>
+                  <CouponProvider>
+                    <div className="App">
               <Routes>
                   {/* Public Routes */}
                   <Route path="/" element={
@@ -182,6 +191,16 @@ function App() {
                     </ClientRoute>
                   } />
 
+                  <Route path="/reviews-issues" element={
+                    <ClientRoute>
+                      <ProtectedRoute>
+                        <Header />
+                        <ReviewsAndIssues />
+                        <Footer />
+                      </ProtectedRoute>
+                    </ClientRoute>
+                  } />
+
                   <Route path="/order-success" element={
                     <ClientRoute>
                       <OrderSuccess />
@@ -261,21 +280,38 @@ function App() {
                     </AdminRoute>
                   } />
                   
-                              <Route path="/admin/events" element={
-              <AdminRoute>
-                <AdminLayout>
-                  <Events />
-                </AdminLayout>
-              </AdminRoute>
-            } />
+                  <Route path="/admin/events" element={
+                    <AdminRoute>
+                      <AdminLayout>
+                        <Events />
+                      </AdminLayout>
+                    </AdminRoute>
+                  } />
+                  
+                  <Route path="/admin/coupons" element={
+                    <AdminRoute>
+                      <AdminLayout>
+                        <Coupons />
+                      </AdminLayout>
+                    </AdminRoute>
+                  } />
+                  
+                  <Route path="/admin/banners" element={
+                    <AdminRoute>
+                      <AdminLayout>
+                        <Banners />
+                      </AdminLayout>
+                    </AdminRoute>
+                  } />
                 </Routes>
-                                </div>
-                </CouponProvider>
-              </LoyaltyProvider>
-            </WishlistProvider>
-          </CartProvider>
+                                                    </div>
+                  </CouponProvider>
+                </LoyaltyProvider>
+              </WishlistProvider>
+            </CartProvider>
+          </NotificationProvider>
         </AuthProvider>
-      </ToastProvider>
+        </ToastProvider>
     </GoogleOAuthProvider>
     );
   }

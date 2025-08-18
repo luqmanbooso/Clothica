@@ -420,3 +420,9 @@ smartInventorySchema.statics.getEventImpactedProducts = function(eventId) {
 };
 
 module.exports = mongoose.model('SmartInventory', smartInventorySchema);
+
+
+
+
+
+

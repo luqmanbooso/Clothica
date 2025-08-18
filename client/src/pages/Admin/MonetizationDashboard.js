@@ -20,7 +20,7 @@ import axios from 'axios';
 
 const MonetizationDashboard = () => {
   const { user } = useAuth();
-  const { showToast } = useToast();
+  const { success: showSuccess, error: showError } = useToast();
   const [loading, setLoading] = useState(true);
   const [loyaltyStats, setLoyaltyStats] = useState(null);
   const [affiliateStats, setAffiliateStats] = useState(null);
@@ -135,10 +135,10 @@ const MonetizationDashboard = () => {
       });
       
       setLoyaltyStats(response.data);
-      showToast('Loyalty settings updated successfully', 'success');
+      showSuccess('Loyalty settings updated successfully');
     } catch (error) {
       console.error('Error updating loyalty settings:', error);
-      showToast('Failed to update loyalty settings', 'error');
+      showError('Failed to update loyalty settings');
     }
   };
 
@@ -151,10 +151,10 @@ const MonetizationDashboard = () => {
       });
       
       setAffiliateStats(response.data);
-      showToast('Affiliate settings updated successfully', 'success');
+      showSuccess('Affiliate settings updated successfully');
     } catch (error) {
       console.error('Error updating affiliate settings:', error);
-      showToast('Failed to update affiliate settings', 'error');
+      showError('Failed to update affiliate settings');
     }
   };
 
@@ -167,10 +167,10 @@ const MonetizationDashboard = () => {
       });
       
       setOfferStats(response.data);
-      showToast('Offer settings updated successfully', 'success');
+      showSuccess('Offer settings updated successfully');
     } catch (error) {
       console.error('Error updating offer settings:', error);
-      showToast('Failed to update offer settings', 'error');
+      showError('Failed to update offer settings');
     }
   };
 
@@ -181,17 +181,17 @@ const MonetizationDashboard = () => {
       });
       
       setSpinSystemStatus(prev => ({ ...prev, ...response.data }));
-      showToast(`Spin system ${response.data.isActive ? 'activated' : 'deactivated'}`, 'success');
+      showSuccess(`Spin system ${response.data.isActive ? 'activated' : 'deactivated'}`);
     } catch (error) {
       console.error('Error toggling spin system:', error);
-      showToast('Failed to toggle spin system', 'error');
+      showError('Failed to toggle spin system');
     }
   };
 
   const handleRevenueOptimization = async () => {
     try {
       const response = await axios.post('/api/admin/monetization/optimize');
-      showToast('Revenue optimization analysis completed', 'success');
+      showSuccess('Revenue optimization analysis completed');
       
       // Update stats with optimization results
       if (response.data.recommendations) {
@@ -202,7 +202,7 @@ const MonetizationDashboard = () => {
       }
     } catch (error) {
       console.error('Error starting optimization analysis:', error);
-      showToast('Failed to start optimization analysis', 'error');
+      showError('Failed to start optimization analysis');
     }
   };
 

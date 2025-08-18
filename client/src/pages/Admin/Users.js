@@ -78,7 +78,7 @@ const AdminUsers = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, searchTerm, filterRole, filterStatus, showError]);
+  }, [currentPage, searchTerm, filterRole, filterStatus]);
 
   const toggleUserStatus = async (userId, currentStatus) => {
     try {

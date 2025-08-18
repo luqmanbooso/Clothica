@@ -25,7 +25,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 
 const AdminDashboard = () => {
-  const { showSuccess, showError } = useToast();
+  const { success: showSuccess, error: showError } = useToast();
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState({
     overview: {

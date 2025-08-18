@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { FiPackage, FiCalendar, FiDollarSign, FiMapPin, FiEye, FiDownload } from 'react-icons/fi';
-import axios from 'axios';
+import { FiPackage, FiCalendar, FiDollarSign, FiMapPin, FiEye } from 'react-icons/fi';
+import api from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 
@@ -14,21 +14,31 @@ const Orders = () => {
   const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/orders/my-orders');
-      console.log('Orders response:', response.data);
+      
+      // Debug: Check if user is authenticated and token exists
+      const token = localStorage.getItem('token');
+      console.log('User authenticated:', !!user);
+      console.log('Token exists:', !!token);
+      console.log('Token preview:', token ? `${token.substring(0, 20)}...` : 'No token');
+      
+      const response = await api.get('/api/orders/my-orders');
       setOrders(response.data || []);
     } catch (error) {
       console.error('Error fetching orders:', error);
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
       showError('Failed to load orders');
       setOrders([]);
     } finally {
       setLoading(false);
     }
-  }, [showError]);
+  }, [showError, user]);
 
   useEffect(() => {
-    fetchOrders();
-  }, [fetchOrders]);
+    if (user) {
+      fetchOrders();
+    }
+  }, [fetchOrders, user]);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -52,27 +62,21 @@ const Orders = () => {
     }
   };
 
-  const handleDownloadInvoice = async (orderId) => {
-    try {
-      const response = await axios.get(`/api/orders/${orderId}/invoice`, {
-        responseType: 'blob'
-      });
-      
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `invoice-${orderId}.html`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-      
-      showSuccess('Invoice downloaded successfully!');
-    } catch (error) {
-      console.error('Error downloading invoice:', error);
-      showError('Failed to download invoice');
-    }
-  };
+
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Authentication Required</h2>
+          <p className="text-gray-600 mb-4">Please log in to view your orders.</p>
+          <Link to="/login" className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+            Go to Login
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -132,13 +136,6 @@ const Orders = () => {
                     <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
                       {getStatusIcon(order.status)} {order.status?.charAt(0).toUpperCase() + order.status?.slice(1) || 'Unknown'}
                     </span>
-                    <button
-                      onClick={() => handleDownloadInvoice(order._id)}
-                      className="p-2 text-gray-600 hover:text-[#6C7A59] transition-colors"
-                      title="Download Invoice"
-                    >
-                      <FiDownload className="h-4 w-4" />
-                    </button>
                   </div>
                 </div>
 
@@ -190,11 +187,33 @@ const Orders = () => {
                     {order.items?.slice(0, 3).map((item, index) => (
                       <div key={index} className="flex items-center space-x-3 p-2 bg-gray-50 rounded-lg">
                         <div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center">
-                          {item.image ? (
-                            <img src={item.image} alt={item.name} className="w-full h-full object-cover rounded-lg" />
-                          ) : (
-                            <FiPackage className="h-5 w-5 text-gray-400" />
-                          )}
+                          {(() => {
+                            // The image data is in item.product.images, not item.image
+                            let imageUrl = null;
+                            
+                            if (item.product && item.product.images && item.product.images.length > 0) {
+                              // Handle array of image objects
+                              if (typeof item.product.images[0] === 'object' && item.product.images[0].url) {
+                                imageUrl = item.product.images[0].url;
+                              } else if (typeof item.product.images[0] === 'string') {
+                                imageUrl = item.product.images[0];
+                              }
+                            } else if (item.image) {
+                              // Fallback to item.image if it exists
+                              if (typeof item.image === 'object' && item.image.url) {
+                                imageUrl = item.image.url;
+                              } else if (typeof item.image === 'string') {
+                                imageUrl = item.image;
+                              }
+                            }
+                            
+                            if (imageUrl && imageUrl.startsWith('http')) {
+                              return <img src={imageUrl} alt={item.name || 'Product'} className="w-full h-full object-cover rounded-lg" />;
+                            }
+                            
+                            // Fallback to package icon
+                            return <FiPackage className="h-5 w-5 text-gray-400" />;
+                          })()}
                         </div>
                         <div className="flex-1">
                           <p className="text-sm font-medium text-gray-900">{item.name || 'Product'}</p>

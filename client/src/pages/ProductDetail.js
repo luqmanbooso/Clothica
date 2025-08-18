@@ -90,7 +90,7 @@ const ProductDetail = () => {
     return stars;
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     const errors = {};
     
     if (!selectedSize) {
@@ -108,21 +108,19 @@ const ProductDetail = () => {
     // Clear validation errors
     setValidationErrors({});
     
-    const cartItem = {
-      ...product,
-      selectedSize,
-      selectedColor,
-      quantity
-    };
+    const result = await addToCart(product, quantity, selectedSize, selectedColor);
     
-    addToCart(cartItem);
-    setSuccessMessage('Added to cart successfully!');
-    setShowSuccess(true);
-    
-    setTimeout(() => {
-      setShowSuccess(false);
-      setSuccessMessage('');
-    }, 3000);
+    if (result.success) {
+      setSuccessMessage(result.message || 'Added to cart successfully!');
+      setShowSuccess(true);
+      
+      setTimeout(() => {
+        setShowSuccess(false);
+        setSuccessMessage('');
+      }, 3000);
+    } else {
+      setValidationErrors({ general: result.message });
+    }
   };
 
   const handleWishlist = () => {

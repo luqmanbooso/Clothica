@@ -10,6 +10,7 @@ import {
   CubeIcon
 } from '@heroicons/react/24/outline';
 import { motion } from 'framer-motion';
+import axios from 'axios';
 
 const Categories = () => {
   const [categories, setCategories] = useState([]);
@@ -30,97 +31,33 @@ const Categories = () => {
   });
 
   useEffect(() => {
-    // Simulate loading categories
-    setTimeout(() => {
-      setCategories([
-        {
-          id: 1,
-          name: 'Men\'s Clothing',
-          description: 'All men\'s apparel and accessories',
-          parentId: null,
-          productCount: 45,
-          isActive: true,
-          sortOrder: 1,
-          image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400',
-          children: [
-            {
-              id: 2,
-              name: 'T-Shirts',
-              description: 'Casual and formal t-shirts',
-              parentId: 1,
-              productCount: 23,
-              isActive: true,
-              sortOrder: 1,
-              image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400'
-            },
-            {
-              id: 3,
-              name: 'Jeans',
-              description: 'Denim jeans and trousers',
-              parentId: 1,
-              productCount: 18,
-              isActive: true,
-              sortOrder: 2,
-              image: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=400'
-            }
-          ]
-        },
-        {
-          id: 4,
-          name: 'Women\'s Clothing',
-          description: 'All women\'s apparel and accessories',
-          parentId: null,
-          productCount: 67,
-          isActive: true,
-          sortOrder: 2,
-          image: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=400',
-          children: [
-            {
-              id: 5,
-              name: 'Dresses',
-              description: 'Casual and formal dresses',
-              parentId: 4,
-              productCount: 34,
-              isActive: true,
-              sortOrder: 1,
-              image: 'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=400'
-            },
-            {
-              id: 6,
-              name: 'Tops',
-              description: 'Blouses, shirts, and tops',
-              parentId: 4,
-              productCount: 28,
-              isActive: true,
-              sortOrder: 2,
-              image: 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=400'
-            }
-          ]
-        },
-        {
-          id: 7,
-          name: 'Footwear',
-          description: 'Shoes, boots, and sandals',
-          parentId: null,
-          productCount: 32,
-          isActive: true,
-          sortOrder: 3,
-          image: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=400'
-        },
-        {
-          id: 8,
-          name: 'Accessories',
-          description: 'Bags, jewelry, and other accessories',
-          parentId: null,
-          productCount: 28,
-          isActive: true,
-          sortOrder: 4,
-          image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400'
-        }
-      ]);
-      setLoading(false);
-    }, 1000);
+    fetchCategories();
   }, []);
+
+  const fetchCategories = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get('/api/admin/categories');
+      setCategories(response.data.map(cat => ({
+        id: cat._id,
+        name: cat.name,
+        description: cat.description || '',
+        parentId: cat.parent,
+        productCount: 0, // Will be updated separately
+        isActive: cat.isActive,
+        sortOrder: cat.order || 0,
+        image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400', // Default image
+        children: []
+      })));
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      // Fallback to empty array if API fails
+      setCategories([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   const containerVariants = {
     hidden: { opacity: 0 },

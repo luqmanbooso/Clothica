@@ -10,7 +10,13 @@ const emailService = require('../services/emailService');
 const router = express.Router();
 
 // Google OAuth client
+console.log('🔐 [GOOGLE OAUTH] Initializing Google OAuth client...');
+console.log('🔐 [GOOGLE OAUTH] Client ID from env:', process.env.GOOGLE_CLIENT_ID);
+console.log('🔐 [GOOGLE OAUTH] Client ID length:', process.env.GOOGLE_CLIENT_ID?.length || 0);
+console.log('🔐 [GOOGLE OAUTH] Client ID format valid:', process.env.GOOGLE_CLIENT_ID?.includes('.apps.googleusercontent.com') || false);
+
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+console.log('🔐 [GOOGLE OAUTH] Google OAuth client initialized successfully');
 
 // @route   POST /api/auth/register
 // @desc    Register a new user
@@ -61,6 +67,8 @@ router.post('/register', [
       isGoogleAccount: isGoogleAccount || false,
       googleId: isGoogleAccount ? googleId : undefined,
       avatar: isGoogleAccount ? avatar : undefined,
+      cart: [], // Initialize empty cart
+      wishlist: [], // Initialize empty wishlist
       googleProvided: {
         name: isGoogleAccount || false,
         email: isGoogleAccount || false,
@@ -230,11 +238,22 @@ router.post('/login', [
 // @access  Public
 router.post('/google/signup', async (req, res) => {
   try {
+    console.log('🔐 [GOOGLE SIGNUP] Request received');
+    console.log('🔐 [GOOGLE SIGNUP] Request body:', { 
+      hasIdToken: !!req.body.idToken, 
+      idTokenLength: req.body.idToken?.length || 0,
+      bodyKeys: Object.keys(req.body)
+    });
+
     const { idToken } = req.body;
 
     if (!idToken) {
+      console.log('❌ [GOOGLE SIGNUP] No ID token provided');
       return res.status(400).json({ message: 'Google ID token is required' });
     }
+
+    console.log('🔐 [GOOGLE SIGNUP] Google Client ID from env:', process.env.GOOGLE_CLIENT_ID);
+    console.log('🔐 [GOOGLE SIGNUP] Attempting to verify Google ID token...');
 
     // Verify Google token
     const ticket = await googleClient.verifyIdToken({
@@ -242,56 +261,112 @@ router.post('/google/signup', async (req, res) => {
       audience: process.env.GOOGLE_CLIENT_ID
     });
 
+    console.log('✅ [GOOGLE SIGNUP] Google token verified successfully');
+    console.log('🔐 [GOOGLE SIGNUP] Ticket payload:', {
+      hasPayload: !!ticket.getPayload(),
+      payloadKeys: Object.keys(ticket.getPayload() || {})
+    });
+
     const payload = ticket.getPayload();
     const { sub: googleId, email, name, picture } = payload;
 
+    console.log('🔐 [GOOGLE SIGNUP] Extracted user data:', {
+      googleId: googleId?.substring(0, 10) + '...',
+      email,
+      name,
+      hasPicture: !!picture
+    });
+
     // Check if user already exists with this Google ID
+    console.log('🔐 [GOOGLE SIGNUP] Checking for existing user with Google ID...');
     let existingUser = await User.findOne({ googleId });
     if (existingUser) {
+      console.log('❌ [GOOGLE SIGNUP] User already exists with Google ID:', existingUser.email);
       return res.status(400).json({ 
         message: 'Account already exists with this Google account. Please use Google Sign-In instead.' 
       });
     }
 
     // Check if user exists with this email
+    console.log('🔐 [GOOGLE SIGNUP] Checking for existing user with email...');
     existingUser = await User.findOne({ email });
     if (existingUser) {
+      console.log('❌ [GOOGLE SIGNUP] User already exists with email:', existingUser.email);
       return res.status(400).json({ 
         message: 'Email already registered. Please use regular login or link your Google account.' 
       });
     }
 
-    // Create new Google user
+    console.log('✅ [GOOGLE SIGNUP] No existing user found, creating new user...');
+
+    // Create new Google user with normalized structure (same as regular users)
+    console.log('🔐 [GOOGLE SIGNUP] Creating new user object...');
     const user = new User({
       name,
       email,
       googleId,
       avatar: picture,
+      phone: '', // Default empty phone
       isGoogleAccount: true,
       googleProvided: {
         name: true,
-        email: true
+        email: true,
+        phone: false
       },
       isEmailVerified: true, // Google accounts are pre-verified
-      profileComplete: false // Profile needs completion
+      isPhoneVerified: false,
+      profileComplete: true, // Mark as complete by default for Google users
+      role: 'user', // Explicit role
+      isActive: true, // Explicit active status
+      loyaltyTier: 'bronze', // Default loyalty tier (same as regular users)
+      loyaltyMembership: 'bronze',
+      currentBadge: 'none',
+      loginStreak: 0,
+      totalEarnings: 0,
+      totalPointsEarned: 0,
+      totalPointsRedeemed: 0,
+      spinChances: 0,
+      spinsUsed: 0,
+      lastSpinReset: new Date(),
+      referralCode: '', // Will be generated after user creation
+      // Initialize empty arrays
+      addresses: [],
+      wishlist: [],
+      cart: [],
+      referrals: [],
+      eligibleOffers: [],
+      loyaltyHistory: [],
+      spinHistory: [],
+      badgeHistory: [],
+      // Initialize default objects
+      preferences: {},
+      stats: {},
+      tierProgress: {}
     });
 
+    console.log('🔐 [GOOGLE SIGNUP] Generating referral code...');
+    user.referralCode = user.generateReferralCode();
+    
+    console.log('🔐 [GOOGLE SIGNUP] Saving user to database...');
     await user.save();
+    console.log('✅ [GOOGLE SIGNUP] User saved successfully with ID:', user._id);
+    console.log('✅ [GOOGLE SIGNUP] Referral code generated:', user.referralCode);
 
     // Send welcome email
+    console.log('🔐 [GOOGLE SIGNUP] Attempting to send welcome email...');
     try {
       await emailService.sendWelcomeEmail(email, name);
-      console.log('Welcome email sent successfully to:', email);
+      console.log('✅ [GOOGLE SIGNUP] Welcome email sent successfully to:', email);
     } catch (emailError) {
-      console.log('Welcome email failed, but continuing with Google signup:', emailError.message);
+      console.log('⚠️ [GOOGLE SIGNUP] Welcome email failed, but continuing with Google signup:', emailError.message);
     }
 
     // Generate JWT token
+    console.log('🔐 [GOOGLE SIGNUP] Generating JWT token...');
     const jwtPayload = {
-      user: {
-        id: user.id,
-        role: user.role
-      }
+      userId: user.id,
+      email: user.email,
+      role: user.role
     };
 
     jwt.sign(
@@ -299,23 +374,36 @@ router.post('/google/signup', async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '7d' },
       (err, token) => {
-        if (err) throw err;
-    res.json({
-      token,
+        if (err) {
+          console.error('❌ [GOOGLE SIGNUP] JWT signing error:', err);
+          throw err;
+        }
+        console.log('✅ [GOOGLE SIGNUP] JWT token generated successfully');
+        console.log('✅ [GOOGLE SIGNUP] Sending success response to client');
+        res.json({
+          token,
           user: user.getPublicProfile(),
-          message: 'Google account created successfully! Please complete your profile.',
-          requiresProfileCompletion: true
+          message: 'Google account created successfully! Welcome to Clothica!',
+          requiresProfileCompletion: false
         });
       }
     );
   } catch (error) {
-    console.error('Google signup error:', error);
-    console.error('Error stack:', error.stack);
-    console.error('Error details:', {
+    console.error('❌ [GOOGLE SIGNUP] Error occurred:', error.message);
+    console.error('❌ [GOOGLE SIGNUP] Error stack:', error.stack);
+    console.error('❌ [GOOGLE SIGNUP] Error details:', {
       message: error.message,
       name: error.name,
-      code: error.code
+      code: error.code,
+      stack: error.stack?.split('\n').slice(0, 5).join('\n')
     });
+    
+    // Check if it's a Google verification error
+    if (error.message?.includes('audience')) {
+      console.error('❌ [GOOGLE SIGNUP] This looks like a Google client ID mismatch!');
+      console.error('❌ [GOOGLE SIGNUP] Expected audience:', process.env.GOOGLE_CLIENT_ID);
+    }
+    
     res.status(500).json({ message: 'Server error during Google signup' });
   }
 });
@@ -325,11 +413,22 @@ router.post('/google/signup', async (req, res) => {
 // @access  Public
 router.post('/google/login', async (req, res) => {
   try {
+    console.log('🔐 [GOOGLE LOGIN] Request received');
+    console.log('🔐 [GOOGLE LOGIN] Request body:', { 
+      hasIdToken: !!req.body.idToken, 
+      idTokenLength: req.body.idToken?.length || 0,
+      bodyKeys: Object.keys(req.body)
+    });
+
     const { idToken } = req.body;
 
     if (!idToken) {
+      console.log('❌ [GOOGLE LOGIN] No ID token provided');
       return res.status(400).json({ message: 'Google ID token is required' });
     }
+
+    console.log('🔐 [GOOGLE LOGIN] Google Client ID from env:', process.env.GOOGLE_CLIENT_ID);
+    console.log('🔐 [GOOGLE LOGIN] Attempting to verify Google ID token...');
 
     // Verify Google token
     const ticket = await googleClient.verifyIdToken({
@@ -337,37 +436,80 @@ router.post('/google/login', async (req, res) => {
       audience: process.env.GOOGLE_CLIENT_ID
     });
 
+    console.log('✅ [GOOGLE LOGIN] Google token verified successfully');
+    console.log('🔐 [GOOGLE LOGIN] Ticket payload:', {
+      hasPayload: !!ticket.getPayload(),
+      payloadKeys: Object.keys(ticket.getPayload() || {})
+    });
+
     const payload = ticket.getPayload();
     const { sub: googleId, email } = payload;
 
+    console.log('🔐 [GOOGLE LOGIN] Extracted user data:', {
+      googleId: googleId?.substring(0, 10) + '...',
+      email
+    });
+
     // Check if user exists with this Google ID
+    console.log('🔐 [GOOGLE LOGIN] Checking for existing user with Google ID...');
     const user = await User.findOne({ googleId });
     if (!user) {
+      console.log('❌ [GOOGLE LOGIN] User not found with Google ID:', googleId?.substring(0, 10) + '...');
       return res.status(401).json({ 
         message: 'Google account not found. Please sign up with Google first.' 
       });
     }
 
+    console.log('✅ [GOOGLE LOGIN] User found:', user.email);
+
+    // Normalize Google user structure if needed (one-time migration)
+    let userUpdated = false;
+    if (!user.loyaltyTier) {
+      user.loyaltyTier = 'bronze';
+      userUpdated = true;
+    }
+    if (!user.loyaltyMembership) {
+      user.loyaltyMembership = 'bronze';
+      userUpdated = true;
+    }
+    if (!user.referralCode) {
+      user.referralCode = user.generateReferralCode();
+      userUpdated = true;
+    }
+    if (user.profileComplete === undefined || user.profileComplete === false) {
+      user.profileComplete = true; // Mark Google users as complete by default
+      userUpdated = true;
+    }
+    if (userUpdated) {
+      console.log('🔄 [GOOGLE LOGIN] Normalizing user structure...');
+      await user.save();
+    }
+
     // Check if account is locked
     if (user.isLocked) {
+      console.log('❌ [GOOGLE LOGIN] Account is locked for user:', user.email);
       return res.status(423).json({ 
         message: 'Account is temporarily locked. Please try again later.' 
       });
     }
 
+    console.log('✅ [GOOGLE LOGIN] Account is not locked');
+
     // Update last login
+    console.log('🔐 [GOOGLE LOGIN] Updating last login date...');
     user.lastLoginDate = Date.now();
     await user.save();
 
     // Reset login attempts on successful login
+    console.log('🔐 [GOOGLE LOGIN] Resetting login attempts...');
     await user.resetLoginAttempts();
 
     // Generate JWT token
+    console.log('🔐 [GOOGLE LOGIN] Generating JWT token...');
     const jwtPayload = {
-      user: {
-        id: user.id,
-        role: user.role
-      }
+      userId: user.id,
+      email: user.email,
+      role: user.role
     };
 
     jwt.sign(
@@ -375,18 +517,55 @@ router.post('/google/login', async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '7d' },
       (err, token) => {
-        if (err) throw err;
+        if (err) {
+          console.error('❌ [GOOGLE LOGIN] JWT signing error:', err);
+          throw err;
+        }
+        console.log('✅ [GOOGLE LOGIN] JWT token generated successfully');
+        console.log('✅ [GOOGLE LOGIN] Sending success response to client');
         res.json({
           token,
           user: user.getPublicProfile(),
           message: 'Google login successful!',
-          requiresProfileCompletion: !user.profileComplete
+          requiresProfileCompletion: false
         });
       }
     );
   } catch (error) {
-    console.error('Google login error:', error);
-    res.status(500).json({ message: 'Server error during Google login' });
+    console.error('❌ [GOOGLE LOGIN] Error occurred:', error.message);
+    console.error('❌ [GOOGLE LOGIN] Error stack:', error.stack);
+    console.error('❌ [GOOGLE LOGIN] Error details:', {
+      message: error.message,
+      name: error.name,
+      code: error.code,
+      stack: error.stack?.split('\n').slice(0, 5).join('\n')
+    });
+    
+    // Check if it's a Google verification error
+    if (error.message?.includes('audience')) {
+      console.error('❌ [GOOGLE LOGIN] This looks like a Google client ID mismatch!');
+      console.error('❌ [GOOGLE LOGIN] Expected audience:', process.env.GOOGLE_CLIENT_ID);
+      return res.status(401).json({ 
+        message: 'Google OAuth configuration error. Please check your setup.',
+        error: 'INVALID_AUDIENCE'
+      });
+    }
+
+    // Check if it's a token verification error
+    if (error.message?.includes('Token used too late') || error.message?.includes('Invalid token')) {
+      console.error('❌ [GOOGLE LOGIN] Token verification failed:', error.message);
+      return res.status(401).json({ 
+        message: 'Invalid or expired Google token. Please try again.',
+        error: 'INVALID_TOKEN'
+      });
+    }
+    
+    // Generic server error
+    res.status(500).json({ 
+      message: 'Server error during Google login',
+      error: 'SERVER_ERROR',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 

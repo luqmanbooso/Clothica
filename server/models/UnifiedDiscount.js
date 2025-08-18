@@ -340,3 +340,9 @@ unifiedDiscountSchema.statics.getSeasonalDiscounts = function() {
 };
 
 module.exports = mongoose.model('UnifiedDiscount', unifiedDiscountSchema);
+
+
+
+
+
+

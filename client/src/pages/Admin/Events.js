@@ -16,7 +16,7 @@ import axios from 'axios';
 import { useToast } from '../../contexts/ToastContext';
 
 const Events = () => {
-  const { showSuccess, showError } = useToast();
+  const { success: showSuccess, error: showError } = useToast();
   const [events, setEvents] = useState([]);
   const [banners, setBanners] = useState([]);
   const [discounts, setDiscounts] = useState([]);

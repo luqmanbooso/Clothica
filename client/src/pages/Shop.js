@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { StarIcon, ShoppingBagIcon, HeartIcon, EyeIcon, FunnelIcon, Squares2X2Icon, ListBulletIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
-import axios from 'axios';
+import api from '../utils/api';
 import { useWishlist } from '../contexts/WishlistContext';
 import { useCart } from '../contexts/CartContext';
 import { useToast } from '../contexts/ToastContext';
@@ -41,56 +41,17 @@ const Shop = () => {
     }
   };
 
-  const handleAddToCart = (product) => {
-    addToCart(product);
-    success(`${product.name} added to cart!`);
+  const handleAddToCart = async (product) => {
+    const result = await addToCart(product);
+    if (result.success) {
+      success(result.message || `${product.name} added to cart!`);
+    } else {
+      error(result.message || 'Failed to add item to cart');
+    }
   };
 
-  // Static categories - no CRUD needed
-  const [categories, setCategories] = useState([
-    { 
-      id: 'all', 
-      name: 'All Products', 
-      icon: '🛍️',
-      color: 'from-indigo-500 to-purple-500',
-      count: 0
-    },
-    { 
-      id: 'men', 
-      name: "Men's Fashion", 
-      icon: '👔',
-      color: 'from-blue-500 to-cyan-500',
-      count: 0
-    },
-    { 
-      id: 'women', 
-      name: "Women's Fashion", 
-      icon: '👗',
-      color: 'from-pink-500 to-rose-500',
-      count: 0
-    },
-    { 
-      id: 'accessories', 
-      name: 'Accessories', 
-      icon: '👜',
-      color: 'from-yellow-500 to-orange-500',
-      count: 0
-    },
-    { 
-      id: 'shoes', 
-      name: 'Footwear', 
-      icon: '👟',
-      color: 'from-green-500 to-emerald-500',
-      count: 0
-    },
-    { 
-      id: 'bags', 
-      name: 'Bags & Handbags', 
-      icon: '👜',
-      color: 'from-amber-500 to-orange-500',
-      count: 0
-    }
-  ]);
+  // Categories will be loaded from API
+  const [categories, setCategories] = useState([]);
 
   const priceRanges = [
     { id: 'all', name: 'All Prices' },
@@ -110,6 +71,7 @@ const Shop = () => {
 
   useEffect(() => {
     loadProducts();
+    loadCategories();
     updateCategoryCounts();
   }, []);
 
@@ -207,7 +169,7 @@ const Shop = () => {
         }
       }
 
-      const response = await axios.get('/api/products', { params });
+      const response = await api.get('/api/products', { params });
       setProducts(response.data.products);
       setTotalProducts(response.data.total);
       
@@ -215,7 +177,7 @@ const Shop = () => {
       if (response.data.products.length === 0 && filters.category && filters.category !== 'all') {
         const fallbackParams = { ...params };
         delete fallbackParams.category;
-        const fallbackResponse = await axios.get('/api/products', { params: fallbackParams });
+        const fallbackResponse = await api.get('/api/products', { params: fallbackParams });
         setProducts(fallbackResponse.data.products);
         setTotalProducts(fallbackResponse.data.total);
         // Clear the category filter since it's not working
@@ -229,7 +191,7 @@ const Shop = () => {
       }
     } catch (error) {
       console.error('Error loading products:', error);
-      error('Failed to load products');
+      // Don't show error toast for product loading failures - this is normal when filters are restrictive
       // Fallback to empty array instead of hardcoded data
       setProducts([]);
       setTotalProducts(0);
@@ -237,20 +199,126 @@ const Shop = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, filters, searchParams, warning, error]);
+  }, [currentPage, filters, searchParams, warning]);
+
+  const loadCategories = useCallback(async () => {
+    try {
+      // Use the public categories endpoint instead of admin
+      const response = await api.get('/api/products/categories');
+      const categoryData = response.data;
+      
+      // Transform the category data to match our component structure
+      const loadedCategories = Object.keys(categoryData)
+        .filter(categoryKey => categoryKey !== 'all') // Exclude 'all' as we'll handle it separately
+        .map(categoryKey => ({
+          id: categoryKey,
+          name: categoryKey.charAt(0).toUpperCase() + categoryKey.slice(1), // Capitalize first letter
+          icon: getCategoryIcon(categoryKey),
+          color: getCategoryColor(categoryKey),
+          count: categoryData[categoryKey] || 0
+        }));
+      
+      // Add "All Products" option with the correct count from backend
+      const allCategories = [
+        { 
+          id: 'all', 
+          name: 'All Products', 
+          icon: '🛍️',
+          color: 'from-indigo-500 to-purple-500',
+          count: categoryData['all'] || 0
+        },
+        ...loadedCategories
+      ];
+      
+      setCategories(allCategories);
+    } catch (error) {
+      console.error('Error loading categories:', error);
+      // Fallback to basic categories if API fails
+      setCategories([
+        { 
+          id: 'all', 
+          name: 'All Products', 
+          icon: '🛍️',
+          color: 'from-indigo-500 to-purple-500',
+          count: 0
+        },
+        { 
+          id: 'men', 
+          name: 'Men', 
+          icon: '👔',
+          color: 'from-blue-500 to-cyan-500',
+          count: 0
+        },
+        { 
+          id: 'women', 
+          name: 'Women', 
+          icon: '👗',
+          color: 'from-pink-500 to-rose-500',
+          count: 0
+        },
+        { 
+          id: 'kids', 
+          name: 'Kids', 
+          icon: '👶',
+          color: 'from-green-500 to-emerald-500',
+          count: 0
+        },
+        { 
+          id: 'accessories', 
+          name: 'Accessories', 
+          icon: '👜',
+          color: 'from-yellow-500 to-orange-500',
+          count: 0
+        },
+        { 
+          id: 'shoes', 
+          name: 'Shoes', 
+          icon: '👟',
+          color: 'from-purple-500 to-pink-500',
+          count: 0
+        },
+        { 
+          id: 'bags', 
+          name: 'Bags', 
+          icon: '👜',
+          color: 'from-amber-500 to-orange-500',
+          count: 0
+        }
+      ]);
+    }
+  }, []);
+
+  const getCategoryIcon = (categoryName) => {
+    const iconMap = {
+      'men': '👔',
+      'women': '👗',
+      'kids': '👶',
+      'accessories': '👜',
+      'shoes': '👟',
+      'bags': '👜'
+    };
+    return iconMap[categoryName] || '🛍️';
+  };
+
+  const getCategoryColor = (categoryName) => {
+    const colorMap = {
+      'men': 'from-blue-500 to-cyan-500',
+      'women': 'from-pink-500 to-rose-500',
+      'kids': 'from-green-500 to-emerald-500',
+      'accessories': 'from-yellow-500 to-orange-500',
+      'shoes': 'from-purple-500 to-pink-500',
+      'bags': 'from-amber-500 to-orange-500'
+    };
+    return colorMap[categoryName] || 'from-indigo-500 to-purple-500';
+  };
 
   const updateCategoryCounts = useCallback(async () => {
     try {
-      const response = await axios.get('/api/products/categories');
-      const categoryCounts = response.data;
-      
-      setCategories(prev => prev.map(cat => ({
-        ...cat,
-        count: categoryCounts[cat.id] || 0
-      })));
+      // We already have the counts from loadCategories, so we don't need to make another API call
+      // This function is kept for backward compatibility but is no longer needed
+      console.log('Category counts already loaded with categories');
     } catch (error) {
-      console.error('Error loading category counts:', error);
-      // Keep the default counts if API fails
+      console.error('Error updating category counts:', error);
     }
   }, []);
 
@@ -321,11 +389,7 @@ const Shop = () => {
             NEW
           </span>
         )}
-        {product.discount && (
-          <span className="inline-block px-2 py-1 bg-red-600 text-white text-xs font-semibold rounded">
-            -{product.discount}%
-          </span>
-        )}
+
         {/* Spin Opportunity Badge */}
         {product.spinEligible && (
           <span className="inline-block px-2 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-semibold rounded animate-pulse">
@@ -368,11 +432,7 @@ const Shop = () => {
           <span className="text-lg font-bold text-gray-900">
             Rs. {product.price?.toLocaleString()}
           </span>
-          {product.originalPrice && (
-            <span className="text-sm text-gray-500 line-through">
-              Rs. {product.originalPrice?.toLocaleString()}
-            </span>
-          )}
+
         </div>
         <div className="flex items-center">
           {renderStars(product.rating || 0)}
@@ -447,11 +507,7 @@ const Shop = () => {
                 NEW
               </span>
             )}
-            {product.discount && (
-              <span className="inline-block px-1 py-0.5 bg-red-600 text-white text-xs font-semibold rounded">
-                -{product.discount}%
-              </span>
-            )}
+
           </div>
         </div>
 
@@ -477,11 +533,7 @@ const Shop = () => {
               <span className="text-xl font-bold text-gray-900">
                   Rs. {product.price?.toLocaleString()}
               </span>
-              {product.originalPrice && (
-                <span className="text-sm text-gray-500 line-through">
-                    Rs. {product.originalPrice?.toLocaleString()}
-                </span>
-              )}
+
             </div>
 
               <div className="flex items-center space-x-3">

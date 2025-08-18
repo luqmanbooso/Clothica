@@ -28,7 +28,7 @@ router.get('/', auth, admin, async (req, res) => {
     const [events, total] = await Promise.all([
       Event.find(query)
         .populate('campaign.banners.bannerId', 'name title image')
-        .populate('campaign.coupons.couponId', 'code discount')
+        .populate('campaign.discounts.discountId', 'code discount')
         .populate('campaign.specialOffers.offerId', 'title description')
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -56,7 +56,7 @@ router.get('/active', async (req, res) => {
   try {
     const events = await Event.getActiveEvents()
       .populate('campaign.banners.bannerId', 'name title image displayMode')
-      .populate('campaign.coupons.couponId', 'code discount validUntil')
+      .populate('campaign.discounts.discountId', 'code discount validUntil')
       .populate('campaign.specialOffers.offerId', 'title description');
     
     res.json(events);
@@ -71,7 +71,7 @@ router.get('/type/:type', async (req, res) => {
   try {
     const events = await Event.getEventsByType(req.params.type)
       .populate('campaign.banners.bannerId', 'name title image')
-      .populate('campaign.coupons.couponId', 'code discount');
+      .populate('campaign.discounts.discountId', 'code discount');
     
     res.json(events);
   } catch (error) {
@@ -85,7 +85,7 @@ router.get('/:id', async (req, res) => {
   try {
     const event = await Event.findById(req.params.id)
       .populate('campaign.banners.bannerId')
-      .populate('campaign.coupons.couponId')
+      .populate('campaign.discounts.discountId')
       .populate('campaign.specialOffers.offerId')
       .populate('createdBy', 'name email');
     

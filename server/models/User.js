@@ -123,33 +123,57 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Product'
   }],
-  // Dialog StarPay Style System
+  // Enhanced Loyalty System Integration
+  loyaltyProfile: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Loyalty'
+  },
+  
+  // Legacy loyalty fields for backward compatibility
   loyaltyPoints: {
     type: Number,
     default: 0
   },
-  loyaltyHistory: [{
-    action: String,
-    points: Number,
-    description: String,
-    date: {
-      type: Date,
-      default: Date.now
+  loyaltyMembership: { 
+    type: String, 
+    enum: ['none', 'bronze', 'silver', 'gold', 'vip'], 
+    default: 'none' 
+  },
+  loyaltyTier: { 
+    type: String, 
+    enum: ['none', 'bronze', 'silver', 'gold', 'vip'], 
+    default: 'none' 
+  },
+  
+  // User Statistics for Badge Triggers
+  stats: {
+    totalOrders: {
+      type: Number,
+      default: 0
+    },
+    totalSpent: {
+      type: Number,
+      default: 0
+    },
+    purchaseStreak: {
+      type: Number,
+      default: 0
+    },
+    lastPurchaseDate: Date,
+    reviewCount: {
+      type: Number,
+      default: 0
+    },
+    referralCount: {
+      type: Number,
+      default: 0
+    },
+    spinCount: {
+      type: Number,
+      default: 0
     }
-  }],
-  membershipExpiry: Date,
-  totalPointsEarned: {
-    type: Number,
-    default: 0
   },
-  totalPointsRedeemed: {
-    type: Number,
-    default: 0
-  },
-  totalRedemptionValue: {
-    type: Number,
-    default: 0
-  },
+  
   // Addiction Mechanics
   loginStreak: {
     type: Number,
@@ -177,6 +201,7 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  
   // Special Offers & Events
   eligibleOffers: [{
     offerId: {
@@ -190,16 +215,6 @@ const userSchema = new mongoose.Schema({
     },
     claimedAt: Date
   }],
-
-  
-  // Enhanced Loyalty System
-  loyaltyMembership: { type: String, enum: ['none', 'bronze', 'silver', 'gold', 'vip'], default: 'none' },
-  loyaltyTier: { type: String, enum: ['none', 'bronze', 'silver', 'gold', 'vip'], default: 'none' }, // Legacy field for backward compatibility
-  tierProgress: {
-    currentPoints: { type: Number, default: 0 },
-    pointsToNextTier: { type: Number, default: 0 },
-    nextTier: { type: String, default: 'none' }
-  },
   
   // Legacy field for backward compatibility
   lastLogin: { type: Date, default: Date.now },
@@ -226,6 +241,26 @@ const userSchema = new mongoose.Schema({
   
   // Affiliate System
   affiliateCode: String,
+  
+  // Shopping Cart
+  cart: [{
+    product: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Product',
+      required: true
+    },
+    quantity: {
+      type: Number,
+      required: true,
+      min: 1
+    },
+    selectedSize: String,
+    selectedColor: String,
+    addedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }]
 }, {
   timestamps: true
 });

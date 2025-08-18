@@ -12,20 +12,29 @@ const orderSchema = new mongoose.Schema({
       ref: 'Product',
       required: true
     },
+    name: {
+      type: String,
+      required: true
+    },
     quantity: {
       type: Number,
       required: true,
       min: 1
     },
-    size: {
+    selectedSize: {
       type: String,
-      required: true
+      required: false
     },
-    color: {
+    selectedColor: {
       type: String,
-      required: true
+      required: false
     },
     price: {
+      type: Number,
+      required: true
+    },
+    image: String,
+    total: {
       type: Number,
       required: true
     }
@@ -59,7 +68,7 @@ const orderSchema = new mongoose.Schema({
   paymentMethod: {
     type: String,
     required: true,
-    enum: ['credit_card', 'debit_card', 'paypal', 'stripe']
+    enum: ['credit_card', 'debit_card', 'paypal', 'stripe', 'cash_on_delivery']
   },
   paymentResult: {
     id: String,
@@ -107,12 +116,57 @@ const orderSchema = new mongoose.Schema({
   deliveredAt: {
     type: Date
   },
+  estimatedDelivery: {
+    type: Date
+  },
   trackingNumber: {
     type: String
   },
   notes: {
     type: String
-  }
+  },
+  
+  // Coupon Integration
+  coupon: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Coupon'
+  },
+  discount: {
+    type: Number,
+    default: 0
+  },
+  
+  // Loyalty Integration
+  loyaltyPoints: {
+    earned: {
+      type: Number,
+      default: 0
+    },
+    multiplier: {
+      type: Number,
+      default: 1
+    },
+    applied: {
+      type: Number,
+      default: 0
+    }
+  },
+  
+  // Spin Token Integration
+  spinTokenEligible: {
+    type: Boolean,
+    default: false
+  },
+  
+  // Badge Triggers
+  badgeTriggers: [{
+    type: String,
+    description: String,
+    triggeredAt: {
+      type: Date,
+      default: Date.now
+    }
+  }]
 }, {
   timestamps: true
 });

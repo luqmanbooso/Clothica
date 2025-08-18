@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FiUser, FiMail, FiPhone, FiMapPin, FiEdit2, FiSave, FiX, FiPlus } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
-import axios from 'axios';
+import api from '../utils/api';
 import { useToast } from '../contexts/ToastContext';
 
 const Profile = () => {
@@ -134,7 +134,7 @@ const Profile = () => {
 
     setOtpLoading(true);
     try {
-      const response = await axios.post('/api/auth/send-otp', { phone: formData.phone });
+      const response = await api.post('/api/auth/send-otp', { phone: formData.phone });
       showSuccess('OTP sent to your email!');
       setShowOTPForm(true);
     } catch (error) {
@@ -151,7 +151,7 @@ const Profile = () => {
     }
 
     try {
-      const response = await axios.post('/api/auth/verify-otp', { otp });
+      const response = await api.post('/api/auth/verify-otp', { otp });
       showSuccess('Phone verified successfully!');
       setShowOTPForm(false);
       setOtp('');

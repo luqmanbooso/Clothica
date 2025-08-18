@@ -1,6 +1,5 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
-const { admin } = require('../middleware/admin');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -10,12 +9,17 @@ const Order = require('../models/Order');
 const Category = require('../models/Category');
 const Coupon = require('../models/Coupon');
 const Banner = require('../models/Banner');
-const SpecialOffer = require('../models/SpecialOffer'); // Added for special offers
-const Affiliate = require('../models/Affiliate'); // Added for affiliates
-const Review = require('../models/Review'); // Added for reviews
-const SpinWheel = require('../models/SpinWheel'); // Added for spin wheels
-const Payment = require('../models/Payment'); // Added for payments
-const UnifiedDiscount = require('../models/UnifiedDiscount'); // Added for unified discounts
+const SpecialOffer = require('../models/SpecialOffer');
+const Affiliate = require('../models/Affiliate');
+const Review = require('../models/Review');
+const SpinWheel = require('../models/SpinWheel');
+const Payment = require('../models/Payment');
+const UnifiedDiscount = require('../models/UnifiedDiscount');
+const Settings = require('../models/Settings');
+const StockHistory = require('../models/StockHistory');
+const { auth } = require('../middleware/auth');
+const { admin } = require('../middleware/admin');
+// PDF generation libraries removed - these are frontend dependencies
 
 const router = express.Router();
 
@@ -53,7 +57,7 @@ const upload = multer({
 });
 
 // Apply admin middleware to all routes
-// router.use(admin); // Temporarily disabled for development
+router.use(admin); // Admin authentication required for all routes
 
 // Dashboard Analytics
 router.get('/dashboard', async (req, res) => {
@@ -144,115 +148,108 @@ router.get('/test', (req, res) => {
 // Get categories
 router.get('/categories', async (req, res) => {
   try {
-    const categories = [
-      { _id: 'men', name: 'Men' },
-      { _id: 'women', name: 'Women' },
-      { _id: 'kids', name: 'Kids' },
-      { _id: 'accessories', name: 'Accessories' },
-      { _id: 'shoes', name: 'Shoes' },
-      { _id: 'bags', name: 'Bags' }
-    ];
+    // Get real categories from database
+    const categories = await Category.find({ isActive: true })
+      .select('name description parent isActive order')
+      .sort({ order: 1, name: 1 })
+      .lean();
+    
+    // If no categories exist, create default ones
+    if (categories.length === 0) {
+      const defaultCategories = [
+        { name: 'Men', slug: 'men', description: 'Men\'s fashion and accessories', isActive: true, order: 1 },
+        { name: 'Women', slug: 'women', description: 'Women\'s fashion and accessories', isActive: true, order: 2 },
+        { name: 'Kids', slug: 'kids', description: 'Children\'s clothing and accessories', isActive: true, order: 3 },
+        { name: 'Accessories', slug: 'accessories', description: 'Fashion accessories and jewelry', isActive: true, order: 4 },
+        { name: 'Shoes', slug: 'shoes', description: 'Footwear for all ages', isActive: true, order: 5 },
+        { name: 'Bags', slug: 'bags', description: 'Handbags, backpacks, and luggage', isActive: true, order: 6 }
+      ];
+      
+      const createdCategories = await Category.insertMany(defaultCategories);
+      res.json(createdCategories);
+    } else {
     res.json(categories);
+    }
   } catch (error) {
     console.error('Error fetching categories:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Get sample products for testing
+// Get real products from database
 router.get('/products', async (req, res) => {
   try {
-    const sampleProducts = [
-      {
-        _id: '1',
-        name: 'Premium Cotton T-Shirt',
-        description: 'High-quality cotton t-shirt with modern fit',
-        sku: 'TSH001',
-        barcode: '123456789',
-        price: 2500,
-        originalPrice: 3500,
-        costPrice: 1500,
-        category: 'men',
-        brand: 'Clothica',
-        inventory: {
-          totalStock: 45,
-          lowStockThreshold: 10,
-          criticalStockThreshold: 5,
-          reorderPoint: 20
-        },
-        supplier: {
-          name: 'Textile Corp',
-          contact: 'John Doe',
-          email: 'john@textilecorp.com',
-          phone: '+1234567890'
-        },
-        images: ['https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=500'],
-        isActive: true,
-        isFeatured: true,
-        rating: 4.5,
-        numReviews: 12
-      },
-      {
-        _id: '2',
-        name: 'Slim Fit Jeans',
-        description: 'Modern slim fit jeans with stretch denim',
-        sku: 'JNS001',
-        barcode: '123456790',
-        price: 7999,
-        originalPrice: 9999,
-        costPrice: 4000,
-        category: 'men',
-        brand: 'Clothica',
-        inventory: {
-          totalStock: 8,
-          lowStockThreshold: 10,
-          criticalStockThreshold: 5,
-          reorderPoint: 20
-        },
-        supplier: {
-          name: 'Denim Ltd',
-          contact: 'Jane Smith',
-          email: 'jane@denimltd.com',
-          phone: '+1234567891'
-        },
-        images: ['https://images.unsplash.com/photo-1542272604-787c3835535d?w=500'],
-        isActive: true,
-        isFeatured: false,
-        rating: 4.3,
-        numReviews: 8
-      },
-      {
-        _id: '3',
-        name: 'Casual Sneakers',
-        description: 'Comfortable casual sneakers for everyday wear',
-        sku: 'SNK001',
-        barcode: '123456791',
-        price: 12000,
-        originalPrice: 15000,
-        costPrice: 7000,
-        category: 'shoes',
-        brand: 'Clothica',
-        inventory: {
-          totalStock: 0,
-          lowStockThreshold: 10,
-          criticalStockThreshold: 5,
-          reorderPoint: 20
-        },
-        supplier: {
-          name: 'Footwear Inc',
-          contact: 'Mike Johnson',
-          email: 'mike@footwearinc.com',
-          phone: '+1234567892'
-        },
-        images: ['https://images.unsplash.com/photo-1549298916-b41d114d2c0d?w=500'],
-        isActive: true,
-        isFeatured: false,
-        rating: 4.7,
-        numReviews: 15
-      }
-    ];
+    const { page = 1, limit = 20, search, category, brand, stockStatus, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
     
-    res.json({ products: sampleProducts, total: sampleProducts.length, totalPages: 1, currentPage: 1 });
+    // Build query
+    const query = {};
+    
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { sku: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
+    }
+    
+    if (category && category !== 'all') {
+      query.category = category;
+    }
+    
+    if (brand && brand !== 'all') {
+      query.brand = brand;
+    }
+    
+    if (stockStatus && stockStatus !== 'all') {
+      switch (stockStatus) {
+        case 'out-of-stock':
+          query['inventory.totalStock'] = 0;
+          break;
+        case 'low-stock':
+          query.$and = [
+            { 'inventory.totalStock': { $gt: 0 } },
+            { $expr: { $lte: ['$inventory.totalStock', '$inventory.lowStockThreshold'] } }
+          ];
+          break;
+        case 'critical':
+          query.$and = [
+            { 'inventory.totalStock': { $gt: 0 } },
+            { $expr: { $lte: ['$inventory.totalStock', '$inventory.criticalStockThreshold'] } }
+          ];
+          break;
+        case 'in-stock':
+          query.$expr = { $gt: ['$inventory.totalStock', '$inventory.lowStockThreshold'] };
+          break;
+      }
+    }
+    
+    // Build sort
+    const sort = {};
+    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+    
+    // Execute query with pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    const [products, total] = await Promise.all([
+      Product.find(query)
+        .sort(sort)
+        .skip(skip)
+        .limit(parseInt(limit))
+        .populate('category', 'name')
+        .lean(),
+      Product.countDocuments(query)
+    ]);
+    
+    const totalPages = Math.ceil(total / parseInt(limit));
+    
+    res.json({ 
+      products, 
+      total, 
+      totalPages, 
+      currentPage: parseInt(page),
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1
+    });
   } catch (error) {
     console.error('Error fetching products:', error);
     res.status(500).json({ message: 'Server error' });
@@ -352,18 +349,8 @@ router.get('/products/:id/stock-history', async (req, res) => {
       return res.status(404).json({ message: 'Product not found' });
     }
     
-    // For now, return sample stock history data
-    // In a real implementation, you'd have a separate StockHistory model
-    const stockHistory = [
-      {
-        type: 'restock',
-        reason: 'Initial stock',
-        quantity: product.inventory?.totalStock || 0,
-        timestamp: product.createdAt,
-        performedBy: 'System'
-      }
-    ];
-    
+    // Get real stock history from StockHistory model
+    const stockHistory = await StockHistory.getProductHistory(req.params.id, 50);
     res.json(stockHistory);
   } catch (error) {
     console.error('Error fetching stock history:', error);
@@ -423,8 +410,12 @@ router.post('/products/bulk-action', async (req, res) => {
         return res.status(400).json({ message: 'Invalid action' });
     }
     
-    // In a real app, you'd update the database
-    // await Product.updateMany({ _id: { $in: productIds } }, updateData);
+    // Update the database with real bulk operations
+    if (action === 'delete') {
+      await Product.deleteMany({ _id: { $in: productIds } });
+    } else {
+      await Product.updateMany({ _id: { $in: productIds } }, updateData);
+    }
     
     res.json({ message: `Bulk ${action} completed successfully` });
   } catch (error) {
@@ -444,7 +435,47 @@ router.post('/products/:id/stock', async (req, res) => {
       return res.status(404).json({ message: 'Product not found' });
     }
     
-    await product.updateStock(quantity, type, reason, reference, userId);
+    // Ensure inventory object exists
+    if (!product.inventory) {
+      product.inventory = {};
+    }
+    
+    // Initialize totalStock if it doesn't exist
+    if (typeof product.inventory.totalStock !== 'number') {
+      product.inventory.totalStock = 0;
+    }
+    
+    const previousStock = product.inventory.totalStock;
+    
+    // Update product stock
+    product.inventory.totalStock += quantity;
+    
+    // Ensure stock doesn't go below 0
+    if (product.inventory.totalStock < 0) {
+      product.inventory.totalStock = 0;
+    }
+    
+    await product.save();
+    
+    // Create stock history record
+    const stockHistoryEntry = {
+      type: type || 'adjustment',
+      reason: reason || 'Manual stock update',
+      quantity: quantity,
+      previousStock: previousStock,
+      newStock: product.inventory.totalStock,
+      reference: reference,
+      performedBy: userId,
+      warehouse: 'main',
+      cost: product.costPrice || 0,
+      timestamp: new Date()
+    };
+    
+    // Add to product's stock history
+    if (!product.stockHistory) {
+      product.stockHistory = [];
+    }
+    product.stockHistory.push(stockHistoryEntry);
     
     res.json({
       message: 'Stock updated successfully',
@@ -459,14 +490,16 @@ router.post('/products/:id/stock', async (req, res) => {
 // Get stock history
 router.get('/products/:id/stock-history', async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id)
-      .populate('stockHistory.performedBy', 'name email');
+    const product = await Product.findById(req.params.id);
     
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
     }
     
-    res.json(product.stockHistory);
+    // Return stock history array or empty array if none exists
+    const stockHistory = product.stockHistory || [];
+    
+    res.json(stockHistory);
   } catch (error) {
     console.error('Error fetching stock history:', error);
     res.status(500).json({ message: 'Server error' });
@@ -520,34 +553,35 @@ router.get('/inventory/analytics', async (req, res) => {
   }
 });
 
-// Get inventory alerts
+// Get real inventory alerts from database
 router.get('/inventory/alerts', async (req, res) => {
   try {
-    const alerts = [
-      {
-        _id: '1',
-        name: 'Slim Fit Jeans',
-        sku: 'JNS001',
-        currentStock: 8,
-        lowStockThreshold: 10,
-        criticalStockThreshold: 5,
-        reorderPoint: 20,
-        category: 'men',
-        brand: 'Clothica'
-      },
-      {
-        _id: '2',
-        name: 'Casual Sneakers',
-        sku: 'SNK001',
-        currentStock: 0,
-        lowStockThreshold: 10,
-        criticalStockThreshold: 5,
-        reorderPoint: 20,
-        category: 'shoes',
-        brand: 'Clothica'
-      }
-    ];
-    res.json(alerts);
+    const alerts = await Product.find({
+      $or: [
+        { 'inventory.totalStock': 0 }, // Out of stock
+        { $expr: { $lte: ['$inventory.totalStock', '$inventory.lowStockThreshold'] } } // Low stock
+      ]
+    })
+    .select('name sku inventory category brand')
+    .populate('category', 'name')
+    .lean();
+    
+    // Add alert type and priority
+    const alertsWithType = alerts.map(product => ({
+      _id: product._id,
+      name: product.name,
+      sku: product.sku,
+      currentStock: product.inventory?.totalStock || 0,
+      lowStockThreshold: product.inventory?.lowStockThreshold || 10,
+      criticalStockThreshold: product.inventory?.criticalStockThreshold || 5,
+      reorderPoint: product.inventory?.reorderPoint || 20,
+      category: product.category?.name || product.category,
+      brand: product.brand,
+      alertType: product.inventory?.totalStock === 0 ? 'out-of-stock' : 'low-stock',
+      priority: product.inventory?.totalStock === 0 ? 'high' : 'medium'
+    }));
+    
+    res.json(alertsWithType);
   } catch (error) {
     console.error('Error fetching inventory alerts:', error);
     res.status(500).json({ message: 'Server error' });
@@ -1322,7 +1356,6 @@ router.get('/analytics', async (req, res) => {
 // Settings Management
 router.get('/settings', async (req, res) => {
   try {
-    const Settings = require('../models/Settings');
     const settings = await Settings.getSettings();
     res.json(settings);
   } catch (error) {
@@ -1333,7 +1366,6 @@ router.get('/settings', async (req, res) => {
 
 router.put('/settings', async (req, res) => {
   try {
-    const Settings = require('../models/Settings');
     const settings = await Settings.getSettings();
     
     // Update settings with request body
@@ -1457,6 +1489,62 @@ router.get('/monetization', async (req, res) => {
 });
 
 // Monetization Settings Endpoints
+router.put('/monetization/loyalty', async (req, res) => {
+  try {
+    const { isActive, pointMultiplier, tierThresholds } = req.body;
+    
+    // Update loyalty program settings
+    console.log('Updating loyalty settings:', { isActive, pointMultiplier, tierThresholds });
+    
+    // In a real app, you'd update the database
+    const loyaltyStats = {
+      isActive: isActive || false,
+      pointMultiplier: pointMultiplier || 1,
+      tierThresholds: tierThresholds || { bronze: 100, silver: 500, gold: 1000, vip: 2000 },
+      pointStats: {
+        totalRedeemed: 12500,
+        totalRedemptionValue: 125000
+      },
+      userStats: {
+        total: 1250,
+        bronze: 800,
+        silver: 300,
+        gold: 120,
+        vip: 30
+      }
+    };
+    
+    res.json(loyaltyStats);
+  } catch (error) {
+    console.error('Error updating loyalty settings:', error);
+    res.status(500).json({ message: 'Error updating loyalty settings' });
+  }
+});
+
+router.put('/monetization/affiliate', async (req, res) => {
+  try {
+    const { isActive, commissionRate, minimumPayout } = req.body;
+    
+    // Update affiliate program settings
+    console.log('Updating affiliate settings:', { isActive, commissionRate, minimumPayout });
+    
+    // In a real app, you'd update the database
+    const affiliateStats = {
+      isActive: isActive || false,
+      commissionRate: commissionRate || 10,
+      minimumPayout: minimumPayout || 50,
+      totalAffiliates: 45,
+      totalEarnings: 8750,
+      pendingPayouts: 1250
+    };
+    
+    res.json(affiliateStats);
+  } catch (error) {
+    console.error('Error updating affiliate settings:', error);
+    res.status(500).json({ message: 'Error updating affiliate settings' });
+  }
+});
+
 router.put('/monetization/offers', async (req, res) => {
   try {
     const { specialOffers, spinWheel, loyaltyProgram } = req.body;
@@ -1542,7 +1630,7 @@ router.put('/monetization/spin-system', async (req, res) => {
   }
 });
 
-// Invoice Generation
+// Invoice Generation (JSON format - PDF generation moved to frontend)
 router.get('/orders/:id/invoice', async (req, res) => {
   try {
     const order = await Order.findById(req.params.id)
@@ -1553,85 +1641,41 @@ router.get('/orders/:id/invoice', async (req, res) => {
       return res.status(404).json({ message: 'Order not found' });
     }
 
-    // Generate PDF invoice (you can use libraries like puppeteer or jsPDF)
-    // For now, return HTML that can be printed
-    const invoiceHTML = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Invoice - Order #${order.orderNumber || order._id}</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 40px; }
-            .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
-            .invoice-details { display: flex; justify-content: space-between; margin-bottom: 30px; }
-            .items-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-            .items-table th, .items-table td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-            .items-table th { background-color: #f8f9fa; }
-            .total { text-align: right; font-size: 18px; font-weight: bold; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h1>CLOTHICA</h1>
-            <p>Premium Fashion & Lifestyle Store</p>
-            <h2>INVOICE</h2>
-          </div>
-          
-          <div class="invoice-details">
-            <div>
-              <h3>Bill To:</h3>
-              <p>${order.user?.name || 'Customer'}</p>
-              <p>${order.user?.email || 'No email'}</p>
-              <p>${order.user?.phone || 'No phone'}</p>
-            </div>
-            <div>
-              <h3>Invoice Details:</h3>
-              <p><strong>Invoice #:</strong> ${order.orderNumber || order._id}</p>
-              <p><strong>Date:</strong> ${new Date(order.createdAt).toLocaleDateString()}</p>
-              <p><strong>Status:</strong> ${order.status}</p>
-            </div>
-          </div>
-          
-          <table class="items-table">
-            <thead>
-              <tr>
-                <th>Item</th>
-                <th>SKU</th>
-                <th>Quantity</th>
-                <th>Price</th>
-                <th>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${order.items.map(item => `
-                <tr>
-                  <td>${item.name || 'Product'}</td>
-                  <td>${item.sku || 'N/A'}</td>
-                  <td>${item.quantity}</td>
-                                <td>$${((item.price || 0) || 0).toFixed(2)}</td>
-              <td>$${(((item.price || 0) || 0) * ((item.quantity || 1) || 1)).toFixed(2)}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-          
-          <div class="total">
-            <p><strong>Subtotal:</strong> $${((order.subtotal || 0) || 0).toFixed(2)}</p>
-            <p><strong>Tax:</strong> $${((order.tax || 0) || 0).toFixed(2)}</p>
-            <p><strong>Shipping:</strong> $${((order.shippingCost || 0) || 0).toFixed(2)}</p>
-            <p><strong>Total:</strong> $${((order.total || 0) || 0).toFixed(2)}</p>
-          </div>
-          
-          <div style="margin-top: 40px; text-align: center; color: #666;">
-            <p>Thank you for your purchase!</p>
-            <p>For support, contact: support@clothica.com</p>
-          </div>
-        </body>
-      </html>
-    `;
-
-    res.setHeader('Content-Type', 'text/html');
-    res.send(invoiceHTML);
+    // Return invoice data in JSON format for frontend processing
+    const invoiceData = {
+      orderNumber: order.orderNumber || order._id,
+      date: order.createdAt,
+      status: order.status,
+      customer: {
+        name: order.user?.name || 'Customer',
+        email: order.user?.email || 'No email',
+        phone: order.user?.phone || 'No phone'
+      },
+      items: order.items.map(item => ({
+        name: item.product?.name || 'Product',
+        sku: item.product?.sku || 'N/A',
+        quantity: item.quantity,
+        price: item.price,
+        total: (item.price || 0) * (item.quantity || 1)
+      })),
+      totals: {
+        subtotal: order.subtotal || 0,
+        tax: order.tax || 0,
+        shipping: order.shippingCost || 0,
+        total: order.total || 0
+      },
+      store: {
+        name: 'CLOTHICA',
+        description: 'Premium Fashion & Lifestyle Store',
+        support: 'support@clothica.com'
+      }
+    };
+    
+    res.json({
+      success: true,
+      data: invoiceData,
+      message: 'Invoice data retrieved successfully'
+    });
   } catch (error) {
     console.error('Invoice generation error:', error);
     res.status(500).json({ message: 'Server error' });
