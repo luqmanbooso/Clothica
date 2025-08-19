@@ -15,6 +15,10 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import WelcomeModal from '../components/WelcomeModal';
 import Banner from '../components/Banner';
+import AdvancedAds from '../components/AdvancedAds';
+import SpecialOffers from '../components/SpecialOffers';
+import LoyaltyDashboard from '../components/LoyaltyDashboard';
+import SmartDiscounts from '../components/SmartDiscounts';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 
@@ -181,7 +185,7 @@ const Home = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F4F1EE]">
+    <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
       <section className="relative h-screen overflow-hidden">
         <AnimatePresence mode="wait">
@@ -285,11 +289,23 @@ const Home = () => {
       </section>
 
       {/* Banner Section */}
-      <section className="py-12 px-6">
-        <div className="max-w-7xl mx-auto">
-          <Banner />
+      <Banner />
+
+      {/* Advanced Advertisement System */}
+      <div className="py-8">
+        <AdvancedAds />
+      </div>
+
+      {/* Special Offers Section */}
+      <div className="py-8 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">Special Offers & Promotions</h2>
+            <p className="text-lg text-gray-600">Limited time deals you don't want to miss!</p>
+          </div>
+          <SpecialOffers showCountdown={true} />
         </div>
-      </section>
+      </div>
 
       {/* Categories Section */}
       <section className="py-20 px-6">
@@ -342,6 +358,30 @@ const Home = () => {
           </motion.div>
         </motion.div>
       </section>
+
+      {/* Loyalty Dashboard Section (for authenticated users) */}
+      {isAuthenticated && (
+        <div className="py-8 bg-gradient-to-r from-purple-50 to-pink-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">Your Loyalty Dashboard</h2>
+              <p className="text-lg text-gray-600">Track your progress and unlock amazing rewards!</p>
+            </div>
+            <LoyaltyDashboard compact={false} />
+          </div>
+        </div>
+      )}
+
+      {/* Smart Discounts Section */}
+      <div className="py-8 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">Available Coupons & Discounts</h2>
+            <p className="text-lg text-gray-600">Find the best deals for your next purchase!</p>
+          </div>
+          <SmartDiscounts />
+        </div>
+      </div>
 
       {/* Featured Products Section */}
       <section className="py-20 px-6 bg-white">
