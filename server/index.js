@@ -36,8 +36,23 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Debug middleware for request body (after parsers)
+app.use((req, res, next) => {
+  if ((req.method === 'POST' || req.method === 'PUT' || req.method === 'DELETE') && req.path.includes('/cart')) {
+    console.log('🔍 Cart request debug:', {
+      method: req.method,
+      path: req.path,
+      contentType: req.get('Content-Type'),
+      body: req.body,
+      bodyKeys: req.body ? Object.keys(req.body) : 'no body'
+    });
+  }
+  next();
+});
 
 // Static files
 app.use('/uploads', express.static('uploads'));
@@ -111,10 +126,45 @@ mongoose.connect(process.env.MONGODB_URI, {
 })
 .then(() => {
   console.log('Connected to MongoDB');
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+  });
+  
+  // Handle server errors
+  server.on('error', (error) => {
+    console.error('Server error:', error);
+  });
+  
+  // Handle uncaught exceptions
+  process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception:', error);
+    process.exit(1);
+  });
+  
+  // Handle unhandled promise rejections
+  process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    process.exit(1);
+  });
+  
+  // Graceful shutdown
+  process.on('SIGTERM', () => {
+    console.log('SIGTERM received, shutting down gracefully');
+    server.close(() => {
+      console.log('Process terminated');
+      process.exit(0);
+    });
+  });
+  
+  process.on('SIGINT', () => {
+    console.log('SIGINT received, shutting down gracefully');
+    server.close(() => {
+      console.log('Process terminated');
+      process.exit(0);
+    });
   });
 })
 .catch((err) => {
   console.error('MongoDB connection error:', err);
+  process.exit(1);
 }); 

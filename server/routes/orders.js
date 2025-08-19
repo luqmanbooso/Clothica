@@ -11,45 +11,104 @@ const notificationService = require('../services/notificationService'); // Added
 
 const router = express.Router();
 
+// Test route to verify orders endpoint is working
+router.get('/test', (req, res) => {
+  res.json({ 
+    message: 'Orders endpoint is working',
+    timestamp: new Date().toISOString(),
+    pdfInvoicesEnabled: process.env.ENABLE_PDF_INVOICES === 'true'
+  });
+});
+
+// Test email route removed - invoices are now available in user account
+
+
 // Create new order
 router.post('/', auth, async (req, res) => {
   try {
+    console.log('🛒 Order creation request received:', {
+      userId: req.user.id,
+      itemsCount: req.body.items?.length || 0,
+      total: req.body.total,
+      paymentMethod: req.body.paymentMethod
+    });
+
     const { items, shippingAddress, paymentMethod, couponCode } = req.body;
 
     // Validate required fields
     if (!items || !Array.isArray(items) || items.length === 0) {
+      console.log('❌ Order validation failed: No items provided');
       return res.status(400).json({ message: 'Order items are required' });
     }
 
     if (!shippingAddress) {
+      console.log('❌ Order validation failed: No shipping address provided');
       return res.status(400).json({ message: 'Shipping address is required' });
     }
 
     if (!paymentMethod) {
+      console.log('❌ Order validation failed: No payment method provided');
       return res.status(400).json({ message: 'Payment method is required' });
     }
 
     // Get user
     const user = await User.findById(req.user.id);
     if (!user) {
+      console.log('❌ User not found:', req.user.id);
       return res.status(404).json({ message: 'User not found' });
     }
+
+    console.log('✅ User found:', { id: user._id, email: user.email });
 
     // Calculate order total
     let subtotal = 0;
     const orderItems = [];
 
     for (const item of items) {
-      // Handle both cart item structure and direct product data
-      const productId = item.productId || item._id || item.id;
+      console.log('📦 Processing order item:', {
+        itemId: item._id,
+        productId: item.productId,
+        quantity: item.quantity,
+        selectedSize: item.selectedSize,
+        selectedColor: item.selectedColor
+      });
+
+      // Handle cart item structure - extract actual product ID
+      let productId;
+      if (item.productId) {
+        // Check if productId is actually a cart item ID (contains underscores)
+        if (item.productId.includes('_')) {
+          // Cart item ID format: "productId_size_color" - extract just the product ID
+          productId = item.productId.split('_')[0];
+        } else {
+          // Direct product ID
+          productId = item.productId;
+        }
+      } else if (item._id && item._id.includes('_')) {
+        // Cart item ID format: "productId_size_color" - extract just the product ID
+        productId = item._id.split('_')[0];
+      } else if (item.id) {
+        // Fallback to id field
+        productId = item.id;
+      } else {
+        console.log('❌ Invalid item structure:', item);
+        return res.status(400).json({ message: 'Invalid item structure - missing product ID' });
+      }
+
+      console.log('🔍 Looking up product with ID:', productId);
+
       const product = await Product.findById(productId);
       if (!product) {
+        console.log('❌ Product not found:', productId);
         return res.status(400).json({ message: `Product ${productId} not found` });
       }
+
+      console.log('✅ Product found:', { id: product._id, name: product.name, price: product.price });
 
       // Check available stock using the new stock management methods
       const availableStock = product.getAvailableStock();
       if (availableStock < item.quantity) {
+        console.log('❌ Insufficient stock:', { availableStock, requested: item.quantity });
         return res.status(400).json({ 
           message: `Insufficient stock for ${product.name}. Available: ${availableStock}, Requested: ${item.quantity}` 
         });
@@ -73,12 +132,16 @@ router.post('/', auth, async (req, res) => {
       try {
         product.reserveStock(item.quantity);
         await product.save();
+        console.log('✅ Stock reserved for product:', product.name);
       } catch (stockError) {
+        console.log('❌ Stock reservation failed:', stockError.message);
         return res.status(400).json({ 
           message: `Stock reservation failed for ${product.name}: ${stockError.message}` 
         });
       }
     }
+
+    console.log('✅ All items processed successfully. Subtotal:', subtotal);
 
     // Apply coupon if provided
     let discount = 0;
@@ -196,21 +259,30 @@ router.post('/', auth, async (req, res) => {
 
     // Send confirmation email with PDF invoice
     try {
+      console.log('📧 Sending order confirmation email with PDF invoice to:', user.email);
       const emailService = require('../services/emailService');
       await emailService.sendOrderConfirmationWithInvoice(user.email, order);
-      console.log('Order confirmation email with PDF invoice sent successfully');
+      console.log('✅ Order confirmation email with PDF invoice sent successfully');
     } catch (emailError) {
-      console.error('Error sending order confirmation email with invoice:', emailError);
+      console.error('❌ Error sending order confirmation email with invoice:', emailError);
       // Fallback to regular email without invoice
       try {
+        console.log('📧 Attempting fallback email without invoice');
         const emailService = require('../services/emailService');
         await emailService.sendOrderConfirmationEmail(user.email, order);
-        console.log('Fallback order confirmation email sent successfully');
+        console.log('✅ Fallback order confirmation email sent successfully');
       } catch (fallbackError) {
-        console.error('Error sending fallback order confirmation email:', fallbackError);
+        console.error('❌ Error sending fallback order confirmation email:', fallbackError);
       }
       // Don't fail the order if email fails
     }
+
+    console.log('✅ Order created successfully:', {
+      orderId: order._id,
+      total: order.total,
+      status: order.status,
+      itemsCount: orderItems.length
+    });
 
     res.status(201).json({
       message: 'Order created successfully',
@@ -223,7 +295,8 @@ router.post('/', auth, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error creating order:', error);
+    console.error('❌ Error creating order:', error);
+    console.error('❌ Error stack:', error.stack);
     res.status(500).json({ message: 'Server error' });
   }
 });

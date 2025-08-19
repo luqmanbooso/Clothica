@@ -309,7 +309,7 @@ class EmailService {
     const mailOptions = {
       from: `"Clothica" <${process.env.SMTP_USER || 'noreply@clothica.com'}>`,
       to: email,
-      subject: `Order Confirmation - #${order._id.slice(-8)}`,
+      subject: `Order Confirmation - #${order._id.toString().slice(-8)}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #6C7A59 0%, #D6BFAF 100%); padding: 30px; text-align: center;">
@@ -325,7 +325,7 @@ class EmailService {
             
             <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #e5e7eb;">
               <h3 style="color: #333; margin-top: 0;">Order Summary</h3>
-              <p style="color: #666; margin: 10px 0;"><strong>Order ID:</strong> #${order._id.slice(-8)}</p>
+              <p style="color: #666; margin: 10px 0;"><strong>Order ID:</strong> #${order._id.toString().slice(-8)}</p>
               <p style="color: #666; margin: 10px 0;"><strong>Total:</strong> Rs. ${order.total?.toLocaleString() || '0'}</p>
               <p style="color: #666; margin: 10px 0;"><strong>Status:</strong> ${order.status || 'pending'}</p>
               <p style="color: #666; margin: 10px 0;"><strong>Payment Method:</strong> ${order.paymentMethod || 'Not specified'}</p>
@@ -375,20 +375,13 @@ class EmailService {
       return false;
     }
 
-    // Check if PDF invoices are enabled
-    if (process.env.ENABLE_PDF_INVOICES !== 'true') {
-      console.log('PDF invoices disabled, sending regular confirmation email');
-      return await this.sendOrderConfirmationEmail(email, order);
-    }
+    console.log('📧 Sending order confirmation email with invoice notice...');
 
     try {
-      // Generate PDF invoice
-      const pdfBuffer = await this.generateInvoicePDF(order);
-      
       const mailOptions = {
         from: `"Clothica" <${process.env.SMTP_USER || 'noreply@clothica.com'}>`,
         to: email,
-        subject: `Order Confirmation & Invoice - #${order._id.slice(-8)}`,
+        subject: `Order Confirmation - #${order._id.toString().slice(-8)}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background: linear-gradient(135deg, #6C7A59 0%, #D6BFAF 100%); padding: 30px; text-align: center;">
@@ -399,15 +392,31 @@ class EmailService {
             <div style="padding: 30px; background: #f9f9f9;">
               <h2 style="color: #333; margin-bottom: 20px;">Order Confirmation</h2>
               <p style="color: #666; line-height: 1.6; margin-bottom: 20px;">
-                Thank you for your order! Your invoice is attached to this email.
+                Thank you for your order! We're excited to deliver your Sri Lankan fashion items.
               </p>
               
               <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #e5e7eb;">
                 <h3 style="color: #333; margin-top: 0;">Order Summary</h3>
-                <p style="color: #666; margin: 10px 0;"><strong>Order ID:</strong> #${order._id.slice(-8)}</p>
+                <p style="color: #666; margin: 10px 0;"><strong>Order ID:</strong> #${order._id.toString().slice(-8)}</p>
                 <p style="color: #666; margin: 10px 0;"><strong>Total:</strong> Rs. ${order.total?.toLocaleString() || '0'}</p>
                 <p style="color: #666; margin: 10px 0;"><strong>Status:</strong> ${order.status || 'pending'}</p>
                 <p style="color: #666; margin: 10px 0;"><strong>Payment Method:</strong> ${order.paymentMethod || 'Not specified'}</p>
+              </div>
+              
+              <div style="background: #e8f4fd; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #bee5eb;">
+                <h3 style="color: #0c5460; margin-top: 0;">📄 Invoice Information</h3>
+                <p style="color: #0c5460; margin: 10px 0; font-weight: bold;">
+                  Your invoice is available in your account:
+                </p>
+                <ul style="color: #0c5460; margin: 10px 0; padding-left: 20px;">
+                  <li>Go to <strong>My Orders</strong> in your account</li>
+                  <li>Click on this order</li>
+                  <li>Click <strong>"Download Invoice"</strong> button</li>
+                  <li>Or visit: <a href="http://localhost:3000/orders" style="color: #0c5460;">My Orders Page</a></li>
+                </ul>
+                <p style="color: #0c5460; margin: 10px 0; font-size: 14px;">
+                  💡 <em>Invoices are generated on-demand and are always up-to-date with your order details.</em>
+                </p>
               </div>
               
               <p style="color: #666; line-height: 1.6; margin-bottom: 20px;">
@@ -422,118 +431,19 @@ class EmailService {
               </div>
             </div>
           </div>
-        `,
-        attachments: [
-          {
-            filename: `Invoice-${order._id.slice(-8)}-${new Date().toISOString().split('T')[0]}.pdf`,
-            content: pdfBuffer,
-            contentType: 'application/pdf'
-          }
-        ]
+        `
       };
 
       const result = await this.transporter.sendMail(mailOptions);
-      console.log('Order confirmation email with invoice sent successfully to:', email);
+      console.log('Order confirmation email with invoice notice sent successfully to:', email);
       return true;
     } catch (error) {
-      console.error('Failed to send order confirmation email with invoice:', error);
+      console.error('Failed to send order confirmation email:', error);
       return false;
     }
   }
 
-  async generateInvoicePDF(order) {
-    try {
-      // This is a simplified PDF generation for the backend
-      // In a production environment, you might want to use a more robust PDF library
-      const PDFDocument = require('pdfkit');
-      const doc = new PDFDocument({ size: 'A4', margin: 50 });
-      
-      const chunks = [];
-      doc.on('data', chunk => chunks.push(chunk));
-      doc.on('end', () => {});
-      
-      // Add company header
-      doc.fontSize(24).text('Clothica Lanka', { align: 'center' });
-      doc.fontSize(14).text('Your Premium Fashion Destination', { align: 'center' });
-      doc.fontSize(12).text('Colombo, Sri Lanka', { align: 'center' });
-      doc.moveDown(2);
-      
-      // Add invoice title
-      doc.fontSize(18).text('INVOICE', { align: 'center' });
-      doc.moveDown();
-      
-      // Add order details
-      doc.fontSize(12).text(`Order ID: ${order._id.slice(-8)}`);
-      doc.text(`Date: ${new Date(order.createdAt).toLocaleDateString()}`);
-      doc.text(`Status: ${order.status}`);
-      doc.moveDown();
-      
-      // Add customer details
-      doc.fontSize(14).text('Bill To:', { underline: true });
-      doc.fontSize(12).text(order.user?.name || 'Customer');
-      doc.text(order.shippingAddress?.street || '');
-      doc.text(`${order.shippingAddress?.city || ''}, ${order.shippingAddress?.state || ''} ${order.shippingAddress?.zipCode || ''}`);
-      doc.text(order.shippingAddress?.country || '');
-      doc.text(`Email: ${order.user?.email || ''}`);
-      doc.text(`Phone: ${order.shippingAddress?.phone || ''}`);
-      doc.moveDown();
-      
-      // Add items table
-      doc.fontSize(14).text('Items:', { underline: true });
-      doc.moveDown();
-      
-      let yPosition = doc.y;
-      doc.fontSize(10);
-      
-      // Table headers
-      doc.text('Item', 50, yPosition);
-      doc.text('Color', 200, yPosition);
-      doc.text('Size', 250, yPosition);
-      doc.text('Qty', 300, yPosition);
-      doc.text('Price', 350, yPosition);
-      doc.text('Total', 420, yPosition);
-      
-      yPosition += 20;
-      
-      // Table rows
-      order.items.forEach(item => {
-        doc.text(item.name || 'Product', 50, yPosition);
-        doc.text(item.selectedColor || 'Default', 200, yPosition);
-        doc.text(item.selectedSize || 'One Size', 250, yPosition);
-        doc.text(item.quantity.toString(), 300, yPosition);
-        doc.text(`Rs. ${item.price.toLocaleString()}`, 350, yPosition);
-        doc.text(`Rs. ${(item.price * item.quantity).toLocaleString()}`, 420, yPosition);
-        yPosition += 20;
-      });
-      
-      doc.moveDown();
-      
-      // Add totals
-      const subtotal = order.subtotal || 0;
-      const tax = order.tax || 0;
-      const shipping = order.shippingCost || 0;
-      const total = order.total || 0;
-      
-      doc.fontSize(12);
-      doc.text(`Subtotal: Rs. ${subtotal.toLocaleString()}`, { align: 'right' });
-      doc.text(`Tax: Rs. ${tax.toLocaleString()}`, { align: 'right' });
-      doc.text(`Shipping: ${shipping === 0 ? 'Free' : `Rs. ${shipping.toLocaleString()}`}`, { align: 'right' });
-      doc.fontSize(14).text(`Total: Rs. ${total.toLocaleString()}`, { align: 'right' });
-      
-      // Add footer
-      doc.moveDown(2);
-      doc.fontSize(10).text('Thank you for shopping with Clothica Lanka!', { align: 'center' });
-      doc.text('For support, contact us at support@clothicalanka.com or call +94 11 234 5678', { align: 'center' });
-      doc.text('This is a computer-generated invoice. No signature required.', { align: 'center' });
-      
-      doc.end();
-      
-      return Buffer.concat(chunks);
-    } catch (error) {
-      console.error('Error generating PDF invoice:', error);
-      throw error;
-    }
-  }
+  // PDF generation removed - invoices are now available in the user's account
 
   // Get service status
   getStatus() {
@@ -541,7 +451,7 @@ class EmailService {
       isConfigured: this.isConfigured,
       hasTransporter: !!this.transporter,
       environment: process.env.NODE_ENV || 'development',
-      pdfInvoicesEnabled: process.env.ENABLE_PDF_INVOICES === 'true',
+      pdfInvoicesEnabled: false, // PDF invoices are now available in user account
       smtpConfigured: !!(process.env.SMTP_USER && process.env.SMTP_PASS)
     };
   }
@@ -572,7 +482,7 @@ class EmailService {
             <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #e5e7eb;">
               <h3 style="color: #333; margin-top: 0;">Service Status</h3>
               <p style="color: #666; margin: 10px 0;"><strong>SMTP Configured:</strong> ${process.env.SMTP_USER ? 'Yes' : 'No'}</p>
-              <p style="color: #666; margin: 10px 0;"><strong>PDF Invoices:</strong> ${process.env.ENABLE_PDF_INVOICES === 'true' ? 'Enabled' : 'Disabled'}</p>
+              <p style="color: #666; margin: 10px 0;"><strong>PDF Invoices:</strong> Available in user account</p>
               <p style="color: #666; margin: 10px 0;"><strong>Environment:</strong> ${process.env.NODE_ENV || 'development'}</p>
             </div>
             
