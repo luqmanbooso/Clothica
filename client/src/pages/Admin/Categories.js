@@ -10,9 +10,11 @@ import {
   CubeIcon
 } from '@heroicons/react/24/outline';
 import { motion } from 'framer-motion';
-import axios from 'axios';
+import api from '../../utils/api';
+import { useToast } from '../../contexts/ToastContext';
 
 const Categories = () => {
+  const { success: showSuccess, error: showError } = useToast();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -37,7 +39,7 @@ const Categories = () => {
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/admin/categories');
+      const response = await api.get('/api/admin/categories');
       setCategories(response.data.map(cat => ({
         id: cat._id,
         name: cat.name,
@@ -51,6 +53,7 @@ const Categories = () => {
       })));
     } catch (error) {
       console.error('Error fetching categories:', error);
+      showError('Failed to load categories');
       // Fallback to empty array if API fails
       setCategories([]);
     } finally {
@@ -105,32 +108,51 @@ const Categories = () => {
     setShowAddModal(true);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (editingCategory) {
-      // Update existing category
-      setCategories(prev => prev.map(cat => 
-        cat.id === editingCategory.id 
-          ? { ...cat, ...formData }
-          : cat
-      ));
-    } else {
-      // Add new category
-      const newCategory = {
-        id: Date.now(),
-        ...formData,
-        productCount: 0,
-        children: []
-      };
-      setCategories(prev => [...prev, newCategory]);
+    try {
+      if (editingCategory) {
+        // Update existing category
+        await api.put(`/api/admin/categories/${editingCategory.id}`, {
+          name: formData.name,
+          description: formData.description,
+          parent: formData.parentId || null,
+          isActive: formData.isActive,
+          order: formData.sortOrder
+        });
+        showSuccess('Category updated successfully');
+      } else {
+        // Add new category
+        await api.post('/api/admin/categories', {
+          name: formData.name,
+          description: formData.description,
+          parent: formData.parentId || null,
+          isActive: formData.isActive,
+          order: formData.sortOrder
+        });
+        showSuccess('Category created successfully');
+      }
+      // Refresh the categories list
+      await fetchCategories();
+      setShowAddModal(false);
+      setEditingCategory(null);
+    } catch (error) {
+      console.error('Error saving category:', error);
+      showError(editingCategory ? 'Failed to update category' : 'Failed to create category');
     }
-    setShowAddModal(false);
-    setEditingCategory(null);
   };
 
-  const handleDeleteCategory = (categoryId) => {
-    if (window.confirm('Are you sure you want to delete this category?')) {
-      setCategories(prev => prev.filter(cat => cat.id !== categoryId));
+  const handleDeleteCategory = async (categoryId) => {
+    if (window.confirm('Are you sure you want to delete this category? This action cannot be undone.')) {
+      try {
+        await api.delete(`/api/admin/categories/${categoryId}`);
+        showSuccess('Category deleted successfully');
+        // Refresh the categories list
+        await fetchCategories();
+      } catch (error) {
+        console.error('Error deleting category:', error);
+        showError('Failed to delete category');
+      }
     }
   };
 

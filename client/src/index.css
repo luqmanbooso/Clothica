@@ -139,6 +139,38 @@
   }
 }
 
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px) translateX(0px);
+  }
+  25% {
+    transform: translateY(-15px) translateX(5px);
+  }
+  50% {
+    transform: translateY(-25px) translateX(0px);
+  }
+  75% {
+    transform: translateY(-15px) translateX(-5px);
+  }
+}
+
+/* Advanced hover effects */
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.delay-300 {
+  animation-delay: 300ms;
+}
+
+.delay-700 {
+  animation-delay: 700ms;
+}
+
+.delay-1000 {
+  animation-delay: 1000ms;
+}
+
 /* Custom CSS Variables for Color Palette */
 :root {
   --color-primary: #1E1E1E;

@@ -57,3 +57,5 @@ console.log('3. Try Google login again');
 console.log('4. Check browser console for new errors');
 
 console.log('\n✨ Debug completed!');
+
+

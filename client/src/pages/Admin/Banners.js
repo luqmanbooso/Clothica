@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FiImage, FiPlus, FiEdit, FiTrash2, FiEye, FiEyeOff, FiCalendar, FiLink, FiXCircle } from 'react-icons/fi';
-import axios from 'axios';
+import api from '../../utils/api';
 import { useToast } from '../../contexts/ToastContext';
 
 const AdminBanners = () => {
@@ -17,7 +17,7 @@ const AdminBanners = () => {
   const fetchBanners = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/admin/banners');
+      const response = await api.get('/api/admin/banners');
       setBanners(response.data);
     } catch (error) {
       console.error('Error fetching banners:', error);
@@ -31,10 +31,10 @@ const AdminBanners = () => {
   const handleSubmit = async (formData) => {
     try {
       if (editingBanner) {
-        await axios.put(`/api/admin/banners/${editingBanner._id}`, formData);
+        await api.put(`/api/admin/banners/${editingBanner._id}`, formData);
         showSuccess('Banner updated successfully');
       } else {
-        await axios.post('/api/admin/banners', formData);
+        await api.post('/api/admin/banners', formData);
         showSuccess('Banner created successfully');
       }
       setShowModal(false);
@@ -52,7 +52,7 @@ const AdminBanners = () => {
     }
 
     try {
-      await axios.delete(`/api/admin/banners/${bannerId}`);
+      await api.delete(`/api/admin/banners/${bannerId}`);
       showSuccess('Banner deleted successfully');
       fetchBanners();
     } catch (error) {
@@ -63,7 +63,7 @@ const AdminBanners = () => {
 
   const handleStatusToggle = async (bannerId, currentStatus) => {
     try {
-      await axios.put(`/api/admin/banners/${bannerId}`, {
+      await api.put(`/api/admin/banners/${bannerId}`, {
         isActive: !currentStatus
       });
       showSuccess('Banner status updated');

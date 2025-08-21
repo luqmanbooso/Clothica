@@ -148,22 +148,27 @@ const Contact = () => {
 
   return (
     <div className="min-h-screen bg-[#F4F1EE]">
-      {/* Header */}
-      <section className="py-20 px-6 bg-gradient-to-br from-[#1E1E1E] to-[#2A2A2A]">
+      {/* Enhanced Header */}
+      <section className="py-24 px-6 bg-gradient-to-br from-[#0F0F0F] via-[#1A1A1A] to-[#2A2A2A] relative overflow-hidden">
+        <div className="absolute inset-0">
+          <div className="absolute top-20 left-20 w-72 h-72 bg-gradient-to-r from-[#D4AF37]/20 to-[#E8B4B8]/20 rounded-full blur-3xl animate-pulse-soft"></div>
+          <div className="absolute bottom-20 right-20 w-96 h-96 bg-gradient-to-r from-[#6C7A59]/20 to-[#9CAF88]/20 rounded-full blur-3xl animate-pulse-soft" style={{animationDelay: '2s'}}></div>
+        </div>
+        
         <motion.div 
-          className="max-w-4xl mx-auto text-center"
+          className="max-w-6xl mx-auto text-center relative z-10"
           variants={containerVariants}
           initial="hidden"
           animate="visible"
         >
           <motion.h1 
-            className="text-5xl md:text-6xl font-display font-bold text-white mb-6"
+            className="text-6xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#F5F1E8] via-[#D4AF37] to-[#6C7A59] mb-8"
             variants={itemVariants}
           >
-            Get in Touch
+            GET IN TOUCH
           </motion.h1>
           <motion.p 
-            className="text-xl text-gray-300 max-w-2xl mx-auto"
+            className="text-2xl text-[#E6E6FA] max-w-3xl mx-auto leading-relaxed"
             variants={itemVariants}
           >
             We'd love to hear from you. Send us a message and we'll respond as soon as possible.
@@ -186,18 +191,18 @@ const Contact = () => {
             {contactInfo.map((info, index) => (
               <motion.div
                 key={index}
-                className="text-center"
+                className="text-center group"
                 variants={itemVariants}
                 whileHover={{ scale: 1.05, y: -5 }}
                 transition={{ duration: 0.3 }}
               >
-                <div className={`w-16 h-16 bg-gradient-to-br ${info.color} rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg`}>
-                  <info.icon className="h-8 w-8 text-white" />
+                <div className={`w-20 h-20 bg-gradient-to-br ${info.color} rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl group-hover:shadow-2xl transition-all duration-300`}>
+                  <info.icon className="h-10 w-10 text-white" />
                 </div>
-                <h3 className="text-xl font-display font-semibold text-[#1E1E1E] mb-2">
+                <h3 className="text-2xl font-black text-[#1E1E1E] mb-3">
                   {info.title}
                 </h3>
-                <p className="text-[#6C7A59]">
+                <p className="text-[#6C7A59] text-lg font-medium">
                   {info.description}
                 </p>
               </motion.div>
@@ -210,8 +215,11 @@ const Contact = () => {
               className="lg:col-span-2"
               variants={itemVariants}
             >
-              <div className="bg-white rounded-2xl shadow-xl p-8">
-                <h2 className="text-3xl font-display font-bold text-[#1E1E1E] mb-6">
+              <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl border border-[#6C7A59]/20 p-8">
+                <h2 className="text-3xl font-black text-[#1E1E1E] mb-6 flex items-center">
+                  <div className="w-8 h-8 bg-gradient-to-r from-[#6C7A59] to-[#9CAF88] rounded-xl flex items-center justify-center mr-3">
+                    <ChatBubbleLeftRightIcon className="h-5 w-5 text-white" />
+                  </div>
                   Send us a Message
                 </h2>
 
@@ -240,7 +248,8 @@ const Contact = () => {
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label htmlFor="name" className="block text-sm font-semibold text-[#1E1E1E] mb-2">
+                      <label htmlFor="name" className="block text-sm font-bold text-[#1E1E1E] mb-3 flex items-center">
+                        <div className="w-4 h-4 bg-gradient-to-r from-[#6C7A59] to-[#9CAF88] rounded-full mr-2"></div>
                         Full Name
                       </label>
                       <input
@@ -249,8 +258,8 @@ const Contact = () => {
                         name="name"
                         value={formData.name}
                         onChange={handleInputChange}
-                        className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6C7A59] focus:border-[#6C7A59] transition-all duration-200 ${
-                          errors.name ? 'border-red-300' : 'border-gray-300'
+                        className={`w-full px-6 py-4 border-2 rounded-2xl focus:outline-none focus:ring-4 focus:ring-[#6C7A59]/20 focus:border-[#6C7A59] transition-all duration-300 bg-white/80 backdrop-blur-sm ${
+                          errors.name ? 'border-[#B35D5D]' : 'border-[#6C7A59]/30 hover:border-[#6C7A59]/50'
                         }`}
                         placeholder="Your full name"
                       />
@@ -347,7 +356,7 @@ const Contact = () => {
                   <motion.button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-[#6C7A59] text-white font-semibold py-3 px-6 rounded-xl hover:bg-[#5A6A4A] focus:outline-none focus:ring-2 focus:ring-[#6C7A59] focus:ring-offset-2 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-gradient-to-r from-[#6C7A59] to-[#9CAF88] text-white font-bold py-4 px-8 rounded-2xl hover:from-[#9CAF88] hover:to-[#6C7A59] focus:outline-none focus:ring-4 focus:ring-[#6C7A59]/20 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
@@ -362,8 +371,11 @@ const Contact = () => {
               className="space-y-6"
               variants={itemVariants}
             >
-              <div className="bg-white rounded-2xl shadow-xl p-6">
-                <h3 className="text-xl font-display font-bold text-[#1E1E1E] mb-4">
+              <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl border border-[#6C7A59]/20 p-8">
+                <h3 className="text-2xl font-black text-[#1E1E1E] mb-6 flex items-center">
+                  <div className="w-8 h-8 bg-gradient-to-r from-[#D4AF37] to-[#E8B4B8] rounded-xl flex items-center justify-center mr-3">
+                    <ArrowPathIcon className="h-5 w-5 text-white" />
+                  </div>
                   Quick Help
                 </h3>
                 <div className="space-y-4">
@@ -392,8 +404,11 @@ const Contact = () => {
               </div>
 
               {/* Social Media */}
-              <div className="bg-white rounded-2xl shadow-xl p-6">
-                <h3 className="text-xl font-display font-bold text-[#1E1E1E] mb-4">
+              <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl border border-[#6C7A59]/20 p-8">
+                <h3 className="text-2xl font-black text-[#1E1E1E] mb-6 flex items-center">
+                  <div className="w-8 h-8 bg-gradient-to-r from-[#6C7A59] to-[#9CAF88] rounded-xl flex items-center justify-center mr-3">
+                    <ChatBubbleLeftRightIcon className="h-5 w-5 text-white" />
+                  </div>
                   Follow Us
                 </h3>
                 <div className="flex space-x-4">

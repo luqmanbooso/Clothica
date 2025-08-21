@@ -42,10 +42,12 @@ import Users from './pages/Admin/Users';
 import Categories from './pages/Admin/Categories';
 import Coupons from './pages/Admin/Coupons';
 import Banners from './pages/Admin/Banners';
-import MonetizationDashboard from './pages/Admin/MonetizationDashboard';
+
 import Analytics from './pages/Admin/Analytics';
 import Settings from './pages/Admin/Settings';
 import Events from './pages/Admin/Events';
+import Finance from './pages/Admin/Finance';
+import ClientFeatures from './pages/Admin/ClientFeatures';
 
 // Protected Route Component
 import ProtectedRoute from './components/Auth/ProtectedRoute';
@@ -256,13 +258,7 @@ function App() {
                     </AdminRoute>
                   } />
                   
-                  <Route path="/admin/monetization" element={
-                    <AdminRoute>
-                      <AdminLayout>
-                        <MonetizationDashboard />
-                      </AdminLayout>
-                    </AdminRoute>
-                  } />
+
                   
                   <Route path="/admin/analytics" element={
                     <AdminRoute>
@@ -284,6 +280,22 @@ function App() {
                     <AdminRoute>
                       <AdminLayout>
                         <Events />
+                      </AdminLayout>
+                    </AdminRoute>
+                  } />
+                  
+                  <Route path="/admin/finance" element={
+                    <AdminRoute>
+                      <AdminLayout>
+                        <Finance />
+                      </AdminLayout>
+                    </AdminRoute>
+                  } />
+                  
+                  <Route path="/admin/client-features" element={
+                    <AdminRoute>
+                      <AdminLayout>
+                        <ClientFeatures />
                       </AdminLayout>
                     </AdminRoute>
                   } />

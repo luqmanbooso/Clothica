@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { FiSettings, FiSave, FiGlobe, FiMail, FiShield, FiCreditCard, FiTruck, FiBell } from 'react-icons/fi';
-import axios from 'axios';
+import api from '../../utils/api';
 import { useToast } from '../../contexts/ToastContext';
 
 const AdminSettings = () => {
@@ -32,7 +32,7 @@ const AdminSettings = () => {
   const fetchSettings = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/admin/settings');
+      const response = await api.get('/api/admin/settings');
       setSettings(response.data);
     } catch (error) {
       console.error('Error fetching settings:', error);
@@ -45,7 +45,7 @@ const AdminSettings = () => {
   const handleSaveSettings = async () => {
     try {
       setIsSaving(true);
-      const response = await axios.put('/api/admin/settings', settings);
+      const response = await api.put('/api/admin/settings', settings);
       
       if (response.data.success) {
         showSuccess('Settings saved successfully');
@@ -65,7 +65,7 @@ const AdminSettings = () => {
     if (window.confirm('Are you sure you want to reset all settings to default?')) {
       try {
         setIsSaving(true);
-        const response = await axios.post('/api/admin/settings/reset');
+        const response = await api.post('/api/admin/settings/reset');
         
         if (response.data.success) {
           setSettings(response.data.settings);

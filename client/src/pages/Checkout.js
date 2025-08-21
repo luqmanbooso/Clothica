@@ -681,12 +681,12 @@ const Checkout = () => {
             <ArrowLeftIcon className="h-5 w-5 mr-2 group-hover:-translate-x-1 transition-transform duration-300" />
             <span className="font-medium">Back to Cart</span>
           </button>
-          
+
           <div className="relative">
             <h1 className="text-6xl font-display font-bold mb-6 bg-gradient-to-r from-[#F5F1E8] via-[#D4AF37] to-[#E8B4B8] bg-clip-text text-transparent animate-fade-in-up">
               Complete Your Style
             </h1>
-            <div className="text-center mb-8">
+          <div className="text-center mb-8">
               <p className="text-2xl text-[#F5F1E8] font-bold bg-gradient-to-r from-[#D4AF37] via-[#E8B4B8] to-[#7C3AED] bg-clip-text text-transparent animate-text-shimmer mb-6">
                 Secure & Fashion-Forward Checkout
               </p>
@@ -698,8 +698,8 @@ const Checkout = () => {
                     <div className="w-8 h-8 bg-[#059669] rounded-full flex items-center justify-center mr-3 animate-pulse-soft">
                       <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    </div>
+              </svg>
+            </div>
                     <span className="text-[#F5F1E8] font-medium">Personal Info</span>
                   </div>
                   <div className="flex-1 h-1 bg-gradient-to-r from-[#059669] to-[#6C7A59] mx-4 animate-pulse-soft"></div>
@@ -734,15 +734,15 @@ const Checkout = () => {
                     {!shippingMethod && !paymentMethod ? 'Step 1 of 3: Personal Information' :
                      shippingMethod && !paymentMethod ? 'Step 2 of 3: Shipping Method' :
                      'Step 3 of 3: Payment Method'}
-                  </p>
-                </div>
+            </p>
+          </div>
               </div>
             </div>
             <p className="text-[#9CAF88] text-xl font-medium bg-[#2D2D2D]/50 backdrop-blur-sm px-6 py-2 rounded-full inline-block border border-[#9CAF88]/30">
               Your journey to effortless elegance ends here
             </p>
-          </div>
         </div>
+      </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
           {/* Main Checkout Form */}
@@ -770,17 +770,17 @@ const Checkout = () => {
                 </div>
               </div>
               
-              <div className="flex items-center mb-8">
+                <div className="flex items-center mb-8">
                 <div className="w-16 h-16 bg-gradient-to-br from-[#D4AF37] via-[#E8B4B8] to-[#7C3AED] rounded-2xl flex items-center justify-center mr-6 shadow-lg animate-pulse-soft">
                   <MapPinIcon className="h-8 w-8 text-white" />
-                </div>
-                <div>
+                  </div>
+                  <div>
                   <h2 className="text-3xl font-display font-bold text-[#1E1E1E] mb-3 bg-gradient-to-r from-[#1E1E1E] to-[#2D2D2D] bg-clip-text text-transparent">
                     Personal Information
                   </h2>
                   <p className="text-[#6C7A59] font-semibold text-lg">Where should we deliver your style?</p>
+                  </div>
                 </div>
-              </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="group">
@@ -788,10 +788,10 @@ const Checkout = () => {
                       First Name *
                     </label>
                     <div className="relative">
-                      <input
-                        type="text"
-                        value={formData.firstName}
-                        onChange={(e) => handleInputChange('firstName', e.target.value)}
+                    <input
+                      type="text"
+                      value={formData.firstName}
+                    onChange={(e) => handleInputChange('firstName', e.target.value)}
                         onBlur={(e) => {
                           if (e.target.value.trim()) {
                             const error = validateField('firstName', e.target.value);
@@ -820,12 +820,12 @@ const Checkout = () => {
                         </div>
                       )}
                     </div>
-                    {errors.firstName && (
+                  {errors.firstName && (
                       <p className="text-[#B35D5D] text-sm mt-2 flex items-center font-medium">
                         <ExclamationTriangleIcon className="h-4 w-4 mr-2 flex-shrink-0" />
                         {errors.firstName}
                       </p>
-                    )}
+                  )}
                   </div>
 
                   <div className="group">
@@ -833,10 +833,10 @@ const Checkout = () => {
                       Last Name *
                     </label>
                     <div className="relative">
-                      <input
-                        type="text"
-                        value={formData.lastName}
-                        onChange={(e) => handleInputChange('lastName', e.target.value)}
+                    <input
+                      type="text"
+                      value={formData.lastName}
+                    onChange={(e) => handleInputChange('lastName', e.target.value)}
                         onBlur={(e) => {
                           if (e.target.value.trim()) {
                             const error = validateField('lastName', e.target.value);
@@ -865,23 +865,23 @@ const Checkout = () => {
                         </div>
                       )}
                     </div>
-                    {errors.lastName && (
+                  {errors.lastName && (
                       <p className="text-[#B35D5D] text-sm mt-2 flex items-center font-medium">
                         <ExclamationTriangleIcon className="h-4 w-4 mr-2 flex-shrink-0" />
                         {errors.lastName}
                       </p>
-                    )}
-                  </div>
+                  )}
+                </div>
 
                   <div className="group">
                     <label className="block text-sm font-semibold text-[#1E1E1E] mb-3 group-hover:text-[#6C7A59] transition-colors duration-300">
                       Email Address *
                     </label>
                     <div className="relative">
-                      <input
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) => handleInputChange('email', e.target.value)}
+                    <input
+                      type="email"
+                      value={formData.email}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
                         onBlur={(e) => {
                           if (e.target.value.trim()) {
                             const error = validateField('email', e.target.value);
@@ -909,23 +909,23 @@ const Checkout = () => {
                         </div>
                       )}
                     </div>
-                    {errors.email && (
+                  {errors.email && (
                       <p className="text-[#B35D5D] text-sm mt-2 flex items-center font-medium">
                         <ExclamationTriangleIcon className="h-4 w-4 mr-2 flex-shrink-0" />
                         {errors.email}
                       </p>
-                    )}
+                  )}
                   </div>
 
                   <div className="group">
                     <label className="block text-sm font-semibold text-[#1E1E1E] mb-3 group-hover:text-[#6C7A59] transition-colors duration-300">
-                      Phone Number *
+                    Phone Number *
                     </label>
                     <div className="relative">
-                      <input
-                        type="tel"
-                        value={formData.phone}
-                        onChange={(e) => handleInputChange('phone', e.target.value)}
+                    <input
+                      type="tel"
+                      value={formData.phone}
+                    onChange={(e) => handleInputChange('phone', e.target.value)}
                         onBlur={(e) => {
                           if (e.target.value.trim()) {
                             const error = validateField('phone', e.target.value);
@@ -938,8 +938,8 @@ const Checkout = () => {
                             : formData.phone.trim() && !errors.phone
                             ? 'border-[#059669] bg-white ring-[#059669]/20'
                             : 'border-[#D6BFAF] hover:border-[#9CAF88] bg-white/80'
-                        }`}
-                        placeholder="+94 71 123 4567"
+                    }`}
+                    placeholder="+94 71 123 4567"
                         required
                         autoComplete="tel"
                         pattern="(\+94|0)?[1-9][0-9]{8}"
@@ -954,23 +954,23 @@ const Checkout = () => {
                         </div>
                       )}
                     </div>
-                    {errors.phone && (
+                  {errors.phone && (
                       <p className="text-[#B35D5D] text-sm mt-2 flex items-center font-medium">
                         <ExclamationTriangleIcon className="h-4 w-4 mr-2 flex-shrink-0" />
                         {errors.phone}
                       </p>
-                    )}
-                  </div>
+                  )}
+                </div>
 
                 <div className="md:col-span-2 group">
                   <label className="block text-sm font-semibold text-[#1E1E1E] mb-3 group-hover:text-[#6C7A59] transition-colors duration-300">
                     Street Address *
                   </label>
                   <div className="relative">
-                    <input
-                      type="text"
-                      value={formData.address}
-                      onChange={(e) => handleInputChange('address', e.target.value)}
+                  <input
+                    type="text"
+                    value={formData.address}
+                    onChange={(e) => handleInputChange('address', e.target.value)}
                       onBlur={(e) => {
                         if (e.target.value.trim()) {
                           const error = validateField('address', e.target.value);
@@ -1012,9 +1012,9 @@ const Checkout = () => {
                       Province *
                     </label>
                     <div className="relative">
-                      <select
-                        value={formData.province}
-                        onChange={(e) => handleInputChange('province', e.target.value)}
+                    <select
+                      value={formData.province}
+                    onChange={(e) => handleInputChange('province', e.target.value)}
                         className={`w-full px-6 py-4 border-2 rounded-2xl focus:ring-4 focus:ring-[#D4AF37]/30 focus:border-[#6C7A59] transition-all duration-300 text-[#1E1E1E] bg-white/80 font-medium ${
                           errors.province 
                             ? 'border-[#B35D5D] bg-[#F5F1E8] ring-[#B35D5D]/20' 
@@ -1025,10 +1025,10 @@ const Checkout = () => {
                         required
                       >
                         <option value="" className="text-[#9CAF88] font-medium">Select Province</option>
-                        {sriLankaProvinces.map(province => (
+                      {sriLankaProvinces.map(province => (
                           <option key={province} value={province} className="text-[#1E1E1E] font-medium">{province}</option>
-                        ))}
-                      </select>
+                      ))}
+                    </select>
                       {formData.province && !errors.province && (
                         <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none">
                           <div className="w-6 h-6 bg-[#059669] rounded-full flex items-center justify-center">
@@ -1039,12 +1039,12 @@ const Checkout = () => {
                         </div>
                       )}
                     </div>
-                    {errors.province && (
+                  {errors.province && (
                       <p className="text-[#B35D5D] text-sm mt-2 flex items-center font-medium">
                         <ExclamationTriangleIcon className="h-4 w-4 mr-2 flex-shrink-0" />
                         {errors.province}
                       </p>
-                    )}
+                  )}
                   </div>
 
                   <div className="group">
@@ -1052,9 +1052,9 @@ const Checkout = () => {
                       City *
                     </label>
                     <div className="relative">
-                      <select
-                        value={formData.city}
-                        onChange={(e) => handleInputChange('city', e.target.value)}
+                    <select
+                      value={formData.city}
+                    onChange={(e) => handleInputChange('city', e.target.value)}
                         className={`w-full px-6 py-4 border-2 rounded-2xl focus:ring-4 focus:ring-[#D4AF37]/30 focus:border-[#6C7A59] transition-all duration-300 text-[#1E1E1E] bg-white/80 font-medium ${
                           errors.city 
                             ? 'border-[#B35D5D] bg-[#F5F1E8] ring-[#B35D5D]/20' 
@@ -1062,16 +1062,16 @@ const Checkout = () => {
                             ? 'border-[#059669] bg-white ring-[#059669]/20'
                             : 'border-[#D6BFAF] hover:border-[#9CAF88]'
                         } ${!formData.province ? 'opacity-50 cursor-not-allowed bg-gray-100' : ''}`}
-                        disabled={!formData.province}
+                      disabled={!formData.province}
                         required
-                      >
+                    >
                         <option value="" className="text-[#9CAF88] font-medium">
                           {formData.province ? 'Select City' : 'Select Province First'}
                         </option>
-                        {formData.province && sriLankaCities[formData.province]?.map(city => (
+                    {formData.province && sriLankaCities[formData.province]?.map(city => (
                           <option key={city} value={city} className="text-[#1E1E1E] font-medium">{city}</option>
-                        ))}
-                      </select>
+                      ))}
+                    </select>
                       {formData.city && !errors.city && (
                         <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none">
                           <div className="w-6 h-6 bg-[#059669] rounded-full flex items-center justify-center">
@@ -1082,23 +1082,23 @@ const Checkout = () => {
                         </div>
                       )}
                     </div>
-                    {errors.city && (
+                  {errors.city && (
                       <p className="text-[#B35D5D] text-sm mt-2 flex items-center font-medium">
                         <ExclamationTriangleIcon className="h-4 w-4 mr-2 flex-shrink-0" />
                         {errors.city}
                       </p>
-                    )}
-                  </div>
+                  )}
+                </div>
 
                   <div className="group">
                     <label className="block text-sm font-semibold text-[#1E1E1E] mb-3 group-hover:text-[#6C7A59] transition-colors duration-300">
                       Postal Code *
                     </label>
                     <div className="relative">
-                      <input
-                        type="text"
-                        value={formData.postalCode}
-                        onChange={(e) => handleInputChange('postalCode', e.target.value)}
+                    <input
+                      type="text"
+                      value={formData.postalCode}
+                    onChange={(e) => handleInputChange('postalCode', e.target.value)}
                         onBlur={(e) => {
                           if (e.target.value.trim()) {
                             const error = validateField('postalCode', e.target.value);
@@ -1111,8 +1111,8 @@ const Checkout = () => {
                             : formData.postalCode.trim() && !errors.postalCode
                             ? 'border-[#059669] bg-white ring-[#059669]/20'
                             : 'border-[#D6BFAF] hover:border-[#9CAF88] bg-white/80'
-                        }`}
-                        placeholder="e.g., 10100"
+                    }`}
+                    placeholder="e.g., 10100"
                         required
                         pattern="[0-9]{5}"
                         maxLength="5"
@@ -1128,13 +1128,13 @@ const Checkout = () => {
                         </div>
                       )}
                     </div>
-                    {errors.postalCode && (
+                  {errors.postalCode && (
                       <p className="text-[#B35D5D] text-sm mt-2 flex items-center font-medium">
                         <ExclamationTriangleIcon className="h-4 w-4 mr-2 flex-shrink-0" />
                         {errors.postalCode}
                       </p>
-                    )}
-                  </div>
+                  )}
+                </div>
 
                 <div className="md:col-span-2 group">
                   <label className="block text-sm font-semibold text-[#1E1E1E] mb-3 group-hover:text-[#6C7A59] transition-colors duration-300">
@@ -1273,12 +1273,12 @@ const Checkout = () => {
                     }`}
                     style={{animationDelay: `${0.3 + index * 0.1}s`}}
                   >
-                    <input
-                      type="radio"
+                  <input
+                    type="radio"
                       name="paymentMethod"
                       value={method.id}
                       checked={paymentMethod === method.id}
-                      onChange={(e) => setPaymentMethod(e.target.value)}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
                       className="sr-only"
                     />
                     <div className="flex items-center w-full">
@@ -1298,8 +1298,8 @@ const Checkout = () => {
                         <h3 className="font-semibold text-[#1E1E1E] text-lg mb-1">{method.name}</h3>
                         <p className="text-[#6C7A59] text-sm leading-relaxed">{method.description}</p>
                       </div>
-                    </div>
-                  </label>
+                  </div>
+                </label>
                 ))}
               </div>
               
@@ -1319,12 +1319,12 @@ const Checkout = () => {
                             <div className="flex items-center mb-6">
                               <div className="w-10 h-10 bg-gradient-to-br from-[#7C3AED] to-[#D4AF37] rounded-xl flex items-center justify-center mr-4">
                                 <CreditCardIcon className="h-6 w-6 text-white" />
-                              </div>
+                                </div>
                               <div>
                                 <h3 className="text-xl font-display font-semibold text-[#1E1E1E] mb-1">Card Details</h3>
                                 <p className="text-[#6C7A59] font-medium">Enter your payment information securely</p>
-                              </div>
-                            </div>
+                                </div>
+                                </div>
                             
                             {/* Test Card Information */}
                             <div className="mb-8 p-6 bg-gradient-to-r from-[#F5F1E8] to-[#E6E6FA] rounded-2xl border border-[#D4AF37]/30">
@@ -1335,7 +1335,7 @@ const Checkout = () => {
                                   </svg>
                                 </div>
                                 <h4 className="text-sm font-semibold text-[#1E1E1E]">Test Environment</h4>
-                              </div>
+                                </div>
                               <p className="text-sm text-[#6C7A59] mb-4 font-medium">
                                 Use these test card numbers for development (no real charges):
                               </p>
@@ -1343,34 +1343,34 @@ const Checkout = () => {
                                 <div className="flex items-center justify-between p-3 bg-white/70 rounded-lg">
                                   <code className="font-mono text-[#7C3AED] font-semibold">4242 4242 4242 4242</code>
                                   <span className="text-[#059669] font-semibold">Success</span>
-                                </div>
+                            </div>
                                 <div className="flex items-center justify-between p-3 bg-white/70 rounded-lg">
                                   <code className="font-mono text-[#7C3AED] font-semibold">4000 0000 0000 0002</code>
                                   <span className="text-[#B35D5D] font-semibold">Declined</span>
-                                </div>
+                          </div>
                                 <div className="flex items-center justify-between p-3 bg-white/70 rounded-lg">
                                   <code className="font-mono text-[#7C3AED] font-semibold">4000 0000 0000 9995</code>
                                   <span className="text-[#D4AF37] font-semibold">Insufficient Funds</span>
-                                </div>
+                    </div>
                                 <div className="flex items-center justify-between p-3 bg-white/70 rounded-lg">
                                   <code className="font-mono text-[#7C3AED] font-semibold">4000 0000 0000 0069</code>
                                   <span className="text-[#B35D5D] font-semibold">Expired Card</span>
-                                </div>
-                              </div>
+                        </div>
+                    </div>
                               <p className="text-xs text-[#6C7A59] mt-4 font-medium">
-                                Use any future expiry date (e.g., 12/25) and any 3-digit CVC (e.g., 123)
-                              </p>
-                            </div>
+                      Use any future expiry date (e.g., 12/25) and any 3-digit CVC (e.g., 123)
+                    </p>
+                  </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="md:col-span-2">
                       <label className="block text-sm font-semibold text-[#1E1E1E] mb-3 group-hover:text-[#6C7A59] transition-colors duration-300">
                         Cardholder Name *
                       </label>
                       <div className="relative">
-                        <input
-                          type="text"
-                          value={cardData.cardholderName}
-                          onChange={(e) => handleCardInputChange('cardholderName', e.target.value)}
+                  <input
+                        type="text"
+                        value={cardData.cardholderName}
+                        onChange={(e) => handleCardInputChange('cardholderName', e.target.value)}
                           onBlur={(e) => {
                             if (e.target.value.trim()) {
                               const error = validateField('cardholderName', e.target.value);
@@ -1406,30 +1406,30 @@ const Checkout = () => {
                           {errors.cardholderName}
                         </p>
                       )}
-                    </div>
+                  </div>
 
                     <div className="md:col-span-2">
                       <label className="block text-sm font-semibold text-[#1E1E1E] mb-3 group-hover:text-[#6C7A59] transition-colors duration-300">
                         Card Number *
-                      </label>
+                </label>
                       <div className="relative">
-                        <input
-                          type="text"
-                          value={cardData.cardNumber}
-                          onChange={(e) => handleCardInputChange('cardNumber', formatCardNumber(e.target.value))}
-                          onBlur={(e) => {
-                            const error = validateCardNumber(e.target.value);
-                            setErrors(prev => ({ ...prev, cardNumber: error }));
-                          }}
+                      <input
+                        type="text"
+                        value={cardData.cardNumber}
+                        onChange={(e) => handleCardInputChange('cardNumber', formatCardNumber(e.target.value))}
+                        onBlur={(e) => {
+                          const error = validateCardNumber(e.target.value);
+                          setErrors(prev => ({ ...prev, cardNumber: error }));
+                        }}
                           className={`w-full px-6 py-4 border-2 rounded-2xl focus:ring-4 focus:ring-[#D4AF37]/30 focus:border-[#6C7A59] transition-all duration-300 text-[#1E1E1E] placeholder-[#9CAF88] font-medium ${
                             errors.cardNumber 
                               ? 'border-[#B35D5D] bg-[#F5F1E8] ring-[#B35D5D]/20' 
                               : cardData.cardNumber && !errors.cardNumber
                               ? 'border-[#059669] bg-white ring-[#059669]/20'
                               : 'border-[#D6BFAF] hover:border-[#9CAF88] bg-white/80'
-                          }`}
-                          placeholder="1234 5678 9012 3456"
-                          maxLength="19"
+                        }`}
+                        placeholder="1234 5678 9012 3456"
+                        maxLength="19"
                           required
                           autoComplete="cc-number"
                           pattern="[0-9\s]{13,19}"
@@ -1456,32 +1456,32 @@ const Checkout = () => {
                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                           </svg>
                           Valid card number
-                        </div>
+              </div>
                       )}
-                    </div>
+            </div>
 
                     <div>
                       <label className="block text-sm font-semibold text-[#1E1E1E] mb-3 group-hover:text-[#6C7A59] transition-colors duration-300">
                         Expiry Date *
                       </label>
                       <div className="relative">
-                        <input
-                          type="text"
-                          value={cardData.expiryDate}
-                          onChange={(e) => handleCardInputChange('expiryDate', formatExpiryDate(e.target.value))}
-                          onBlur={(e) => {
-                            const error = validateExpiryDate(e.target.value);
-                            setErrors(prev => ({ ...prev, expiryDate: error }));
-                          }}
+                      <input
+                        type="text"
+                        value={cardData.expiryDate}
+                        onChange={(e) => handleCardInputChange('expiryDate', formatExpiryDate(e.target.value))}
+                        onBlur={(e) => {
+                          const error = validateExpiryDate(e.target.value);
+                          setErrors(prev => ({ ...prev, expiryDate: error }));
+                        }}
                           className={`w-full px-6 py-4 border-2 rounded-2xl focus:ring-4 focus:ring-[#D4AF37]/30 focus:border-[#6C7A59] transition-all duration-300 text-[#1E1E1E] placeholder-[#9CAF88] font-medium ${
                             errors.expiryDate 
                               ? 'border-[#B35D5D] bg-[#F5F1E8] ring-[#B35D5D]/20' 
                               : cardData.expiryDate && !errors.expiryDate
                               ? 'border-[#059669] bg-white ring-[#059669]/20'
                               : 'border-[#D6BFAF] hover:border-[#9CAF88] bg-white/80'
-                          }`}
-                          placeholder="MM/YY"
-                          maxLength="5"
+                        }`}
+                        placeholder="MM/YY"
+                        maxLength="5"
                           required
                           autoComplete="cc-exp"
                           pattern="[0-9]{2}/[0-9]{2}"
@@ -1502,30 +1502,30 @@ const Checkout = () => {
                           {errors.expiryDate}
                         </p>
                       )}
-                    </div>
+          </div>
 
                     <div>
                       <label className="block text-sm font-semibold text-[#1E1E1E] mb-3 group-hover:text-[#6C7A59] transition-colors duration-300">
                         Security Code (CVV) *
                       </label>
                       <div className="relative">
-                        <input
-                          type="text"
-                          value={cardData.cvv}
-                          onChange={(e) => handleCardInputChange('cvv', e.target.value.replace(/\D/g, ''))}
-                          onBlur={(e) => {
-                            const error = validateCVV(e.target.value);
-                            setErrors(prev => ({ ...prev, cvv: error }));
-                          }}
+                      <input
+                        type="text"
+                        value={cardData.cvv}
+                        onChange={(e) => handleCardInputChange('cvv', e.target.value.replace(/\D/g, ''))}
+                        onBlur={(e) => {
+                          const error = validateCVV(e.target.value);
+                          setErrors(prev => ({ ...prev, cvv: error }));
+                        }}
                           className={`w-full px-6 py-4 border-2 rounded-2xl focus:ring-4 focus:ring-[#D4AF37]/30 focus:border-[#6C7A59] transition-all duration-300 text-[#1E1E1E] placeholder-[#9CAF88] font-medium ${
                             errors.cvv 
                               ? 'border-[#B35D5D] bg-[#F5F1E8] ring-[#B35D5D]/20' 
                               : cardData.cvv && !errors.cvv
                               ? 'border-[#059669] bg-white ring-[#059669]/20'
                               : 'border-[#D6BFAF] hover:border-[#9CAF88] bg-white/80'
-                          }`}
-                          placeholder="123"
-                          maxLength="4"
+                        }`}
+                        placeholder="123"
+                        maxLength="4"
                           required
                           autoComplete="cc-csc"
                           pattern="[0-9]{3,4}"
@@ -1616,14 +1616,14 @@ const Checkout = () => {
                 {cart?.map((item, index) => (
                   <div key={index} className="flex items-center space-x-4 p-6 bg-gradient-to-r from-[#F5F1E8] to-[#E6E6FA] rounded-2xl hover:shadow-lg transition-all duration-300 transform hover:scale-[1.02] border border-[#D4AF37]/20 hover:border-[#D4AF37]/40" style={{animationDelay: `${0.4 + index * 0.1}s`}}>
                     <div className="relative">
-                      <img
-                        src={item.images?.[0] || item.image || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iI2YzZjRmNiIvPjx0ZXh0IHg9IjE1MCIgeT0iMTUwIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiM2YjcyODAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiPlByb2R1Y3QgSW1hZ2U8L3RleHQ+PHRleHQgeD0iMTUwIiB5PSIxNzAiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzljYTNhZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSI+Tm8gSW1hZ2UgQXZhaWxhYmxlPC90ZXh0Pjwvc3ZnPg=='}
-                        alt={item.name || 'Product'}
+                    <img
+                      src={item.images?.[0] || item.image || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iI2YzZjRmNiIvPjx0ZXh0IHg9IjE1MCIgeT0iMTUwIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiM2YjcyODAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiPlByb2R1Y3QgSW1hZ2U8L3RleHQ+PHRleHQgeD0iMTUwIiB5PSIxNzAiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzljYTNhZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSI+Tm8gSW1hZ2UgQXZhaWxhYmxlPC90ZXh0Pjwvc3ZnPg=='}
+                      alt={item.name || 'Product'}
                         className="w-20 h-20 object-cover rounded-xl shadow-md"
-                        onError={(e) => {
-                          e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iI2YzZjRmNiIvPjx0ZXh0IHg9IjE1MCIgeT0iMTUwIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiM2YjcyODAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiPlByb2R1Y3QgSW1hZ2U8L3RleHQ+PHRleHQgeD0iMTUwIiB5PSIxNzAiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzljYTNhZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSI+Tm8gSW1hZ2UgQXZhaWxhYmxlPC90ZXh0Pjwvc3ZnPg==';
-                        }}
-                      />
+                      onError={(e) => {
+                        e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iI2YzZjRmNiIvPjx0ZXh0IHg9IjE1MCIgeT0iMTUwIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiM2YjcyODAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiPlByb2R1Y3QgSW1hZ2U8L3RleHQ+PHRleHQgeD0iMTUwIiB5PSIxNzAiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzljYTNhZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSI+Tm8gSW1hZ2UgQXZhaWxhYmxlPC90ZXh0Pjwvc3ZnPg==';
+                      }}
+                    />
                       <div className="absolute -top-2 -right-2 w-6 h-6 bg-[#D4AF37] rounded-full flex items-center justify-center text-white text-xs font-bold shadow-md">
                         {item.quantity}
                       </div>
@@ -1647,7 +1647,7 @@ const Checkout = () => {
                       <p className="font-bold text-[#1E1E1E] text-lg">
                         LKR {(item.price * item.quantity).toLocaleString()}
                       </p>
-                    </div>
+                  </div>
                   </div>
                 ))}
               </div>
@@ -1676,7 +1676,7 @@ const Checkout = () => {
                   <p className="text-[#9CAF88] font-medium mt-2 text-center">
                     {shippingCost === 0 ? 'Free shipping included' : 'Shipping included'}
                   </p>
-                </div>
+                  </div>
               </div>
 
               {/* Security Badge */}
@@ -1687,7 +1687,7 @@ const Checkout = () => {
                 <div className="flex items-center justify-center space-x-3">
                   <div className="w-12 h-12 bg-gradient-to-br from-[#059669] to-[#9CAF88] rounded-full flex items-center justify-center shadow-md animate-pulse-soft">
                     <LockClosedIcon className="h-6 w-6 text-white" />
-                  </div>
+                </div>
                   <div className="text-center">
                     <span className="text-[#059669] font-bold text-xl">Secure Checkout</span>
                     <p className="text-[#6C7A59] font-semibold">256-bit SSL encryption</p>

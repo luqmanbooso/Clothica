@@ -37,7 +37,7 @@ export const CouponProvider = ({ children }) => {
   // Validate coupon code
   const validateCoupon = async (code, subtotal) => {
     try {
-      const response = await axios.post('/api/coupons/validate', { code, subtotal });
+      const response = await api.post('/api/coupons/validate', { code, subtotal });
       return response.data;
     } catch (error) {
       return { valid: false, message: error.response?.data?.message || 'Invalid coupon code' };

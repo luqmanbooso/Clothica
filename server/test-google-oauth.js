@@ -62,3 +62,5 @@ console.log('4. Try Google login again');
 console.log('5. Check browser console for detailed logs');
 
 console.log('\n✨ Google OAuth test completed!');
+
+

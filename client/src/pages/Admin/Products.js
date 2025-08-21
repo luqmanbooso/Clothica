@@ -6,7 +6,7 @@ import {
   TruckIcon, ChartBarIcon
 } from '@heroicons/react/24/outline';
 import { motion } from 'framer-motion';
-import axios from 'axios';
+import api from '../../utils/api';
 import { useToast } from '../../contexts/ToastContext';
 
 const Products = () => {
@@ -120,7 +120,7 @@ const Products = () => {
         sortOrder
       };
       
-      const response = await axios.get('/api/admin/products', { params });
+      const response = await api.get('/api/admin/products', { params });
       setProducts(response.data.products || []);
       setTotalPages(response.data.totalPages || 1);
       setTotalProducts(response.data.total || 0);
@@ -135,7 +135,7 @@ const Products = () => {
   // Fetch Categories & Brands
   const fetchCategories = useCallback(async () => {
     try {
-      const response = await axios.get('/api/admin/categories');
+      const response = await api.get('/api/admin/categories');
       setCategories(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error fetching categories:', error);
@@ -193,7 +193,7 @@ const Products = () => {
   // Fetch Inventory Alerts
   const fetchInventoryAlerts = useCallback(async () => {
     try {
-      const response = await axios.get('/api/admin/inventory/alerts');
+      const response = await api.get('/api/admin/inventory/alerts');
       setInventoryAlerts(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error fetching inventory alerts:', error);
@@ -204,7 +204,7 @@ const Products = () => {
   // Fetch stock history for a product
   const fetchStockHistory = async (productId) => {
     try {
-      const response = await axios.get(`/api/admin/products/${productId}/stock-history`);
+      const response = await api.get(`/api/admin/products/${productId}/stock-history`);
       setStockHistory(response.data || []);
     } catch (error) {
       console.error('Error fetching stock history:', error);
@@ -280,7 +280,7 @@ const Products = () => {
     }
 
     try {
-      await axios.post('/api/admin/products/bulk-action', {
+      await api.post('/api/admin/products/bulk-action', {
         productIds: selectedProducts,
         action
       });
@@ -314,7 +314,7 @@ const Products = () => {
   const handleDelete = async (productId) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
       try {
-        await axios.delete(`/api/admin/products/${productId}`);
+        await api.delete(`/api/admin/products/${productId}`);
         showSuccess('Product deleted successfully');
         fetchProducts();
       } catch (error) {
@@ -327,7 +327,7 @@ const Products = () => {
   // Enhanced stock update with history tracking
   const handleStockUpdate = async (productId, newStock, action = 'adjustment', reason = 'Manual stock update', notes = '') => {
     try {
-      const response = await axios.post(`/api/admin/products/${productId}/stock`, {
+      const response = await api.post(`/api/admin/products/${productId}/stock`, {
         quantity: newStock,
         type: action,
         reason: reason,
@@ -429,10 +429,10 @@ const Products = () => {
     e.preventDefault();
     try {
       if (editingProduct) {
-        await axios.put(`/api/admin/products/${editingProduct._id}`, formData);
+        await api.put(`/api/admin/products/${editingProduct._id}`, formData);
         showSuccess('Product updated successfully! 🎉');
       } else {
-        await axios.post('/api/admin/products', formData);
+        await api.post('/api/admin/products', formData);
         showSuccess('Product created successfully! 🚀');
       }
       setShowProductModal(false);

@@ -10,7 +10,8 @@ import {
   FireIcon,
   SparklesIcon,
   CurrencyDollarIcon,
-  InformationCircleIcon
+  InformationCircleIcon,
+  TruckIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
 import { useLoyalty } from '../contexts/LoyaltyContext';
@@ -149,12 +150,54 @@ const SmartDiscounts = ({ onCouponApplied, onCouponRemoved, appliedCoupon = null
   ];
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setCoupons(mockCoupons);
-      setLoading(false);
-    }, 1000);
+    fetchCoupons();
   }, []);
+
+  // Fetch available coupons from API
+  const fetchCoupons = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Fetch active coupons from the public endpoint
+      const response = await api.get('/api/coupons/available');
+      const apiCoupons = response.data || [];
+      
+      // Filter coupons based on user context and cart
+      const eligibleCoupons = apiCoupons.filter(coupon => {
+        // Check if coupon is active and within date range
+        if (!coupon.isActive) return false;
+        
+        const now = new Date();
+        const startDate = new Date(coupon.validFrom || coupon.startDate);
+        const endDate = new Date(coupon.validUntil || coupon.endDate);
+        if (now < startDate || now > endDate) return false;
+        
+        // Check user group eligibility
+        if (coupon.userGroups && coupon.userGroups.length > 0 && !coupon.userGroups.includes('all')) {
+          if (!isAuthenticated && !coupon.userGroups.includes('guest')) return false;
+          if (isAuthenticated && user?.isNew && !coupon.userGroups.includes('new')) return false;
+          if (isAuthenticated && !user?.isNew && !coupon.userGroups.includes('returning')) return false;
+        }
+        
+        // Check loyalty level eligibility
+        if (coupon.loyaltyLevels && coupon.loyaltyLevels.length > 0 && !coupon.loyaltyLevels.includes('all')) {
+          if (!level || !coupon.loyaltyLevels.includes(level)) return false;
+        }
+        
+        return true;
+      });
+      
+      setCoupons(eligibleCoupons);
+    } catch (error) {
+      console.error('Error fetching coupons:', error);
+      setError('Failed to load coupons');
+      // Fallback to mock data if API fails
+      setCoupons(mockCoupons);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Filter and sort coupons
   const filteredAndSortedCoupons = useCallback(() => {

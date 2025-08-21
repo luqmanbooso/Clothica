@@ -149,12 +149,59 @@ const SpecialOffers = ({ maxOffers = 5, showCountdown = true }) => {
   ];
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setOffers(mockOffers);
-      setLoading(false);
-    }, 1000);
+    fetchOffers();
   }, []);
+
+  // Fetch offers from API
+  const fetchOffers = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Fetch active special offers from the backend
+      const response = await api.get('/api/special-offers/public');
+      const apiOffers = response.data || [];
+      
+      // Filter offers based on user context
+      const filteredOffers = apiOffers.filter(offer => {
+        // Check if offer is active and within date range
+        if (!offer.isActive) return false;
+        
+        const now = new Date();
+        const startDate = new Date(offer.startDate);
+        const endDate = new Date(offer.endDate);
+        if (now < startDate || now > endDate) return false;
+        
+        // Check user group eligibility
+        if (offer.userGroups && offer.userGroups.length > 0 && !offer.userGroups.includes('all')) {
+          if (!isAuthenticated && !offer.userGroups.includes('guest')) return false;
+          if (isAuthenticated && user?.isNew && !offer.userGroups.includes('new')) return false;
+          if (isAuthenticated && !user?.isNew && !offer.userGroups.includes('returning')) return false;
+        }
+        
+        // Check loyalty level eligibility
+        if (offer.loyaltyLevels && offer.loyaltyLevels.length > 0 && !offer.loyaltyLevels.includes('all')) {
+          if (!level || !offer.loyaltyLevels.includes(level)) return false;
+        }
+        
+        return true;
+      });
+      
+      // Sort by priority and take max offers
+      const sortedOffers = filteredOffers
+        .sort((a, b) => (a.priority || 0) - (b.priority || 0))
+        .slice(0, maxOffers);
+      
+      setOffers(sortedOffers);
+    } catch (error) {
+      console.error('Error fetching offers:', error);
+      setError('Failed to load offers');
+      // Fallback to mock data if API fails
+      setOffers(mockOffers.slice(0, maxOffers));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Initialize countdown timers
   useEffect(() => {

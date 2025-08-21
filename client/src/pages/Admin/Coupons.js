@@ -14,7 +14,7 @@ import {
   StarIcon
 } from '@heroicons/react/24/outline';
 import { motion } from 'framer-motion';
-import axios from 'axios'; // Added axios import
+import api from '../../utils/api';
 import { FiTag, FiCheckCircle, FiUsers, FiDollarSign } from 'react-icons/fi';
 import { useToast } from '../../contexts/ToastContext';
 
@@ -60,7 +60,7 @@ const Coupons = () => {
   // Advanced Coupon Management
   const handleBulkCouponAction = async (action, couponIds) => {
     try {
-      const response = await axios.post('/api/admin/coupons/bulk-action', {
+      const response = await api.post('/api/admin/coupons/bulk-action', {
         couponIds,
         action
       });
@@ -90,7 +90,7 @@ const Coupons = () => {
       delete duplicatedCoupon.createdAt;
       delete duplicatedCoupon.updatedAt;
       
-      const response = await axios.post('/api/admin/coupons', duplicatedCoupon);
+      const response = await api.post('/api/admin/coupons', duplicatedCoupon);
       if (response.data) {
         showSuccess('Coupon duplicated successfully');
         fetchCoupons();
@@ -108,10 +108,11 @@ const Coupons = () => {
   const fetchCoupons = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/admin/coupons');
+      const response = await api.get('/api/admin/coupons');
       setCoupons(response.data);
     } catch (error) {
       console.error('Error fetching coupons:', error);
+      showError('Failed to load coupons');
       // Set empty array if API fails
       setCoupons([]);
     } finally {
@@ -191,39 +192,56 @@ const Coupons = () => {
     setShowAddModal(true);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (editingCoupon) {
-      setCoupons(prev => prev.map(coupon => 
-        coupon._id === editingCoupon._id 
-          ? { ...coupon, ...formData }
-          : coupon
-      ));
-    } else {
-      const newCoupon = {
-        _id: Date.now(), // Placeholder for backend ID
-        ...formData,
-        usedCount: 0,
-        createdAt: new Date().toISOString().split('T')[0]
-      };
-      setCoupons(prev => [...prev, newCoupon]);
-    }
-    setShowAddModal(false);
-    setEditingCoupon(null);
-  };
-
-  const handleDeleteCoupon = (couponId) => {
-    if (window.confirm('Are you sure you want to delete this coupon?')) {
-      setCoupons(prev => prev.filter(coupon => coupon._id !== couponId));
+    try {
+      if (editingCoupon) {
+        // Update existing coupon
+        await api.put(`/api/admin/coupons/${editingCoupon._id}`, formData);
+        showSuccess('Coupon updated successfully');
+      } else {
+        // Create new coupon
+        await api.post('/api/admin/coupons', formData);
+        showSuccess('Coupon created successfully');
+      }
+      // Refresh the coupons list
+      await fetchCoupons();
+      setShowAddModal(false);
+      setEditingCoupon(null);
+    } catch (error) {
+      console.error('Error saving coupon:', error);
+      showError(editingCoupon ? 'Failed to update coupon' : 'Failed to create coupon');
     }
   };
 
-  const toggleCouponStatus = (couponId) => {
-    setCoupons(prev => prev.map(coupon => 
-      coupon._id === couponId 
-        ? { ...coupon, isActive: !coupon.isActive }
-        : coupon
-    ));
+  const handleDeleteCoupon = async (couponId) => {
+    if (window.confirm('Are you sure you want to delete this coupon? This action cannot be undone.')) {
+      try {
+        await api.delete(`/api/admin/coupons/${couponId}`);
+        showSuccess('Coupon deleted successfully');
+        // Refresh the coupons list
+        await fetchCoupons();
+      } catch (error) {
+        console.error('Error deleting coupon:', error);
+        showError('Failed to delete coupon');
+      }
+    }
+  };
+
+  const toggleCouponStatus = async (couponId) => {
+    try {
+      const coupon = coupons.find(c => c._id === couponId);
+      await api.put(`/api/admin/coupons/${couponId}`, { 
+        ...coupon, 
+        isActive: !coupon.isActive 
+      });
+      showSuccess(`Coupon ${coupon.isActive ? 'deactivated' : 'activated'} successfully`);
+      // Refresh the coupons list
+      await fetchCoupons();
+    } catch (error) {
+      console.error('Error toggling coupon status:', error);
+      showError('Failed to update coupon status');
+    }
   };
 
   const getCouponTypeIcon = (type) => {

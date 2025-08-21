@@ -173,3 +173,5 @@ If you encounter issues:
 3. Test with the `/api/email/status` endpoint
 4. Check if the service is in mock mode
 5. Ensure all required packages are installed
+
+

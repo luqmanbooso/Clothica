@@ -12,7 +12,7 @@ import {
   TicketIcon,
   CubeIcon
 } from '@heroicons/react/24/outline';
-import axios from 'axios';
+import api from '../../utils/api';
 import { useToast } from '../../contexts/ToastContext';
 
 const Events = () => {
@@ -109,7 +109,7 @@ const Events = () => {
   // Fetch data
   const fetchEvents = useCallback(async () => {
     try {
-      const response = await axios.get(`/api/events?page=${currentPage}&type=${filterType !== 'all' ? filterType : ''}&status=${filterStatus !== 'all' ? filterStatus : ''}&search=${searchTerm}`);
+      const response = await api.get(`/api/events?page=${currentPage}&type=${filterType !== 'all' ? filterType : ''}&status=${filterStatus !== 'all' ? filterStatus : ''}&search=${searchTerm}`);
       setEvents(response.data.events);
       setTotalPages(response.data.pagination.pages);
     } catch (error) {
@@ -120,7 +120,7 @@ const Events = () => {
 
   const fetchBanners = useCallback(async () => {
     try {
-      const response = await axios.get('/api/admin/banners');
+      const response = await api.get('/api/admin/banners');
       setBanners(response.data);
     } catch (error) {
       console.error('Error fetching banners:', error);
@@ -129,7 +129,7 @@ const Events = () => {
 
   const fetchDiscounts = useCallback(async () => {
     try {
-      const response = await axios.get('/api/admin/unified-discounts');
+      const response = await api.get('/api/admin/unified-discounts');
       setDiscounts(response.data);
     } catch (error) {
       console.error('Error fetching discounts:', error);
@@ -227,7 +227,7 @@ const Events = () => {
   const handleCreateBanner = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post('/api/admin/banners', bannerForm);
+      const response = await api.post('/api/admin/banners', bannerForm);
       showSuccess('Banner created successfully');
       setShowBannerModal(false);
       setBannerForm({
@@ -252,7 +252,7 @@ const Events = () => {
   const handleCreateDiscount = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post('/api/admin/unified-discounts', discountForm);
+      const response = await api.post('/api/admin/unified-discounts', discountForm);
       showSuccess('Discount created successfully');
       setShowDiscountModal(false);
       setDiscountForm({
@@ -289,10 +289,10 @@ const Events = () => {
     setIsSubmitting(true);
     try {
       if (editingEvent) {
-        await axios.put(`/api/events/${editingEvent._id}`, formData);
+        await api.put(`/api/events/${editingEvent._id}`, formData);
         showSuccess('Campaign updated successfully! 🎉');
       } else {
-        await axios.post('/api/events', formData);
+        await api.post('/api/events', formData);
         showSuccess('Campaign created successfully! 🚀');
       }
       setShowModal(false);
@@ -375,7 +375,7 @@ const Events = () => {
   const handleDelete = async (eventId) => {
     if (window.confirm('Are you sure you want to delete this event?')) {
       try {
-        await axios.delete(`/api/events/${eventId}`);
+        await api.delete(`/api/events/${eventId}`);
         showSuccess('Event deleted successfully');
         fetchEvents();
       } catch (error) {
@@ -387,7 +387,7 @@ const Events = () => {
 
   const handleActivate = async (eventId) => {
     try {
-      await axios.post(`/api/events/${eventId}/activate`);
+      await api.post(`/api/events/${eventId}/activate`);
       showSuccess('Event activated successfully');
       fetchEvents();
     } catch (error) {
@@ -398,7 +398,7 @@ const Events = () => {
 
   const handleDeactivate = async (eventId) => {
     try {
-      await axios.post(`/api/events/${eventId}/deactivate`);
+      await api.post(`/api/events/${eventId}/deactivate`);
       showSuccess('Event deactivated successfully');
       fetchEvents();
     } catch (error) {

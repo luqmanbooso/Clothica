@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { FiUsers, FiSearch, FiEye, FiEdit, FiUserCheck, FiUserX, FiMail, FiPhone, FiCalendar, FiXCircle, FiUserPlus, FiStar } from 'react-icons/fi';
-import axios from 'axios';
+import api from '../../utils/api';
 import { useToast } from '../../contexts/ToastContext';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
@@ -52,7 +52,7 @@ const AdminUsers = () => {
         isActive: filterStatus === 'all' ? undefined : filterStatus === 'active'
       };
 
-      const response = await axios.get('/api/admin/users', { params });
+      const response = await api.get('/api/admin/users', { params });
       
       // Handle different response structures
       if (response.data && Array.isArray(response.data)) {
@@ -82,7 +82,7 @@ const AdminUsers = () => {
 
   const toggleUserStatus = async (userId, currentStatus) => {
     try {
-      await axios.put(`/api/admin/users/${userId}/status`, {
+      await api.put(`/api/admin/users/${userId}/status`, {
         isActive: !currentStatus
       });
       showSuccess('User status updated successfully');
@@ -114,7 +114,7 @@ const AdminUsers = () => {
     }
 
     try {
-      const response = await axios.post('/api/admin/users/bulk-action', {
+      const response = await api.post('/api/admin/users/bulk-action', {
         userIds: selectedUsers,
         action: action
       });

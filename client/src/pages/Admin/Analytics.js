@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FiTrendingUp, FiUsers, FiShoppingCart, FiDollarSign, FiPackage, FiCalendar, FiBarChart } from 'react-icons/fi';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { format, subDays, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
-import axios from 'axios';
+import api from '../../utils/api';
 import { useToast } from '../../contexts/ToastContext';
 
 const AdminAnalytics = () => {
@@ -34,7 +34,7 @@ const AdminAnalytics = () => {
   const fetchAnalyticsData = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`/api/admin/analytics?range=${dateRange}&period=${selectedPeriod}`);
+      const response = await api.get(`/api/admin/analytics?range=${dateRange}&period=${selectedPeriod}`);
       setAnalyticsData(response.data);
     } catch (error) {
       console.error('Error fetching analytics data:', error);
