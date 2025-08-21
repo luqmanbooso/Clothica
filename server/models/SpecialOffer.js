@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 const specialOfferSchema = new mongoose.Schema({
+  // Basic Information
   name: {
     type: String,
     required: true,
@@ -10,49 +11,21 @@ const specialOfferSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  
+  // Offer Type
   type: {
     type: String,
-    enum: ['flash_sale', 'seasonal', 'clearance', 'bundle', 'spin_event', 'loyalty_reward', 'welcome', 'recovery'],
+    enum: ['flash_sale', 'bundle_deal', 'limited_edition', 'early_access', 'exclusive'],
     required: true
   },
   
-  // Discount Details
-  discountType: {
+  // Offer Details
+  offerValue: {
     type: String,
-    enum: ['percentage', 'fixed', 'buy_one_get_one', 'free_shipping'],
-    required: true
-  },
-  discountValue: {
-    type: Number,
-    required: true
-  },
-  minOrderAmount: {
-    type: Number,
-    default: 0
-  },
-  maxDiscount: {
-    type: Number,
-    default: null
+    required: true // e.g., "50% OFF", "Buy 2 Get 1 Free", "Free Shipping"
   },
   
-  // Targeting
-  targetUserGroups: [{
-    type: String,
-    enum: ['all', 'new', 'returning', 'bronze', 'silver', 'gold', 'vip', 'inactive']
-  }],
-  targetCategories: [{
-    type: String
-  }],
-  targetProducts: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Product'
-  }],
-  excludedProducts: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Product'
-  }],
-  
-  // Timing
+  // Validity
   startDate: {
     type: Date,
     required: true
@@ -61,263 +34,117 @@ const specialOfferSchema = new mongoose.Schema({
     type: Date,
     required: true
   },
-  isRecurring: {
-    type: Boolean,
-    default: false
+  
+  // Event Integration
+  eventId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Event'
   },
-  recurringPattern: {
-    type: String,
-    enum: ['daily', 'weekly', 'monthly', 'yearly']
+  isActive: {
+    type: Boolean,
+    default: true
   },
   
-  // Creative Display
-  displayTitle: String,
-  displaySubtitle: String,
+  // Target Products
+  applicableProducts: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Product'
+  }],
+  applicableCategories: [{
+    type: String,
+    enum: ['men', 'women', 'kids', 'accessories', 'shoes', 'bags']
+  }],
+  
+  // Display Settings
+  displayImage: String,
   displayColor: {
     type: String,
     default: '#FF6B6B'
   },
-  displayGradient: {
-    type: String,
-    default: 'linear-gradient(135deg, #FF6B6B 0%, #FFE66D 100%)'
-  },
   displayIcon: {
     type: String,
-    default: '🎉'
+    default: '🎁'
   },
-  displayImage: String,
-  displayBadge: String,
-  displayMessage: String,
-  
-  // Banner Integration
-  showInBanner: {
-    type: Boolean,
-    default: true
-  },
-  bannerPriority: {
-    type: Number,
-    default: 1,
-    min: 1,
-    max: 10
-  },
-  bannerPosition: {
-    type: String,
-    enum: ['hero', 'top', 'middle', 'bottom'],
-    default: 'hero'
-  },
-  
-  // Spin Event Integration
-  isSpinEvent: {
-    type: Boolean,
-    default: false
-  },
-  spinEventTitle: String,
-  spinEventDescription: String,
-  spinEventDuration: Number, // in days
-  spinEventRewards: [{
-    rarity: {
-      type: String,
-      enum: ['common', 'uncommon', 'rare', 'epic']
-    },
-    discount: Number,
-    probability: Number, // percentage
-    color: String,
-    icon: String,
-    message: String
-  }],
-  
-  // Automation
-  isAutomated: {
-    type: Boolean,
-    default: false
-  },
-  automationRules: [{
-    trigger: {
-      type: String,
-      enum: ['low_inventory', 'slow_sales', 'seasonal', 'user_behavior', 'time_based']
-    },
-    condition: String,
-    action: String
-  }],
   
   // Performance Tracking
-  views: {
-    type: Number,
-    default: 0
-  },
-  clicks: {
-    type: Number,
-    default: 0
-  },
-  conversions: {
-    type: Number,
-    default: 0
-  },
-  revenue: {
-    type: Number,
-    default: 0
+  analytics: {
+    views: { type: Number, default: 0 },
+    clicks: { type: Number, default: 0 },
+    activations: { type: Number, default: 0 },
+    redemptions: { type: Number, default: 0 },
+    revenue: { type: Number, default: 0 }
   },
   
-  // A/B Testing
-  isABTest: {
-    type: Boolean,
-    default: false
-  },
-  abTestVariants: [{
-    name: String,
-    displayColor: String,
-    displayMessage: String,
-    performance: {
-      views: { type: Number, default: 0 },
-      clicks: { type: Number, default: 0 },
-      conversions: { type: Number, default: 0 }
-    }
-  }],
-  
-  // Notifications
-  sendNotifications: {
-    type: Boolean,
-    default: false
-  },
-  notificationChannels: [{
-    type: String,
-    enum: ['email', 'sms', 'push', 'in_app']
-  }],
-  
-  // Status
-  status: {
-    type: String,
-    enum: ['draft', 'active', 'paused', 'ended', 'archived'],
-    default: 'draft'
-  },
-  
+  // Created by
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
-  },
-  
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
   }
 }, {
   timestamps: true
 });
 
 // Indexes
-specialOfferSchema.index({ status: 1, startDate: 1, endDate: 1 });
-specialOfferSchema.index({ type: 1, targetUserGroups: 1 });
-specialOfferSchema.index({ isSpinEvent: 1, status: 1 });
-specialOfferSchema.index({ showInBanner: 1, bannerPriority: 1 });
+specialOfferSchema.index({ eventId: 1 });
+specialOfferSchema.index({ isActive: 1, startDate: 1, endDate: 1 });
+specialOfferSchema.index({ type: 1 });
 
-// Pre-save middleware
+// Virtual for validity
+specialOfferSchema.virtual('isValid').get(function() {
+  if (!this.isActive) return false;
+  const now = new Date();
+  return this.startDate <= now && this.endDate >= now;
+});
+
+// Virtual for conversion rate
+specialOfferSchema.virtual('conversionRate').get(function() {
+  if (this.analytics.views === 0) return 0;
+  return (this.analytics.clicks / this.analytics.views) * 100;
+});
+
+// Pre-save middleware to validate dates
 specialOfferSchema.pre('save', function(next) {
-  this.updatedAt = new Date();
+  if (this.startDate >= this.endDate) {
+    return next(new Error('Start date must be before end date'));
+  }
   next();
 });
 
-// Methods
-specialOfferSchema.methods.isActive = function() {
+// Method to record view
+specialOfferSchema.methods.recordView = function() {
+  this.analytics.views += 1;
+  return this.save();
+};
+
+// Method to record click
+specialOfferSchema.methods.recordClick = function() {
+  this.analytics.clicks += 1;
+  return this.save();
+};
+
+// Method to record activation
+specialOfferSchema.methods.recordActivation = function() {
+  this.analytics.activations += 1;
+  return this.save();
+};
+
+// Method to record redemption
+specialOfferSchema.methods.recordRedemption = function(amount = 0) {
+  this.analytics.redemptions += 1;
+  this.analytics.revenue += amount;
+  return this.save();
+};
+
+// Static method to get active offers for an event
+specialOfferSchema.statics.getActiveEventOffers = function(eventId) {
   const now = new Date();
-  return this.status === 'active' && 
-         now >= this.startDate && 
-         now <= this.endDate;
-};
-
-specialOfferSchema.methods.isValidForUser = function(user) {
-  if (!this.isActive()) return false;
-  
-  // Check user group targeting
-  if (this.targetUserGroups.length > 0 && !this.targetUserGroups.includes('all')) {
-    const userGroup = this.getUserGroup(user);
-    if (!this.targetUserGroups.includes(userGroup)) {
-      return false;
-    }
-  }
-  
-  return true;
-};
-
-specialOfferSchema.methods.getUserGroup = function(user) {
-  if (user.loyaltyMembership === 'vip') return 'vip';
-  if (user.loyaltyMembership === 'gold') return 'gold';
-  if (user.loyaltyMembership === 'silver') return 'silver';
-  if (user.loyaltyMembership === 'bronze') return 'bronze';
-  
-  // Check if new or returning user
-  const daysSinceRegistration = Math.floor((new Date() - user.createdAt) / (1000 * 60 * 60 * 24));
-  if (daysSinceRegistration <= 30) return 'new';
-  
-  return 'returning';
-};
-
-specialOfferSchema.methods.calculateDiscount = function(orderAmount) {
-  if (orderAmount < this.minOrderAmount) {
-    return 0;
-  }
-  
-  let discount = 0;
-  
-  if (this.discountType === 'percentage') {
-    discount = (orderAmount * this.discountValue) / 100;
-    if (this.maxDiscount) {
-      discount = Math.min(discount, this.maxDiscount);
-    }
-  } else if (this.discountType === 'fixed') {
-    discount = this.discountValue;
-  }
-  
-  return Math.round(discount * 100) / 100;
-};
-
-specialOfferSchema.methods.incrementView = function() {
-  this.views++;
-  return this.save();
-};
-
-specialOfferSchema.methods.incrementClick = function() {
-  this.clicks++;
-  return this.save();
-};
-
-specialOfferSchema.methods.incrementConversion = function(amount = 0) {
-  this.conversions++;
-  this.revenue += amount;
-  return this.save();
-};
-
-// Static methods
-specialOfferSchema.statics.getActiveOffers = function(user = null) {
-  const query = {
-    status: 'active',
-    startDate: { $lte: new Date() },
-    endDate: { $gte: new Date() }
-  };
-  
-  return this.find(query).sort({ bannerPriority: -1, startDate: -1 });
-};
-
-specialOfferSchema.statics.getSpinEvents = function() {
   return this.find({
-    isSpinEvent: true,
-    status: 'active',
-    startDate: { $lte: new Date() },
-    endDate: { $gte: new Date() }
+    eventId,
+    isActive: true,
+    startDate: { $lte: now },
+    endDate: { $gte: now }
   }).sort({ startDate: -1 });
-};
-
-specialOfferSchema.statics.getBannerOffers = function() {
-  return this.find({
-    showInBanner: true,
-    status: 'active',
-    startDate: { $lte: new Date() },
-    endDate: { $gte: new Date() }
-  }).sort({ bannerPriority: -1, startDate: -1 });
 };
 
 module.exports = mongoose.model('SpecialOffer', specialOfferSchema);

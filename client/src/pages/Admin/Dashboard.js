@@ -53,7 +53,8 @@ const AdminDashboard = () => {
     clientFeatures: {},
     inventory: {},
     analytics: {},
-    realTime: {}
+    realTime: {},
+    customerIntelligence: {}
   });
 
 
@@ -63,13 +64,14 @@ const AdminDashboard = () => {
     try {
       setLoading(true);
       
-      const [overviewRes, financeRes, clientFeaturesRes, inventoryRes, analyticsRes, realTimeRes] = await Promise.all([
-        api.get('/api/admin/dashboard/overview'),
-        api.get('/api/admin/dashboard/finance'),
-        api.get('/api/admin/dashboard/client-features'),
-        api.get('/api/admin/dashboard/inventory'),
-        api.get(`/api/admin/dashboard/analytics?range=${timeRange}&period=${selectedPeriod}`),
-        api.get('/api/admin/dashboard/real-time')
+      const [overviewRes, financeRes, clientFeaturesRes, inventoryRes, analyticsRes, realTimeRes, customerIntelligenceRes] = await Promise.all([
+          api.get('/api/admin/dashboard/overview'),
+          api.get('/api/admin/dashboard/finance'),
+          api.get('/api/admin/dashboard/client-features'),
+          api.get('/api/admin/dashboard/inventory'),
+          api.get(`/api/admin/dashboard/analytics?range=${timeRange}&period=${selectedPeriod}`),
+        api.get('/api/admin/dashboard/real-time'),
+        api.get(`/api/admin/dashboard/customer-intelligence?range=${timeRange}&period=${selectedPeriod}`)
       ]);
 
       // Validate and sanitize the data
@@ -81,13 +83,14 @@ const AdminDashboard = () => {
         return data;
       };
 
-      setDashboardData({
+        setDashboardData({
         overview: validateData(overviewRes.data, 'overview'),
         finance: validateData(financeRes.data, 'finance'),
         clientFeatures: validateData(clientFeaturesRes.data, 'clientFeatures'),
         inventory: validateData(inventoryRes.data, 'inventory'),
         analytics: validateData(analyticsRes.data, 'analytics'),
-        realTime: validateData(realTimeRes.data, 'realTime')
+        realTime: validateData(realTimeRes.data, 'realTime'),
+        customerIntelligence: validateData(customerIntelligenceRes.data, 'customerIntelligence')
       });
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -102,7 +105,8 @@ const AdminDashboard = () => {
         clientFeatures: {},
         inventory: {},
         analytics: {},
-        realTime: {}
+        realTime: {},
+        customerIntelligence: {}
       });
     } finally {
       setLoading(false);
@@ -399,7 +403,8 @@ const AdminDashboard = () => {
               { id: 'finance', name: 'Finance & Profit', icon: BanknotesIcon },
               { id: 'clientFeatures', name: 'Client Features', icon: SparklesIcon },
               { id: 'inventory', name: 'Inventory', icon: CubeIcon },
-              { id: 'analytics', name: 'Analytics', icon: ChartBarIcon }
+              { id: 'analytics', name: 'Analytics', icon: ChartBarIcon },
+              { id: 'customerIntelligence', name: 'Customer Intelligence', icon: UsersIcon }
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -470,20 +475,20 @@ const AdminDashboard = () => {
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Customer Segments</h3>
                     <ResponsiveContainer width="100%" height={300}>
                       <PieChart>
-                                              <Pie
+                        <Pie
                         data={dashboardData.analytics?.customerSegments || []}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ segment, percent }) => `${segment} ${(percent * 100).toFixed(0)}%`}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="count"
-                      >
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ segment, percent }) => `${segment} ${(percent * 100).toFixed(0)}%`}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="count"
+                        >
                         {(dashboardData.analytics?.customerSegments || []).map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={['#6C7A59', '#D6BFAF', '#B35D5D', '#9CAF88'][index % 4]} />
-                        ))}
-                      </Pie>
+                            <Cell key={`cell-${index}`} fill={['#6C7A59', '#D6BFAF', '#B35D5D', '#9CAF88'][index % 4]} />
+                          ))}
+                        </Pie>
                         <Tooltip />
                       </PieChart>
                     </ResponsiveContainer>
@@ -539,19 +544,19 @@ const AdminDashboard = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {dashboardData.finance?.costBreakdown ? 
                       Object.entries(dashboardData.finance.costBreakdown).map(([key, value]) => (
-                        <div key={key} className="bg-white rounded-lg p-4">
-                          <h4 className="font-medium text-gray-900 capitalize">
-                            {key.replace(/([A-Z])/g, ' $1').trim()}
-                          </h4>
-                          <p className="text-2xl font-bold text-gray-900">
+                      <div key={key} className="bg-white rounded-lg p-4">
+                        <h4 className="font-medium text-gray-900 capitalize">
+                          {key.replace(/([A-Z])/g, ' $1').trim()}
+                        </h4>
+                        <p className="text-2xl font-bold text-gray-900">
                             LKR {(value || 0).toLocaleString()}
-                          </p>
-                          <p className="text-sm text-gray-600">
+                        </p>
+                        <p className="text-sm text-gray-600">
                             {dashboardData.finance?.grossRevenue ? 
                               ((value / dashboardData.finance.grossRevenue) * 100).toFixed(1) : 0
                             }% of revenue
-                          </p>
-                        </div>
+                        </p>
+                      </div>
                       ))
                       : 
                       <div className="col-span-4 text-center py-8 text-gray-500">
@@ -565,15 +570,15 @@ const AdminDashboard = () => {
                 <div className="bg-gray-50 rounded-lg p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue by Category</h3>
                   {dashboardData.finance?.revenueByCategory && dashboardData.finance.revenueByCategory.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={dashboardData.finance.revenueByCategory}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="category" />
-                        <YAxis />
-                        <Tooltip formatter={(value) => [`LKR ${value.toLocaleString()}`, 'Revenue']} />
-                        <Bar dataKey="revenue" fill="#6C7A59" />
-                      </BarChart>
-                    </ResponsiveContainer>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={dashboardData.finance.revenueByCategory}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="category" />
+                      <YAxis />
+                      <Tooltip formatter={(value) => [`LKR ${value.toLocaleString()}`, 'Revenue']} />
+                      <Bar dataKey="revenue" fill="#6C7A59" />
+                    </BarChart>
+                  </ResponsiveContainer>
                   ) : (
                     <div className="text-center py-8 text-gray-500">
                       No category revenue data available
@@ -595,24 +600,24 @@ const AdminDashboard = () => {
                 <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-6">
                   <h3 className="text-lg font-semibold text-purple-900 mb-4">🎰 Spin Wheel Performance</h3>
                   {dashboardData.clientFeatures?.spinWheel ? (
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                      <div className="bg-white rounded-lg p-4 text-center">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="bg-white rounded-lg p-4 text-center">
                         <p className="text-2xl font-bold text-purple-600">{dashboardData.clientFeatures.spinWheel.totalSpins || 0}</p>
-                        <p className="text-sm text-purple-700">Total Spins</p>
-                      </div>
-                      <div className="bg-white rounded-lg p-4 text-center">
-                        <p className="text-2xl font-bold text-green-600">{dashboardData.clientFeatures.spinWheel.rewardsGiven || 0}</p>
-                        <p className="text-sm text-green-700">Rewards Given</p>
-                      </div>
-                      <div className="bg-white rounded-lg p-4 text-center">
-                        <p className="text-2xl font-bold text-blue-600">{((dashboardData.clientFeatures.spinWheel.userEngagement || 0) * 100).toFixed(1)}%</p>
-                        <p className="text-sm text-blue-700">User Engagement</p>
-                      </div>
-                      <div className="bg-white rounded-lg p-4 text-center">
-                        <p className="text-2xl font-bold text-orange-600">{((dashboardData.clientFeatures.spinWheel.conversionRate || 0) * 100).toFixed(1)}%</p>
-                        <p className="text-sm text-orange-700">Conversion Rate</p>
-                      </div>
+                      <p className="text-sm text-purple-700">Total Spins</p>
                     </div>
+                    <div className="bg-white rounded-lg p-4 text-center">
+                        <p className="text-2xl font-bold text-green-600">{dashboardData.clientFeatures.spinWheel.rewardsGiven || 0}</p>
+                      <p className="text-sm text-green-700">Rewards Given</p>
+                    </div>
+                    <div className="bg-white rounded-lg p-4 text-center">
+                        <p className="text-2xl font-bold text-blue-600">{((dashboardData.clientFeatures.spinWheel.userEngagement || 0) * 100).toFixed(1)}%</p>
+                      <p className="text-sm text-blue-700">User Engagement</p>
+                    </div>
+                    <div className="bg-white rounded-lg p-4 text-center">
+                        <p className="text-2xl font-bold text-orange-600">{((dashboardData.clientFeatures.spinWheel.conversionRate || 0) * 100).toFixed(1)}%</p>
+                      <p className="text-sm text-orange-700">Conversion Rate</p>
+                    </div>
+                  </div>
                   ) : (
                     <div className="text-center py-8 text-gray-500">
                       No spin wheel data available
@@ -781,6 +786,136 @@ const AdminDashboard = () => {
                       <Area type="monotone" dataKey="value" stroke="#6C7A59" fill="#6C7A59" fillOpacity={0.3} />
                     </AreaChart>
                   </ResponsiveContainer>
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'customerIntelligence' && (
+              <motion.div
+                key="customerIntelligence"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-6"
+              >
+                {/* Customer Engagement Metrics */}
+                <div className="bg-blue-50 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-blue-900 mb-4">Customer Engagement Overview</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="bg-white rounded-lg p-4 text-center">
+                      <p className="text-2xl font-bold text-blue-600">{getSafeValue(dashboardData.customerIntelligence, 'customerEngagement.totalCustomers', 0)}</p>
+                      <p className="text-sm text-blue-700">Total Customers</p>
+                    </div>
+                    <div className="bg-white rounded-lg p-4 text-center">
+                      <p className="text-2xl font-bold text-purple-600">{getSafeValue(dashboardData.customerIntelligence, 'customerEngagement.repeatCustomers', 0)}</p>
+                      <p className="text-sm text-purple-700">Repeat Customers</p>
+                    </div>
+                    <div className="bg-white rounded-lg p-4 text-center">
+                      <p className="text-2xl font-bold text-green-600">{getSafeValue(dashboardData.customerIntelligence, 'customerEngagement.newCustomers', 0)}</p>
+                      <p className="text-sm text-green-700">New Customers</p>
+                    </div>
+                    <div className="bg-white rounded-lg p-4 text-center">
+                      <p className="text-2xl font-bold text-orange-600">Rs. {formatNumber(getSafeValue(dashboardData.customerIntelligence, 'customerEngagement.averageOrderValue', 0))}</p>
+                      <p className="text-sm text-orange-700">Avg. Order Value</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Product Engagement Analysis */}
+                <div className="bg-green-50 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-green-900 mb-4">Top Product Performance</h3>
+                  <div className="space-y-3">
+                    {(dashboardData.customerIntelligence.productEngagement || []).slice(0, 5).map((product, index) => (
+                      <div key={product._id} className="bg-white rounded-lg p-4 flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <span className="text-lg font-bold text-gray-500">#{index + 1}</span>
+                          <div>
+                            <p className="font-semibold text-gray-900">{product.productName}</p>
+                            <p className="text-sm text-gray-600">Rating: {product.averageRating?.toFixed(1) || 'N/A'}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-green-600">Rs. {formatNumber(product.totalRevenue)}</p>
+                          <p className="text-sm text-gray-600">{product.totalPurchases} sold</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Loyalty Program Insights */}
+                <div className="bg-purple-50 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-purple-900 mb-4">Loyalty Program Performance</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {(dashboardData.customerIntelligence.loyaltyInsights || []).map((level, index) => (
+                      <div key={level._id || index} className="bg-white rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-semibold text-purple-900">{level._id || 'Unknown'}</h4>
+                          <span className="text-sm text-purple-600">{level.customerCount} customers</span>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-sm text-gray-600">
+                            Revenue: <span className="font-semibold">Rs. {formatNumber(level.totalRevenue)}</span>
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            Avg. Order: <span className="font-semibold">Rs. {formatNumber(level.averageOrderValue)}</span>
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            Orders: <span className="font-semibold">{level.totalOrders}</span>
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Customer Segmentation */}
+                <div className="bg-red-50 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-red-900 mb-4">Customer Value Segmentation</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="bg-white rounded-lg p-4 text-center">
+                      <p className="text-2xl font-bold text-red-600">{getSafeValue(dashboardData.customerIntelligence, 'customerSegments.vipCustomers', 0)}</p>
+                      <p className="text-sm text-red-700">VIP Customers</p>
+                      <p className="text-xs text-gray-500">Rs. 10,000+ spent</p>
+                    </div>
+                    <div className="bg-white rounded-lg p-4 text-center">
+                      <p className="text-2xl font-bold text-orange-600">{getSafeValue(dashboardData.customerIntelligence, 'customerSegments.highValueCustomers', 0)}</p>
+                      <p className="text-sm text-orange-700">High Value</p>
+                      <p className="text-xs text-gray-500">Rs. 5,000-10,000</p>
+                    </div>
+                    <div className="bg-white rounded-lg p-4 text-center">
+                      <p className="text-2xl font-bold text-yellow-600">{getSafeValue(dashboardData.customerIntelligence, 'customerSegments.mediumValueCustomers', 0)}</p>
+                      <p className="text-sm text-yellow-700">Medium Value</p>
+                      <p className="text-xs text-gray-500">Rs. 1,000-5,000</p>
+                    </div>
+                    <div className="bg-white rounded-lg p-4 text-center">
+                      <p className="text-2xl font-bold text-gray-600">{getSafeValue(dashboardData.customerIntelligence, 'customerSegments.lowValueCustomers', 0)}</p>
+                      <p className="text-sm text-gray-700">Low Value</p>
+                      <p className="text-xs text-gray-500">Under Rs. 1,000</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Churn Risk Analysis */}
+                <div className="bg-yellow-50 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-yellow-900 mb-4">Churn Risk Analysis</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-white rounded-lg p-4 text-center">
+                      <p className="text-2xl font-bold text-yellow-600">{getSafeValue(dashboardData.customerIntelligence, 'churnRisk.atRiskCustomers', 0)}</p>
+                      <p className="text-sm text-yellow-700">At Risk (30+ days)</p>
+                      <p className="text-xs text-gray-500">No order in 30+ days</p>
+                    </div>
+                    <div className="bg-white rounded-lg p-4 text-center">
+                      <p className="text-2xl font-bold text-red-600">{getSafeValue(dashboardData.customerIntelligence, 'churnRisk.highRiskCustomers', 0)}</p>
+                      <p className="text-sm text-red-700">High Risk (60+ days)</p>
+                      <p className="text-xs text-gray-500">No order in 60+ days</p>
+                    </div>
+                    <div className="bg-white rounded-lg p-4 text-center">
+                      <p className="text-2xl font-bold text-green-600">{getSafeValue(dashboardData.customerIntelligence, 'churnRisk.totalCustomers', 0) - getSafeValue(dashboardData.customerIntelligence, 'churnRisk.atRiskCustomers', 0) - getSafeValue(dashboardData.customerIntelligence, 'churnRisk.highRiskCustomers', 0)}</p>
+                      <p className="text-sm text-green-700">Active Customers</p>
+                      <p className="text-xs text-gray-500">Ordered recently</p>
+                    </div>
+                  </div>
                 </div>
               </motion.div>
             )}

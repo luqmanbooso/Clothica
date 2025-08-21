@@ -8,6 +8,7 @@ import {
 import { motion } from 'framer-motion';
 import api from '../../utils/api';
 import { useToast } from '../../contexts/ToastContext';
+import { getProductImageUrl, getPlaceholderImageUrl } from '../../utils/imageHelpers';
 
 const Products = () => {
   const [products, setProducts] = useState([]);
@@ -749,17 +750,23 @@ const Products = () => {
                   />
                 </div>
                 
-                {product.images && product.images.length > 0 ? (
-                  <img
-                    src={product.images[0]}
-                    alt={product.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <PhotoIcon className="h-12 w-12 text-gray-400" />
-                  </div>
-                )}
+                {(() => {
+                  const imageUrl = getProductImageUrl(product);
+                  return imageUrl ? (
+                    <img
+                      src={imageUrl}
+                      alt={product.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.src = getPlaceholderImageUrl();
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <PhotoIcon className="h-12 w-12 text-gray-400" />
+                    </div>
+                  );
+                })()}
                 
                 {/* Stock Status Badge */}
                 <div className="absolute top-2 right-2">

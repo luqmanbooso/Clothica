@@ -52,7 +52,7 @@ const AdminNav = () => {
       href: '#',
       icon: FireIcon,
       children: [
-        { name: 'Campaigns', href: '/admin/events' },
+        { name: 'Campaign Hub', href: '/admin/campaign-hub' },
         { name: 'Banners', href: '/admin/banners' },
         { name: 'Coupons', href: '/admin/coupons' }
       ]

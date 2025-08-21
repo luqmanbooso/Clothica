@@ -48,6 +48,8 @@ import Settings from './pages/Admin/Settings';
 import Events from './pages/Admin/Events';
 import Finance from './pages/Admin/Finance';
 import ClientFeatures from './pages/Admin/ClientFeatures';
+import CampaignHub from './pages/Admin/CampaignHub';
+import ComponentManagement from './pages/Admin/ComponentManagement';
 
 // Protected Route Component
 import ProtectedRoute from './components/Auth/ProtectedRoute';
@@ -312,6 +314,22 @@ function App() {
                     <AdminRoute>
                       <AdminLayout>
                         <Banners />
+                      </AdminLayout>
+                    </AdminRoute>
+                  } />
+
+                  <Route path="/admin/campaign-hub" element={
+                    <AdminRoute>
+                      <AdminLayout>
+                        <CampaignHub />
+                      </AdminLayout>
+                    </AdminRoute>
+                  } />
+                  
+                  <Route path="/admin/component-management/:eventId" element={
+                    <AdminRoute>
+                      <AdminLayout>
+                        <ComponentManagement />
                       </AdminLayout>
                     </AdminRoute>
                   } />

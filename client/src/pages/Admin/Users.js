@@ -16,6 +16,7 @@ const AdminUsers = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalUsers, setTotalUsers] = useState(0);
   const [selectedUser, setSelectedUser] = useState(null);
   const [showUserModal, setShowUserModal] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState([]);
@@ -52,22 +53,26 @@ const AdminUsers = () => {
         isActive: filterStatus === 'all' ? undefined : filterStatus === 'active'
       };
 
-      const response = await api.get('/api/admin/users', { params });
+      const [usersResponse, analyticsResponse] = await Promise.all([
+        api.get('/api/admin/users', { params }),
+        api.get('/api/admin/users/analytics')
+      ]);
       
-      // Handle different response structures
-      if (response.data && Array.isArray(response.data)) {
-        // If response.data is directly an array
-        setUsers(response.data);
-        setTotalPages(1);
-      } else if (response.data && response.data.users && Array.isArray(response.data.users)) {
-        // If response.data has a users property
-        setUsers(response.data.users);
-        setTotalPages(response.data.pagination?.pages || 1);
+      // Handle users response
+      if (usersResponse.data && usersResponse.data.users && Array.isArray(usersResponse.data.users)) {
+        setUsers(usersResponse.data.users);
+        setTotalPages(usersResponse.data.pagination?.totalPages || 1);
+        setTotalUsers(usersResponse.data.pagination?.total || 0);
       } else {
-        // Fallback to empty array
-        console.warn('Unexpected API response structure:', response.data);
+        console.warn('Unexpected users API response structure:', usersResponse.data);
         setUsers([]);
         setTotalPages(1);
+        setTotalUsers(0);
+      }
+      
+      // Handle analytics response
+      if (analyticsResponse.data) {
+        setUserAnalytics(analyticsResponse.data);
       }
     } catch (error) {
       console.error('Error fetching users:', error);

@@ -19,9 +19,57 @@ const Settings = require('../models/Settings');
 const StockHistory = require('../models/StockHistory');
 const { auth } = require('../middleware/auth');
 const { admin } = require('../middleware/admin');
+const Event = require('../models/Event');
 // PDF generation libraries removed - these are frontend dependencies
 
 const router = express.Router();
+
+// Helper function to normalize images for consistent format
+const normalizeImages = (images) => {
+  if (!images || !Array.isArray(images)) return [];
+  
+  return images.map((img, index) => {
+    // If it's already a string (URL), convert to object format for storage
+    if (typeof img === 'string') {
+      return {
+        url: img,
+        alt: '',
+        isPrimary: index === 0,
+        order: index
+      };
+    }
+    
+    // If it's already an object, ensure all properties exist
+    return {
+      url: img.url || '',
+      alt: img.alt || '',
+      isPrimary: img.isPrimary || index === 0,
+      order: img.order !== undefined ? img.order : index
+    };
+  });
+};
+
+// Helper function to transform images for frontend compatibility
+const transformImagesForFrontend = (product) => {
+  if (product.images && Array.isArray(product.images)) {
+    product.images = product.images
+      .filter(img => img && (img.url || typeof img === 'string'))
+      .sort((a, b) => {
+        if (typeof a === 'object' && typeof b === 'object') {
+          return (b.isPrimary ? 1 : -1);
+        }
+        return 0;
+      })
+      .map(img => typeof img === 'string' ? img : img.url);
+  } else {
+    product.images = [];
+  }
+  
+  // Add a simple image field for backward compatibility
+  product.image = product.images[0] || null;
+  
+  return product;
+};
 
 // Multer configuration for file uploads
 const storage = multer.diskStorage({
@@ -182,11 +230,14 @@ router.get('/products', async (req, res) => {
         .lean(),
       Product.countDocuments(query)
     ]);
+
+    // Transform products to include proper image structure (consistent with public API)
+    const transformedProducts = products.map(product => transformImagesForFrontend(product));
     
     const totalPages = Math.ceil(total / parseInt(limit));
     
     res.json({ 
-      products, 
+      products: transformedProducts, 
       total, 
       totalPages, 
       currentPage: parseInt(page),
@@ -204,13 +255,17 @@ router.get('/products/:id', async (req, res) => {
   try {
     const product = await Product.findById(req.params.id)
       .populate('supplier', 'name contact email')
-      .populate('stockHistory.performedBy', 'name email');
+      .populate('stockHistory.performedBy', 'name email')
+      .lean();
     
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
     }
+
+    // Transform images array to simple string array for frontend compatibility
+    const transformedProduct = transformImagesForFrontend(product);
     
-    res.json(product);
+    res.json(transformedProduct);
   } catch (error) {
     console.error('Error fetching product:', error);
     res.status(500).json({ message: 'Server error' });
@@ -221,6 +276,11 @@ router.get('/products/:id', async (req, res) => {
 router.post('/products', async (req, res) => {
   try {
     const productData = req.body;
+    
+    // Normalize images to proper object format for storage
+    if (productData.images) {
+      productData.images = normalizeImages(productData.images);
+    }
     
     // Generate SKU if not provided
     if (!productData.sku) {
@@ -236,10 +296,13 @@ router.post('/products', async (req, res) => {
     
     const product = new Product(productData);
     await product.save();
+
+    // Transform for frontend response
+    const responseProduct = transformImagesForFrontend(product.toObject());
     
     res.status(201).json({
       message: 'Product created successfully',
-      product
+      product: responseProduct
     });
   } catch (error) {
     console.error('Error creating product:', error);
@@ -255,6 +318,11 @@ router.post('/products', async (req, res) => {
 router.put('/products/:id', async (req, res) => {
   try {
     const productData = req.body;
+    
+    // Normalize images to proper object format for storage
+    if (productData.images) {
+      productData.images = normalizeImages(productData.images);
+    }
     
     // Calculate total stock from variants if variants are updated
     if (productData.variants && productData.variants.length > 0) {
@@ -272,10 +340,13 @@ router.put('/products/:id', async (req, res) => {
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
     }
+
+    // Transform for frontend response
+    const responseProduct = transformImagesForFrontend(product.toObject());
     
     res.json({
       message: 'Product updated successfully',
-      product
+      product: responseProduct
     });
   } catch (error) {
     console.error('Error updating product:', error);
@@ -999,13 +1070,114 @@ router.delete('/categories/:id', async (req, res) => {
 // User Management
 router.get('/users', async (req, res) => {
   try {
-    const users = await User.find()
-      .select('-password')
-      .sort({ createdAt: -1 });
-    res.json(users);
+    const { page = 1, limit = 10, search, role, isActive } = req.query;
+    
+    // Build query
+    const query = {};
+    
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } }
+      ];
+    }
+    
+    if (role && role !== 'all') {
+      query.role = role;
+    }
+    
+    if (isActive !== undefined) {
+      query.isActive = isActive === 'true';
+    }
+    
+    // Execute query with pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    const [users, total] = await Promise.all([
+      User.find(query)
+        .select('-password')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean(),
+      User.countDocuments(query)
+    ]);
+    
+    const totalPages = Math.ceil(total / parseInt(limit));
+    
+    res.json({ 
+      users, 
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages,
+        total,
+        limit: parseInt(limit)
+      }
+    });
   } catch (error) {
     console.error('Users error:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get enhanced user analytics
+router.get('/users/analytics', async (req, res) => {
+  try {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    
+    // Calculate user analytics
+    const [totalUsers, activeUsers, newUsersThisMonth, premiumUsers] = await Promise.all([
+      User.countDocuments(),
+      User.countDocuments({ isActive: true }),
+      User.countDocuments({ createdAt: { $gte: startOfMonth } }),
+      User.countDocuments({ loyaltyTier: { $in: ['gold', 'platinum', 'vip'] } })
+    ]);
+    
+    // Calculate user growth trends
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthUsers = await User.countDocuments({ createdAt: { $gte: lastMonth, $lt: startOfMonth } });
+    const growthRate = lastMonthUsers > 0 ? ((newUsersThisMonth - lastMonthUsers) / lastMonthUsers) * 100 : 0;
+    
+    // Calculate user engagement (users with orders)
+    const usersWithOrders = await User.aggregate([
+      {
+        $lookup: {
+          from: 'orders',
+          localField: '_id',
+          foreignField: 'user',
+          as: 'orders'
+        }
+      },
+      {
+        $match: {
+          'orders.0': { $exists: true }
+        }
+      },
+      {
+        $count: 'count'
+      }
+    ]);
+    
+    const engagedUsers = usersWithOrders[0]?.count || 0;
+    const engagementRate = totalUsers > 0 ? (engagedUsers / totalUsers) * 100 : 0;
+    
+    const analytics = {
+      totalUsers,
+      activeUsers,
+      newUsersThisMonth,
+      premiumUsers,
+      growthRate: Math.round(growthRate * 100) / 100,
+      engagedUsers,
+      engagementRate: Math.round(engagementRate * 100) / 100,
+      inactiveUsers: totalUsers - activeUsers,
+      lastUpdated: new Date().toISOString()
+    };
+    
+    res.json(analytics);
+  } catch (error) {
+    console.error('Error fetching user analytics:', error);
+    res.status(500).json({ message: 'Error fetching user analytics' });
   }
 });
 
@@ -2076,100 +2248,238 @@ router.get('/dashboard/real-time', async (req, res) => {
   }
 });
 
-// Smart Inventory Analytics
-router.get('/smart-inventory/analytics/overview', async (req, res) => {
+// Clean Event Management Routes (replaces complex campaign system)
+router.get('/events', [auth, admin], async (req, res) => {
   try {
-    const products = await Product.find();
-    const totalProducts = products.length;
-    const lowStockProducts = products.filter(p => 
-      p.inventory?.stock <= (p.inventory?.lowStockThreshold || 10)
-    ).length;
-    const outOfStockProducts = products.filter(p => 
-      (p.inventory?.stock || 0) === 0
-    ).length;
-    const totalValue = products.reduce((sum, p) => 
-      sum + ((p.inventory?.stock || 0) * (p.price || 0)), 0
-    );
-
+    const { page = 1, limit = 20, status, type, search } = req.query;
+    const query = {};
+    
+    if (status && status !== 'all') query.status = status;
+    if (type && type !== 'all') query.type = type;
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
+    }
+    
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const sort = { priority: -1, createdAt: -1 };
+    
+    const [events, total] = await Promise.all([
+      Event.find(query)
+        .sort(sort)
+        .skip(skip)
+        .limit(parseInt(limit))
+        .populate([
+          { path: 'components.banners.bannerId', select: 'name image' },
+          { path: 'components.discounts.discountId', select: 'name code' },
+          { path: 'components.specialOffers.offerId', select: 'name description' },
+          { path: 'components.spinWheel.wheelId', select: 'name' }
+        ]),
+      Event.countDocuments(query)
+    ]);
+    
+    const totalPages = Math.ceil(total / parseInt(limit));
+    const hasNextPage = parseInt(page) < totalPages;
+    const hasPrevPage = parseInt(page) > 1;
     res.json({
-      totalProducts,
-      lowStockProducts,
-      outOfStockProducts,
-      totalValue: totalValue.toFixed(2),
-      restockNeeded: lowStockProducts + outOfStockProducts
+      events,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages,
+        totalEvents: total,
+        hasNextPage,
+        hasPrevPage,
+        limit: parseInt(limit)
+      }
     });
   } catch (error) {
-    console.error('Error fetching inventory analytics:', error);
-    res.status(500).json({ message: 'Error fetching inventory analytics' });
+    console.error('Error fetching events:', error);
+    res.status(500).json({ message: 'Error fetching events' });
   }
 });
 
-
-
-// Loyalty Stats Endpoint
-router.get('/loyalty/stats', async (req, res) => {
+router.post('/events', [auth, admin], async (req, res) => {
   try {
-    // Get user statistics by loyalty tier
-    const userStats = await User.aggregate([
-      {
-        $group: {
-          _id: '$loyaltyTier',
-          count: { $sum: 1 }
-        }
-      }
-    ]);
-
-    // Calculate total users and tier breakdown
-    const totalUsers = await User.countDocuments();
-    const tierBreakdown = {
-      total: totalUsers,
-      bronze: 0,
-      silver: 0,
-      gold: 0,
-      vip: 0
-    };
-
-    userStats.forEach(stat => {
-      if (stat._id && tierBreakdown.hasOwnProperty(stat._id)) {
-        tierBreakdown[stat._id] = stat.count;
-      }
+    const eventData = req.body;
+    
+    // Validation
+    if (!eventData.name || !eventData.startDate || !eventData.endDate) {
+      return res.status(400).json({ message: 'Name, start date, and end date are required' });
+    }
+    
+    if (new Date(eventData.startDate) >= new Date(eventData.endDate)) {
+      return res.status(400).json({ message: 'Start date must be before end date' });
+    }
+    
+    eventData.createdBy = req.user._id;
+    eventData.history = [{
+      action: 'created',
+      timestamp: new Date(),
+      userId: req.user._id,
+      details: 'Event created'
+    }];
+    
+    const event = new Event(eventData);
+    await event.save();
+    
+    res.status(201).json({
+      message: 'Event created successfully',
+      event
     });
-
-    // Get loyalty points statistics from orders
-    const pointStats = await Order.aggregate([
-      { $match: { 'loyaltyPoints.earned': { $exists: true, $gt: 0 } } },
-      {
-        $group: {
-          _id: null,
-          totalEarned: { $sum: '$loyaltyPoints.earned' },
-          totalRedeemed: { $sum: '$loyaltyPoints.redeemed' || 0 }
-        }
-      }
-    ]);
-
-    // Calculate redemption value (assuming 1 point = LKR 1)
-    const totalEarned = pointStats[0]?.totalEarned || 0;
-    const totalRedeemed = pointStats[0]?.totalRedeemed || 0;
-    const totalRedemptionValue = totalRedeemed;
-
-    const loyaltyStats = {
-      isActive: true,
-      pointMultiplier: 1,
-      tierThresholds: { bronze: 100, silver: 500, gold: 1000, vip: 2000 },
-      pointStats: {
-        totalEarned,
-        totalRedeemed,
-        totalRedemptionValue
-      },
-      userStats: tierBreakdown
-    };
-
-    res.json(loyaltyStats);
   } catch (error) {
-    console.error('Error fetching loyalty stats:', error);
-    res.status(500).json({ message: 'Error fetching loyalty stats' });
+    console.error('Error creating event:', error);
+    res.status(500).json({ message: 'Error creating event' });
   }
 });
+
+router.get('/events/:id', [auth, admin], async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id)
+      .populate([
+        { path: 'components.banners.bannerId', select: 'name image description' },
+        { path: 'components.discounts.discountId', select: 'name code description value' },
+        { path: 'components.specialOffers.offerId', select: 'name description value' },
+        { path: 'components.spinWheel.wheelId', select: 'name description' }
+      ]);
+    
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+    
+    res.json(event);
+  } catch (error) {
+    console.error('Error fetching event:', error);
+    res.status(500).json({ message: 'Error fetching event' });
+  }
+});
+
+router.put('/events/:id', [auth, admin], async (req, res) => {
+  try {
+    const eventData = req.body;
+    
+    if (eventData.startDate && eventData.endDate && 
+        new Date(eventData.startDate) >= new Date(eventData.endDate)) {
+      return res.status(400).json({ message: 'Start date must be before end date' });
+    }
+    
+    eventData.history = {
+      action: 'updated',
+      timestamp: new Date(),
+      userId: req.user._id,
+      details: 'Event updated'
+    };
+    
+    const event = await Event.findByIdAndUpdate(
+      req.params.id,
+      { $push: { history: eventData.history }, ...eventData },
+      { new: true, runValidators: true }
+    );
+    
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+    
+    res.json(event);
+  } catch (error) {
+    console.error('Error updating event:', error);
+    res.status(500).json({ message: 'Error updating event' });
+  }
+});
+
+router.put('/events/:id/status', [auth, admin], async (req, res) => {
+  try {
+    const { status } = req.body;
+    const event = await Event.findById(req.params.id);
+    
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+    
+    if (status === 'active') {
+      await event.activateEvent();
+    } else if (status === 'completed') {
+      await event.deactivateEvent();
+    } else {
+      event.status = status;
+      await event.save();
+    }
+    
+    res.json(event);
+  } catch (error) {
+    console.error('Error updating event status:', error);
+    res.status(500).json({ message: 'Error updating event status' });
+  }
+});
+
+router.delete('/events/:id', [auth, admin], async (req, res) => {
+  try {
+    const event = await Event.findByIdAndDelete(req.params.id);
+    
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+    
+    res.json({ message: 'Event deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting event:', error);
+    res.status(500).json({ message: 'Error deleting event' });
+  }
+});
+
+// Event Analytics
+router.get('/events/:id/analytics', [auth, admin], async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id);
+    
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+    
+    const analytics = {
+      eventId: event._id,
+      name: event.name,
+      status: event.status,
+      duration: event.duration,
+      isRunning: event.isRunning,
+      totalComponents: event.totalComponents,
+      performance: event.performance,
+      componentBreakdown: {
+        banners: event.components.banners.length,
+        discounts: event.components.discounts.length,
+        specialOffers: event.components.specialOffers.length,
+        spinWheel: event.components.spinWheel.enabled ? 1 : 0
+      }
+    };
+    
+    res.json(analytics);
+  } catch (error) {
+    console.error('Error fetching event analytics:', error);
+    res.status(500).json({ message: 'Error fetching event analytics' });
+  }
+});
+
+// Event Performance Tracking
+router.post('/events/:id/track', [auth, admin], async (req, res) => {
+  try {
+    const { componentType, metricType, value = 1 } = req.body;
+    const event = await Event.findById(req.params.id);
+    
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+    
+    await event.updatePerformance(componentType, metricType, value);
+    
+    res.json({ message: 'Performance updated successfully' });
+  } catch (error) {
+    console.error('Error updating performance:', error);
+    res.status(500).json({ message: 'Error updating performance' });
+  }
+});
+
+// ... existing code ...
 
 module.exports = router;
 

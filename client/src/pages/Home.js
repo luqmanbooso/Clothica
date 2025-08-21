@@ -15,10 +15,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import WelcomeModal from '../components/WelcomeModal';
 import Banner from '../components/Banner';
-import AdvancedAds from '../components/AdvancedAds';
-import SpecialOffers from '../components/SpecialOffers';
 import LoyaltyDashboard from '../components/LoyaltyDashboard';
-import SmartDiscounts from '../components/SmartDiscounts';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 
@@ -291,9 +288,26 @@ const Home = () => {
       {/* Banner Section */}
       <Banner />
 
-      {/* Advanced Advertisement System */}
-      <div className="py-8">
-        <AdvancedAds />
+      {/* Event-Driven Campaigns Section */}
+      <div className="py-8 bg-gradient-to-r from-blue-50 to-indigo-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">Active Campaigns</h2>
+            <p className="text-lg text-gray-600">Discover our latest promotions and events</p>
+          </div>
+          <div className="text-center py-12">
+            <div className="text-6xl mb-4">🎯</div>
+            <h3 className="text-xl font-medium text-gray-900 mb-2">Campaign Hub Active</h3>
+            <p className="text-gray-600 mb-6">All campaigns are now managed through our unified event system</p>
+            <Link 
+              to="/admin/campaign-hub" 
+              className="inline-flex items-center px-6 py-3 bg-[#6C7A59] text-white rounded-lg hover:bg-[#5A6A4A] transition-colors"
+            >
+              Manage Campaigns
+              <ArrowRightIcon className="ml-2 h-5 w-5" />
+            </Link>
+          </div>
+        </div>
       </div>
 
       {/* Special Offers Section */}
@@ -303,7 +317,18 @@ const Home = () => {
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Special Offers & Promotions</h2>
             <p className="text-lg text-gray-600">Limited time deals you don't want to miss!</p>
           </div>
-          <SpecialOffers showCountdown={true} />
+          <div className="text-center py-12">
+            <div className="text-6xl mb-4">🎁</div>
+            <h3 className="text-xl font-medium text-gray-900 mb-2">Offers Managed by Events</h3>
+            <p className="text-gray-600 mb-6">All special offers are now part of our unified campaign system</p>
+            <Link 
+              to="/admin/campaign-hub" 
+              className="inline-flex items-center px-6 py-3 bg-[#6C7A59] text-white rounded-lg hover:bg-[#5A6A4A] transition-colors"
+            >
+              View Active Offers
+              <ArrowRightIcon className="ml-2 h-5 w-5" />
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -379,7 +404,18 @@ const Home = () => {
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Available Coupons & Discounts</h2>
             <p className="text-lg text-gray-600">Find the best deals for your next purchase!</p>
           </div>
-          <SmartDiscounts />
+          <div className="text-center py-12">
+            <div className="text-6xl mb-4">🎫</div>
+            <h3 className="text-xl font-medium text-gray-900 mb-2">Discounts in Campaign System</h3>
+            <p className="text-gray-600 mb-6">All discounts and coupons are managed through our event-driven campaigns</p>
+            <Link 
+              to="/admin/campaign-hub" 
+              className="inline-flex items-center px-6 py-3 bg-[#6C7A59] text-white rounded-lg hover:bg-[#5A6A4A] transition-colors"
+            >
+              Browse Discounts
+              <ArrowRightIcon className="ml-2 h-5 w-5" />
+            </Link>
+          </div>
         </div>
       </div>
 

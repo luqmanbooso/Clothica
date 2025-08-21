@@ -13,6 +13,7 @@ import {
 import { motion } from 'framer-motion';
 import api from '../../utils/api';
 import { useToast } from '../../contexts/ToastContext';
+import { getProductImageUrl } from '../../utils/imageHelpers';
 import { AnimatePresence } from 'framer-motion';
 
 const Orders = () => {
@@ -662,7 +663,7 @@ const Orders = () => {
                           <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
                             {item.product?.images?.[0] ? (
                               <img 
-                                src={item.product.images[0]} 
+                                src={getProductImageUrl(item.product)} 
                                 alt={item.product?.name || item.name} 
                                 className="w-full h-full object-cover rounded-lg"
                               />
@@ -832,7 +833,7 @@ const Orders = () => {
                         <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
                           {item.product?.images?.[0] ? (
                             <img 
-                              src={item.product.images[0]} 
+                              src={getProductImageUrl(item.product)} 
                               alt={item.product?.name || item.name} 
                               className="w-full h-full object-cover rounded-lg"
                             />

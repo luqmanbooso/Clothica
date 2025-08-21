@@ -99,7 +99,7 @@ const AdminLayout = ({ children }) => {
     { name: 'Users', href: '/admin/users', icon: UsersIcon },
     { name: 'Categories', href: '/admin/categories', icon: TagIcon },
     { name: 'Finance Management', href: '/admin/finance', icon: CurrencyDollarIcon },
-    { name: 'Marketing Campaigns', href: '/admin/events', icon: CalendarIcon },
+    { name: 'Campaign Hub', href: '/admin/campaign-hub', icon: CalendarIcon },
     { name: 'Settings', href: '/admin/settings', icon: Cog6ToothIcon },
   ];
 

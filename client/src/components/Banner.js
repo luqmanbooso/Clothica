@@ -1,37 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import axios from 'axios';
-import { useAuth } from '../contexts/AuthContext';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import api from '../utils/api';
 
 const Banner = () => {
-  const { isAuthenticated } = useAuth();
   const [banners, setBanners] = useState([]);
-  const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchBanners();
-    }
-  }, [isAuthenticated]);
-
-  useEffect(() => {
-    if (banners.length > 1) {
-      const interval = setInterval(() => {
-        setCurrentBannerIndex((prev) => (prev + 1) % banners.length);
-      }, 5000); // Change banner every 5 seconds
-
-      return () => clearInterval(interval);
-    }
-  }, [banners.length]);
+    fetchBanners();
+  }, []);
 
   const fetchBanners = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/products/banners');
-      
-      // The backend already filters active banners, so we don't need to filter again
-      const activeBanners = response.data || [];
+      const response = await api.get('/api/products/banners');
+      const activeBanners = response.data.filter(banner => banner.isActive);
       setBanners(activeBanners);
     } catch (error) {
       console.error('Error fetching banners:', error);
@@ -42,16 +27,27 @@ const Banner = () => {
   };
 
   const goToBanner = (index) => {
-    setCurrentBannerIndex(index);
+    setCurrentIndex(index);
   };
 
   const goToPrevious = () => {
-    setCurrentBannerIndex((prev) => (prev - 1 + banners.length) % banners.length);
+    setCurrentIndex((prev) => (prev === 0 ? banners.length - 1 : prev - 1));
   };
 
   const goToNext = () => {
-    setCurrentBannerIndex((prev) => (prev + 1) % banners.length);
+    setCurrentIndex((prev) => (prev === banners.length - 1 ? 0 : prev + 1));
   };
+
+  // Auto-advance banners
+  useEffect(() => {
+    if (banners.length <= 1) return;
+    
+    const interval = setInterval(() => {
+      goToNext();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [banners.length]);
 
   if (loading) {
     return (
@@ -59,76 +55,63 @@ const Banner = () => {
     );
   }
 
-  if (!banners || banners.length === 0) {
-    return null; // Don't show anything if no banners
+  if (banners.length === 0) {
+    return null;
   }
 
-  const currentBanner = banners[currentBannerIndex];
-
   return (
-    <div className="relative w-full h-64 md:h-80 lg:h-96 overflow-hidden rounded-lg">
-      {/* Banner Image */}
-      <div className="relative w-full h-full">
-        <img
-          src={currentBanner.image || '/placeholder-banner.jpg'}
-          alt={currentBanner.title || currentBanner.name || 'Banner'}
-          className="w-full h-full object-cover"
-          onError={(e) => {
-            e.target.src = '/placeholder-banner.jpg';
-          }}
-        />
-        
-        {/* Overlay */}
-        <div className="absolute inset-0 bg-black bg-opacity-30"></div>
-        
-        {/* Banner Content */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-center text-white px-6">
-            {currentBanner.title && (
+    <div className="relative w-full h-64 md:h-80 lg:h-96 overflow-hidden rounded-lg shadow-lg">
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={currentIndex}
+          initial={{ opacity: 0, x: 100 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -100 }}
+          transition={{ duration: 0.5 }}
+          className="absolute inset-0"
+        >
+          <img
+            src={banners[currentIndex]?.image || banners[currentIndex]?.url}
+            alt={banners[currentIndex]?.title || banners[currentIndex]?.name}
+            className="w-full h-full object-cover"
+          />
+          
+          {/* Banner Content Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-transparent to-transparent">
+            <div className="flex flex-col justify-center h-full px-8 text-white">
               <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4">
-                {currentBanner.title}
+                {banners[currentIndex]?.title || banners[currentIndex]?.name}
               </h2>
-            )}
-            
-            {currentBanner.subtitle && (
-              <p className="text-lg md:text-xl mb-6 max-w-2xl mx-auto">
-                {currentBanner.subtitle}
-              </p>
-            )}
-            
-            {currentBanner.actionUrl && currentBanner.ctaText && (
-              <Link
-                to={currentBanner.actionUrl}
-                className="inline-block bg-[#6C7A59] text-white px-8 py-3 rounded-lg font-semibold hover:bg-[#5A6A4A] transition-colors text-lg"
-              >
-                {currentBanner.ctaText}
-              </Link>
-            )}
+              {banners[currentIndex]?.subtitle && (
+                <p className="text-lg md:text-xl mb-6 max-w-md">
+                  {banners[currentIndex].subtitle}
+                </p>
+              )}
+              {banners[currentIndex]?.cta && (
+                <button className="bg-white text-black px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors w-fit">
+                  {banners[currentIndex].cta.text || 'Shop Now'}
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </AnimatePresence>
 
       {/* Navigation Arrows */}
       {banners.length > 1 && (
         <>
           <button
             onClick={goToPrevious}
-            className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 hover:bg-opacity-100 text-gray-800 p-2 rounded-full transition-all duration-200"
-            aria-label="Previous banner"
+            className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
+            <ChevronLeftIcon className="h-6 w-6" />
           </button>
           
           <button
             onClick={goToNext}
-            className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 hover:bg-opacity-100 text-gray-800 p-2 rounded-full transition-all duration-200"
-            aria-label="Next banner"
+            className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
+            <ChevronRightIcon className="h-6 w-6" />
           </button>
         </>
       )}
@@ -140,12 +123,9 @@ const Banner = () => {
             <button
               key={index}
               onClick={() => goToBanner(index)}
-              className={`w-3 h-3 rounded-full transition-all duration-200 ${
-                index === currentBannerIndex
-                  ? 'bg-white'
-                  : 'bg-white bg-opacity-50 hover:bg-opacity-75'
+              className={`w-3 h-3 rounded-full transition-colors ${
+                index === currentIndex ? 'bg-white' : 'bg-white/50'
               }`}
-              aria-label={`Go to banner ${index + 1}`}
             />
           ))}
         </div>
