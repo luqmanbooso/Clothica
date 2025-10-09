@@ -21,6 +21,7 @@ import {
 import { useCart } from '../contexts/CartContext';
 import { useWishlist } from '../contexts/WishlistContext';
 import api from '../utils/api';
+import Banner from '../components/Banner';
 
 const Shop = () => {
   const { addToCart = () => {} } = useCart();
@@ -170,6 +171,21 @@ const Shop = () => {
         </motion.div>
       </section>
 
+      {/* Banner Section */}
+      <section className="py-8 px-6">
+        <div className="max-w-7xl mx-auto">
+          <Banner 
+            position="top" 
+            page="shop" 
+            autoPlay={true}
+            interval={5000}
+            showNavigation={true}
+            showDots={true}
+            height="400px"
+          />
+        </div>
+      </section>
+
       {/* Categories Section */}
       <section className="py-16 px-6">
         <motion.div 
@@ -229,6 +245,17 @@ const Shop = () => {
           initial="hidden"
           animate="visible"
         >
+          {/* Sidebar Banner */}
+          <div className="mb-8">
+            <Banner 
+              position="sidebar" 
+              page="shop" 
+              autoPlay={false}
+              showNavigation={false}
+              showDots={false}
+              height="200px"
+            />
+          </div>
           {/* Controls */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
             <div className="flex items-center space-x-4">
@@ -455,6 +482,21 @@ const Shop = () => {
             </motion.div>
           )}
         </motion.div>
+      </section>
+
+      {/* Middle Banner Section */}
+      <section className="py-8 px-6">
+        <div className="max-w-7xl mx-auto">
+          <Banner 
+            position="middle" 
+            page="shop" 
+            autoPlay={true}
+            interval={6000}
+            showNavigation={true}
+            showDots={true}
+            height="300px"
+          />
+        </div>
       </section>
 
       {/* Features Section */}

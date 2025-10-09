@@ -7,9 +7,14 @@ const specialOfferSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  title: {
+    type: String,
+    required: true,
+    trim: true
+  },
   description: {
     type: String,
-    required: true
+    required: false
   },
   
   // Offer Type
@@ -28,11 +33,11 @@ const specialOfferSchema = new mongoose.Schema({
   // Validity
   startDate: {
     type: Date,
-    required: true
+    required: false // Auto-assigned from event
   },
   endDate: {
     type: Date,
-    required: true
+    required: false // Auto-assigned from event
   },
   
   // Event Integration

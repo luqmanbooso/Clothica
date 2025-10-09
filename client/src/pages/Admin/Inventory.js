@@ -47,13 +47,20 @@ const Inventory = () => {
 
   // Enhanced Inventory Management
   const [showRestockModal, setShowRestockModal] = useState(false);
+  const [showStockModal, setShowStockModal] = useState(false);
+  const [showAdjustmentModal, setShowAdjustmentModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [restockQuantity, setRestockQuantity] = useState(50);
   const [restockReason, setRestockReason] = useState('');
   const [restockNotes, setRestockNotes] = useState('');
+  const [adjustmentQuantity, setAdjustmentQuantity] = useState(0);
+  const [adjustmentType, setAdjustmentType] = useState('increase'); // increase, decrease
+  const [adjustmentReason, setAdjustmentReason] = useState('');
   const [warehouseData, setWarehouseData] = useState([]);
   const [selectedWarehouse, setSelectedWarehouse] = useState('all');
-  const [inventoryView, setInventoryView] = useState('overview'); // overview, alerts, analytics, warehouse
+  const [inventoryView, setInventoryView] = useState('overview'); // overview, alerts, analytics, warehouse, stock-management
+  const [products, setProducts] = useState([]);
+  const [salesData, setSalesData] = useState({});
 
   // Enhanced Filters
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -94,17 +101,7 @@ const Inventory = () => {
     }
   }, [showError]);
 
-  // Auto-refresh inventory data
-  useEffect(() => {
-    fetchInventoryData();
-    const interval = setInterval(fetchInventoryData, 60000); // 1 minute
-    return () => clearInterval(interval);
-  }, [fetchInventoryData]);
-
-  // Fetch warehouse data
-  useEffect(() => {
-    fetchWarehouseData();
-  }, []);
+  // Old useEffect removed - now handled in enhanced useEffect above
 
   // Enhanced restock handling
   const handleRestock = async (productId, quantity, reason = 'Manual restock', notes = '') => {
@@ -267,6 +264,89 @@ const Inventory = () => {
     }
   };
 
+  // Fetch products with stock information
+  const fetchProducts = async () => {
+    try {
+      const response = await axios.get('/api/admin/products');
+      setProducts(response.data.products || []);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      showError('Failed to load products');
+    }
+  };
+
+  // Fetch sales data for products
+  const fetchSalesData = async () => {
+    try {
+      const response = await axios.get('/api/admin/orders/analytics/product-sales');
+      setSalesData(response.data || {});
+    } catch (error) {
+      console.error('Error fetching sales data:', error);
+      // Don't show error for sales data as it's supplementary info
+    }
+  };
+
+  // Enhanced useEffect to fetch all data
+  useEffect(() => {
+    fetchInventoryData();
+    fetchProducts();
+    fetchSalesData();
+    fetchWarehouseData();
+    
+    const interval = setInterval(() => {
+      fetchInventoryData();
+      fetchProducts();
+      fetchSalesData();
+    }, 60000); // 1 minute
+    
+    return () => clearInterval(interval);
+  }, [fetchInventoryData]);
+
+  // Stock adjustment functions
+  const handleStockAdjustment = async () => {
+    if (!selectedProduct || !adjustmentQuantity || !adjustmentReason) {
+      showError('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      const quantity = adjustmentType === 'increase' ? Math.abs(adjustmentQuantity) : -Math.abs(adjustmentQuantity);
+      
+      await axios.patch(`/api/admin/products/${selectedProduct._id}/stock`, {
+        quantity,
+        action: 'adjustment',
+        reason: adjustmentReason,
+        notes: `${adjustmentType === 'increase' ? 'Increase' : 'Decrease'} by ${Math.abs(adjustmentQuantity)}`
+      });
+
+      showSuccess(`Stock ${adjustmentType}d by ${Math.abs(adjustmentQuantity)} units`);
+      setShowAdjustmentModal(false);
+      setAdjustmentQuantity(0);
+      setAdjustmentReason('');
+      fetchProducts();
+      fetchInventoryData();
+    } catch (error) {
+      console.error('Error adjusting stock:', error);
+      showError('Failed to adjust stock');
+    }
+  };
+
+  const openStockModal = (product) => {
+    setSelectedProduct(product);
+    setShowStockModal(true);
+  };
+
+  const openAdjustmentModal = (product) => {
+    setSelectedProduct(product);
+    setShowAdjustmentModal(true);
+  };
+
+  const openRestockModal = (product) => {
+    setSelectedProduct(product);
+    setRestockQuantity(product.inventory?.reorderQuantity || 50);
+    setShowRestockModal(true);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -297,7 +377,35 @@ const Inventory = () => {
         </div>
       </div>
 
-      {/* Overview Stats */}
+      {/* Tab Navigation */}
+      <div className="bg-white rounded-xl p-1 shadow-sm border">
+        <div className="flex gap-1">
+          {[
+            { id: 'overview', label: 'Overview', icon: ChartBarIcon },
+            { id: 'stock-management', label: 'Stock Management', icon: CubeIcon },
+            { id: 'alerts', label: 'Alerts', icon: BellIcon },
+            { id: 'analytics', label: 'Analytics', icon: ArrowTrendingUpIcon },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                activeTab === tab.id
+                  ? 'bg-[#6C7A59] text-white shadow-sm'
+                  : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+              }`}
+            >
+              <tab.icon className="h-5 w-5" />
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'overview' && (
+        <>
+          {/* Overview Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -695,6 +803,528 @@ const Inventory = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Reason <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={restockReason}
+                    onChange={(e) => setRestockReason(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                  >
+                    <option value="">Select Reason</option>
+                    <option value="Low stock replenishment">Low stock replenishment</option>
+                    <option value="Seasonal restock">Seasonal restock</option>
+                    <option value="Supplier delivery">Supplier delivery</option>
+                    <option value="Inventory adjustment">Inventory adjustment</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Warehouse
+                  </label>
+                  <select
+                    value={selectedWarehouse}
+                    onChange={(e) => setSelectedWarehouse(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                  >
+                    <option value="all">All Warehouses</option>
+                    {warehouseData.map(warehouse => (
+                      <option key={warehouse.id} value={warehouse.id}>
+                        {warehouse.name} - {warehouse.location}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Notes
+                  </label>
+                  <textarea
+                    value={restockNotes}
+                    onChange={(e) => setRestockNotes(e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                    placeholder="Additional notes about this restock..."
+                  />
+                </div>
+                
+                <div className="flex items-center justify-end gap-3 pt-4">
+                  <button
+                    onClick={() => setShowRestockModal(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  
+                  <button
+                    onClick={handleRestockSubmit}
+                    className="px-4 py-2 text-sm font-medium text-white bg-[#6C7A59] rounded-lg hover:bg-[#5A6A4A] transition-colors"
+                  >
+                    Confirm Restock
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+        </>
+      )}
+
+      {/* Stock Management Tab */}
+      {activeTab === 'stock-management' && (
+        <div className="space-y-6">
+          {/* Stock Management Header */}
+          <div className="bg-white rounded-xl p-6 shadow-sm">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Stock Management</h2>
+                <p className="text-gray-600">Manage inventory levels, adjustments, and restocking</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <input
+                  type="text"
+                  placeholder="Search products..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                />
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                >
+                  <option value="all">All Categories</option>
+                  <option value="men">Men</option>
+                  <option value="women">Women</option>
+                  <option value="kids">Kids</option>
+                  <option value="accessories">Accessories</option>
+                  <option value="shoes">Shoes</option>
+                  <option value="bags">Bags</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Products Stock Management Table */}
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Product Inventory</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current Stock</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sales (30d)</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {products
+                    .filter(product => {
+                      const matchesSearch = !searchTerm || 
+                        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        product.brand.toLowerCase().includes(searchTerm.toLowerCase());
+                      const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter;
+                      return matchesSearch && matchesCategory;
+                    })
+                    .map((product) => {
+                      const currentStock = product.inventory?.totalStock || 0;
+                      const lowThreshold = product.inventory?.lowStockThreshold || 10;
+                      const criticalThreshold = product.inventory?.criticalStockThreshold || 5;
+                      const productSales = salesData[product._id] || { total: 0, quantity: 0 };
+                      
+                      let stockStatus = 'healthy';
+                      let stockColor = 'text-green-600 bg-green-50';
+                      
+                      if (currentStock === 0) {
+                        stockStatus = 'out-of-stock';
+                        stockColor = 'text-red-600 bg-red-50';
+                      } else if (currentStock <= criticalThreshold) {
+                        stockStatus = 'critical';
+                        stockColor = 'text-red-600 bg-red-50';
+                      } else if (currentStock <= lowThreshold) {
+                        stockStatus = 'low';
+                        stockColor = 'text-yellow-600 bg-yellow-50';
+                      }
+
+                      return (
+                        <motion.tr
+                          key={product._id}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ duration: 0.3 }}
+                          className="hover:bg-gray-50"
+                        >
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="h-12 w-12 flex-shrink-0">
+                                <img
+                                  className="h-12 w-12 rounded-lg object-cover"
+                                  src={product.images?.[0] || '/api/products/placeholder-image'}
+                                  alt={product.name}
+                                  onError={(e) => {
+                                    e.target.src = '/api/products/placeholder-image';
+                                  }}
+                                />
+                              </div>
+                              <div className="ml-4">
+                                <div className="text-sm font-medium text-gray-900">{product.name}</div>
+                                <div className="text-sm text-gray-500">{product.brand}</div>
+                                <div className="text-xs text-gray-400">SKU: {product.sku}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-semibold text-gray-900">{currentStock} units</div>
+                            <div className="text-xs text-gray-500">
+                              Reorder at: {product.inventory?.reorderPoint || 20}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${stockColor}`}>
+                              {stockStatus === 'out-of-stock' ? 'Out of Stock' :
+                               stockStatus === 'critical' ? 'Critical' :
+                               stockStatus === 'low' ? 'Low Stock' : 'Healthy'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">{productSales.quantity} sold</div>
+                            <div className="text-xs text-gray-500">
+                              ${productSales.total?.toFixed(2) || '0.00'} revenue
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => openStockModal(product)}
+                                className="text-[#6C7A59] hover:text-[#5A6A4A] flex items-center gap-1"
+                              >
+                                <EyeIcon className="h-4 w-4" />
+                                View
+                              </button>
+                              <button
+                                onClick={() => openAdjustmentModal(product)}
+                                className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                              >
+                                <PencilIcon className="h-4 w-4" />
+                                Adjust
+                              </button>
+                              <button
+                                onClick={() => openRestockModal(product)}
+                                className="text-green-600 hover:text-green-800 flex items-center gap-1"
+                              >
+                                <PlusIcon className="h-4 w-4" />
+                                Restock
+                              </button>
+                            </div>
+                          </td>
+                        </motion.tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Alerts Tab */}
+      {activeTab === 'alerts' && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-xl p-6 shadow-sm">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Inventory Alerts</h2>
+            <p className="text-gray-600">Monitor critical stock levels and automated alerts</p>
+          </div>
+          {/* Add existing alerts content here */}
+        </div>
+      )}
+
+      {/* Analytics Tab */}
+      {activeTab === 'analytics' && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-xl p-6 shadow-sm">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Inventory Analytics</h2>
+            <p className="text-gray-600">Detailed insights and performance metrics</p>
+          </div>
+          {/* Add analytics content here */}
+        </div>
+      )}
+
+      {/* Stock Detail Modal */}
+      <AnimatePresence>
+        {showStockModal && selectedProduct && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">Stock Details</h3>
+                <button
+                  onClick={() => setShowStockModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                <div className="flex items-center gap-4">
+                  <img
+                    className="h-16 w-16 rounded-lg object-cover"
+                    src={selectedProduct.images?.[0] || '/api/products/placeholder-image'}
+                    alt={selectedProduct.name}
+                  />
+                  <div>
+                    <h4 className="text-lg font-semibold text-gray-900">{selectedProduct.name}</h4>
+                    <p className="text-gray-600">{selectedProduct.brand}</p>
+                    <p className="text-sm text-gray-500">SKU: {selectedProduct.sku}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-600">Current Stock</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {selectedProduct.inventory?.totalStock || 0}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-600">Available Stock</p>
+                    <p className="text-2xl font-bold text-green-600">
+                      {selectedProduct.inventory?.availableStock || 0}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-600">Reserved Stock</p>
+                    <p className="text-2xl font-bold text-yellow-600">
+                      {selectedProduct.inventory?.reservedStock || 0}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-600">Reorder Point</p>
+                    <p className="text-2xl font-bold text-red-600">
+                      {selectedProduct.inventory?.reorderPoint || 20}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Size-wise Stock Breakdown */}
+                {selectedProduct.sizes && selectedProduct.sizes.length > 0 && (
+                  <div>
+                    <h5 className="text-md font-semibold text-gray-900 mb-3">Size-wise Stock</h5>
+                    <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+                      {selectedProduct.sizes.map((size, index) => (
+                        <div key={index} className="bg-gray-50 p-3 rounded-lg text-center">
+                          <p className="text-sm font-medium text-gray-900">{size.name}</p>
+                          <p className="text-lg font-bold text-gray-700">{size.stock || 0}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Sales Information */}
+                <div>
+                  <h5 className="text-md font-semibold text-gray-900 mb-3">Sales Performance (30 days)</h5>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-blue-50 p-4 rounded-lg">
+                      <p className="text-sm text-blue-600">Units Sold</p>
+                      <p className="text-2xl font-bold text-blue-900">
+                        {salesData[selectedProduct._id]?.quantity || 0}
+                      </p>
+                    </div>
+                    <div className="bg-green-50 p-4 rounded-lg">
+                      <p className="text-sm text-green-600">Revenue</p>
+                      <p className="text-2xl font-bold text-green-900">
+                        ${salesData[selectedProduct._id]?.total?.toFixed(2) || '0.00'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Stock Adjustment Modal */}
+      <AnimatePresence>
+        {showAdjustmentModal && selectedProduct && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-xl p-6 w-full max-w-md"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">Adjust Stock</h3>
+                <button
+                  onClick={() => setShowAdjustmentModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <img
+                    className="h-12 w-12 rounded-lg object-cover"
+                    src={selectedProduct.images?.[0] || '/api/products/placeholder-image'}
+                    alt={selectedProduct.name}
+                  />
+                  <div>
+                    <h4 className="font-semibold text-gray-900">{selectedProduct.name}</h4>
+                    <p className="text-sm text-gray-600">Current: {selectedProduct.inventory?.totalStock || 0} units</p>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Adjustment Type
+                  </label>
+                  <select
+                    value={adjustmentType}
+                    onChange={(e) => setAdjustmentType(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                  >
+                    <option value="increase">Increase Stock</option>
+                    <option value="decrease">Decrease Stock</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Quantity
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={Math.abs(adjustmentQuantity)}
+                    onChange={(e) => setAdjustmentQuantity(parseInt(e.target.value) || 0)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                    placeholder="Enter quantity"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Reason
+                  </label>
+                  <select
+                    value={adjustmentReason}
+                    onChange={(e) => setAdjustmentReason(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                  >
+                    <option value="">Select Reason</option>
+                    <option value="Inventory count correction">Inventory count correction</option>
+                    <option value="Damaged goods">Damaged goods</option>
+                    <option value="Lost or stolen">Lost or stolen</option>
+                    <option value="Return to supplier">Return to supplier</option>
+                    <option value="Quality issue">Quality issue</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-4">
+                  <button
+                    onClick={() => setShowAdjustmentModal(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleStockAdjustment}
+                    className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors ${
+                      adjustmentType === 'increase' 
+                        ? 'bg-green-600 hover:bg-green-700' 
+                        : 'bg-red-600 hover:bg-red-700'
+                    }`}
+                  >
+                    {adjustmentType === 'increase' ? 'Increase Stock' : 'Decrease Stock'}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Enhanced Restock Modal */}
+      <AnimatePresence>
+        {showRestockModal && selectedProduct && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-xl p-6 w-full max-w-lg"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">Restock Product</h3>
+                <button
+                  onClick={() => setShowRestockModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <img
+                    className="h-12 w-12 rounded-lg object-cover"
+                    src={selectedProduct.images?.[0] || '/api/products/placeholder-image'}
+                    alt={selectedProduct.name}
+                  />
+                  <div>
+                    <h4 className="font-semibold text-gray-900">{selectedProduct.name}</h4>
+                    <p className="text-sm text-gray-600">Current: {selectedProduct.inventory?.totalStock || 0} units</p>
+                    <p className="text-xs text-gray-500">Recommended: {selectedProduct.inventory?.reorderQuantity || 50} units</p>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Restock Quantity *
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={restockQuantity}
+                    onChange={(e) => setRestockQuantity(parseInt(e.target.value) || 0)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                    placeholder="Enter quantity to add"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Reason *
                   </label>
                   <select
                     value={restockReason}

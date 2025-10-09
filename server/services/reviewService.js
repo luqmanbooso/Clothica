@@ -257,6 +257,127 @@ class ReviewService {
       throw error;
     }
   }
+
+  /**
+   * Get all reviews for admin panel
+   */
+  async getAllReviewsForAdmin() {
+    try {
+      const reviews = await Review.find({})
+        .populate('user', 'name email')
+        .populate('product', 'name _id')
+        .populate('order', 'orderNumber')
+        .sort({ createdAt: -1 });
+
+      return reviews.map(review => ({
+        _id: review._id,
+        user: review.user,
+        product: review.product,
+        order: review.order,
+        rating: review.rating.product || review.rating,
+        comment: review.review.product || review.comment,
+        status: review.status === 'rejected' ? 'flagged' : review.status || 'approved',
+        verified: review.isVerified || false,
+        createdAt: review.createdAt,
+        updatedAt: review.updatedAt
+      }));
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Get review statistics for admin
+   */
+  async getReviewStats() {
+    try {
+      const [totalStats, statusStats] = await Promise.all([
+        Review.aggregate([
+          {
+            $group: {
+              _id: null,
+              total: { $sum: 1 },
+              averageRating: { $avg: '$rating.product' },
+              totalRatings: { $sum: 1 }
+            }
+          }
+        ]),
+        Review.aggregate([
+          {
+            $group: {
+              _id: '$status',
+              count: { $sum: 1 }
+            }
+          }
+        ])
+      ]);
+
+      const stats = {
+        total: totalStats[0]?.total || 0,
+        approved: 0,
+        pending: 0,
+        flagged: 0,
+        averageRating: totalStats[0]?.averageRating || 0,
+        totalRatings: totalStats[0]?.totalRatings || 0
+      };
+
+      statusStats.forEach(stat => {
+        switch(stat._id) {
+          case 'approved':
+            stats.approved = stat.count;
+            break;
+          case 'pending':
+            stats.pending = stat.count;
+            break;
+          case 'rejected':
+            stats.flagged = stat.count;
+            break;
+        }
+      });
+
+      return stats;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Update review status
+   */
+  async updateReviewStatus(reviewId, status) {
+    try {
+      const review = await Review.findByIdAndUpdate(
+        reviewId,
+        { status, updatedAt: new Date() },
+        { new: true }
+      ).populate('user', 'name email').populate('product', 'name');
+
+      if (!review) {
+        throw new Error('Review not found');
+      }
+
+      return review;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Delete review
+   */
+  async deleteReview(reviewId) {
+    try {
+      const review = await Review.findById(reviewId);
+      if (!review) {
+        throw new Error('Review not found');
+      }
+
+      await Review.findByIdAndDelete(reviewId);
+      return { message: 'Review deleted successfully' };
+    } catch (error) {
+      throw error;
+    }
+  }
 }
 
 module.exports = new ReviewService();

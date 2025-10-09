@@ -3,7 +3,16 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const fs = require('fs');
+const path = require('path');
 require('dotenv').config();
+
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  console.log('📁 Created uploads directory');
+}
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -16,8 +25,10 @@ const affiliateRoutes = require('./routes/affiliate');
 const specialOffersRoutes = require('./routes/specialOffers');
 const eventsRoutes = require('./routes/events');
 const eventPerformanceRoutes = require('./routes/eventPerformance');
+const bannerRoutes = require('./routes/banners');
 const unifiedDiscountsRoutes = require('./routes/unifiedDiscounts');
 const smartInventoryRoutes = require('./routes/smartInventory');
+const inventoryRoutes = require('./routes/inventory');
 const paymentRoutes = require('./routes/payments');
 const cartRoutes = require('./routes/cart');
 const notificationRoutes = require('./routes/notifications');
@@ -70,8 +81,11 @@ app.use('/api/affiliate', affiliateRoutes);
 app.use('/api/special-offers', specialOffersRoutes);
 app.use('/api/events', eventsRoutes);
 app.use('/api/event-performance', eventPerformanceRoutes);
+app.use('/api/admin/banners', bannerRoutes);
+app.use('/api/banners', bannerRoutes); // Public banner routes
 app.use('/api/unified-discounts', unifiedDiscountsRoutes);
 app.use('/api/smart-inventory', smartInventoryRoutes);
+app.use('/api/inventory', inventoryRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/notifications', notificationRoutes);

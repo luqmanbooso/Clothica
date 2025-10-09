@@ -135,8 +135,26 @@ router.put('/:reviewId/status', admin, async (req, res) => {
   }
 });
 
-// Admin: Get review statistics (GET /api/reviews/stats)
-router.get('/stats', admin, async (req, res) => {
+// Admin: Get all reviews (GET /api/reviews/admin/all)
+router.get('/admin/all', auth, admin, async (req, res) => {
+  try {
+    const reviews = await reviewService.getAllReviewsForAdmin();
+    
+    res.json({
+      success: true,
+      data: reviews
+    });
+  } catch (error) {
+    console.error('Error fetching all reviews:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch reviews'
+    });
+  }
+});
+
+// Admin: Get review statistics (GET /api/reviews/admin/stats)
+router.get('/admin/stats', auth, admin, async (req, res) => {
   try {
     const stats = await reviewService.getReviewStats();
     
@@ -149,6 +167,58 @@ router.get('/stats', admin, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch review statistics'
+    });
+  }
+});
+
+// Admin: Update review status (PATCH /api/reviews/admin/:reviewId/status)
+router.patch('/admin/:reviewId/status', auth, admin, async (req, res) => {
+  try {
+    const { reviewId } = req.params;
+    const { status } = req.body;
+    
+    if (!['approved', 'pending', 'flagged'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status. Must be approved, pending, or flagged'
+      });
+    }
+    
+    // Convert flagged to rejected for database
+    const dbStatus = status === 'flagged' ? 'rejected' : status;
+    
+    const review = await reviewService.updateReviewStatus(reviewId, dbStatus);
+    
+    res.json({
+      success: true,
+      message: 'Review status updated successfully',
+      data: review
+    });
+  } catch (error) {
+    console.error('Error updating review status:', error);
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Admin: Delete review (DELETE /api/reviews/admin/:reviewId)
+router.delete('/admin/:reviewId', auth, admin, async (req, res) => {
+  try {
+    const { reviewId } = req.params;
+    
+    await reviewService.deleteReview(reviewId);
+    
+    res.json({
+      success: true,
+      message: 'Review deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting review:', error);
+    res.status(400).json({
+      success: false,
+      message: error.message
     });
   }
 });

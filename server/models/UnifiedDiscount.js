@@ -48,11 +48,11 @@ const unifiedDiscountSchema = new mongoose.Schema({
   // Validity
   startDate: {
     type: Date,
-    required: true
+    required: false // Auto-assigned from event
   },
   endDate: {
     type: Date,
-    required: true
+    required: false // Auto-assigned from event
   },
   
   // Conditions

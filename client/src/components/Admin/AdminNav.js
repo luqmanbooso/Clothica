@@ -12,7 +12,9 @@ import {
   SparklesIcon,
   FireIcon,
   DocumentChartBarIcon,
-  BuildingOfficeIcon
+  BuildingOfficeIcon,
+  StarIcon,
+  ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 
 const AdminNav = () => {
@@ -34,7 +36,9 @@ const AdminNav = () => {
         { name: 'Orders', href: '/admin/orders' },
         { name: 'Inventory', href: '/admin/inventory' },
         { name: 'Categories', href: '/admin/categories' },
-        { name: 'Users', href: '/admin/users' }
+        { name: 'Users', href: '/admin/users' },
+        { name: 'Reviews', href: '/admin/reviews' },
+        { name: 'Issues', href: '/admin/issues' }
       ]
     },
     {

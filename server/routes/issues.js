@@ -157,8 +157,8 @@ router.post('/:issueId/process-refund', admin, async (req, res) => {
   }
 });
 
-// Admin: Get issue statistics (GET /api/issues/stats)
-router.get('/stats', admin, async (req, res) => {
+// Admin: Get issue statistics (GET /api/issues/admin/stats)
+router.get('/admin/stats', auth, admin, async (req, res) => {
   try {
     const stats = await issueService.getIssueStats();
     
@@ -175,7 +175,112 @@ router.get('/stats', admin, async (req, res) => {
   }
 });
 
-// Admin: Get all issues (GET /api/issues)
+// Admin: Get all issues (GET /api/issues/admin/all)
+router.get('/admin/all', auth, admin, async (req, res) => {
+  try {
+    const issues = await issueService.getAllIssuesForAdmin();
+    
+    res.json({
+      success: true,
+      data: issues
+    });
+  } catch (error) {
+    console.error('Error fetching issues:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch issues'
+    });
+  }
+});
+
+// Admin: Update issue status (PATCH /api/issues/admin/:issueId/status)
+router.patch('/admin/:issueId/status', auth, admin, async (req, res) => {
+  try {
+    const { issueId } = req.params;
+    const { status } = req.body;
+    
+    if (!['open', 'in-progress', 'resolved', 'closed'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status. Must be open, in-progress, resolved, or closed'
+      });
+    }
+    
+    const issue = await issueService.updateIssueStatus(issueId, status);
+    
+    res.json({
+      success: true,
+      message: 'Issue status updated successfully',
+      data: issue
+    });
+  } catch (error) {
+    console.error('Error updating issue status:', error);
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Admin: Update issue priority (PATCH /api/issues/admin/:issueId/priority)
+router.patch('/admin/:issueId/priority', auth, admin, async (req, res) => {
+  try {
+    const { issueId } = req.params;
+    const { priority } = req.body;
+    
+    if (!['low', 'medium', 'high', 'urgent'].includes(priority)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid priority. Must be low, medium, high, or urgent'
+      });
+    }
+    
+    const issue = await issueService.updateIssuePriority(issueId, priority);
+    
+    res.json({
+      success: true,
+      message: 'Issue priority updated successfully',
+      data: issue
+    });
+  } catch (error) {
+    console.error('Error updating issue priority:', error);
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Admin: Add response to issue (POST /api/issues/admin/:issueId/response)
+router.post('/admin/:issueId/response', auth, admin, async (req, res) => {
+  try {
+    const { issueId } = req.params;
+    const { response } = req.body;
+    
+    if (!response || !response.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Response text is required'
+      });
+    }
+    
+    const issue = await issueService.addAdminResponse(issueId, req.user.id, response.trim());
+    
+    res.json({
+      success: true,
+      message: 'Response added successfully',
+      data: issue
+    });
+  } catch (error) {
+    console.error('Error adding response:', error);
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Get all issues (GET /api/issues)
 router.get('/', admin, async (req, res) => {
   try {
     const { page = 1, limit = 20, status, priority } = req.query;

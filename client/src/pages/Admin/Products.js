@@ -3,7 +3,7 @@ import {
   PlusIcon, MagnifyingGlassIcon, CubeIcon, ExclamationTriangleIcon,
   CheckCircleIcon, StarIcon, PhotoIcon, PencilIcon, TrashIcon,
   DocumentArrowDownIcon, DocumentArrowUpIcon, BuildingOfficeIcon,
-  TruckIcon, ChartBarIcon
+  TruckIcon, ChartBarIcon, TagIcon, InformationCircleIcon
 } from '@heroicons/react/24/outline';
 import { motion } from 'framer-motion';
 import api from '../../utils/api';
@@ -34,16 +34,21 @@ const Products = () => {
     name: '',
     sku: '',
     category: '',
+    subcategory: '',
     brand: '',
     description: '',
+    shortDescription: '',
     price: 0,
     originalPrice: 0,
     costPrice: 0,
+    images: [],
+    colors: [],
+    sizes: [],
+    tags: [],
     inventory: {
-      totalStock: 0,
       lowStockThreshold: 10,
       criticalStockThreshold: 5,
-      reorderPoint: 5
+      reorderPoint: 20
     },
     supplier: {
       name: '',
@@ -52,6 +57,13 @@ const Products = () => {
       phone: '',
       leadTime: 0,
       minimumOrder: 0
+    },
+    specifications: {
+      material: '',
+      care: '',
+      weight: 0,
+      countryOfOrigin: '',
+      warranty: ''
     },
     isActive: true,
     isFeatured: false,
@@ -450,16 +462,21 @@ const Products = () => {
       name: '',
       sku: '',
       category: '',
+      subcategory: '',
       brand: '',
       description: '',
+      shortDescription: '',
       price: 0,
       originalPrice: 0,
       costPrice: 0,
+      images: [],
+      colors: [],
+      sizes: [],
+      tags: [],
       inventory: {
-        totalStock: 0,
         lowStockThreshold: 10,
         criticalStockThreshold: 5,
-        reorderPoint: 5
+        reorderPoint: 20
       },
       supplier: {
         name: '',
@@ -468,6 +485,13 @@ const Products = () => {
         phone: '',
         leadTime: 0,
         minimumOrder: 0
+      },
+      specifications: {
+        material: '',
+        care: '',
+        weight: 0,
+        countryOfOrigin: '',
+        warranty: ''
       },
       isActive: true,
       isFeatured: false,
@@ -483,11 +507,17 @@ const Products = () => {
       name: product.name || '',
       sku: product.sku || '',
       category: product.category || '',
+      subcategory: product.subcategory || '',
       brand: product.brand || '',
       description: product.description || '',
+      shortDescription: product.shortDescription || '',
       price: product.price || 0,
       originalPrice: product.originalPrice || 0,
       costPrice: product.costPrice || 0,
+      images: product.images || [],
+      colors: product.colors || [],
+      sizes: product.sizes || [],
+      tags: product.tags || [],
       inventory: {
         totalStock: product.inventory?.totalStock || 0,
         lowStockThreshold: product.inventory?.lowStockThreshold || 10,
@@ -501,6 +531,13 @@ const Products = () => {
         phone: product.supplier?.phone || '',
         leadTime: product.supplier?.leadTime || 0,
         minimumOrder: product.supplier?.minimumOrder || 0
+      },
+      specifications: {
+        material: product.specifications?.material || '',
+        care: product.specifications?.care || '',
+        weight: product.specifications?.weight || 0,
+        countryOfOrigin: product.specifications?.countryOfOrigin || '',
+        warranty: product.specifications?.warranty || ''
       },
       isActive: product.isActive !== undefined ? product.isActive : true,
       isFeatured: product.isFeatured || false,
@@ -946,12 +983,28 @@ const Products = () => {
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
                     >
                       <option value="">Select Category</option>
-                      {Array.isArray(categories) && categories.map(category => (
-                        <option key={category._id || category} value={category.name || category}>
-                          {category.name || category}
-                        </option>
-                      ))}
+                      <option value="men">Men</option>
+                      <option value="women">Women</option>
+                      <option value="kids">Kids</option>
+                      <option value="accessories">Accessories</option>
+                      <option value="shoes">Shoes</option>
+                      <option value="bags">Bags</option>
                     </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Subcategory <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="subcategory"
+                      value={formData.subcategory}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                      placeholder="e.g., t-shirts, jeans, sneakers..."
+                    />
                   </div>
                   
                   <div>
@@ -970,19 +1023,290 @@ const Products = () => {
                   </div>
                 </div>
                 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Description <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      name="description"
+                      value={formData.description}
+                      onChange={handleInputChange}
+                      required
+                      rows={3}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                      placeholder="Detailed product description..."
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Short Description
+                    </label>
+                    <textarea
+                      name="shortDescription"
+                      value={formData.shortDescription}
+                      onChange={handleInputChange}
+                      rows={3}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                      placeholder="Brief product summary..."
+                    />
+                  </div>
+                </div>
+                
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Description <span className="text-red-500">*</span>
+                    Product Images
                   </label>
-                  <textarea
-                    name="description"
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    required
-                    rows={3}
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+                    <div className="text-center">
+                      <PhotoIcon className="mx-auto h-12 w-12 text-gray-400" />
+                      <div className="mt-4">
+                        <label className="cursor-pointer">
+                          <span className="mt-2 block text-sm font-medium text-gray-900">
+                            Upload images or add URLs
+                          </span>
+                          <input
+                            type="file"
+                            multiple
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              // Handle file upload here
+                              const files = Array.from(e.target.files);
+                              console.log('Files selected:', files);
+                              // TODO: Implement image upload
+                            }}
+                          />
+                        </label>
+                      </div>
+                      <div className="mt-4">
+                        <input
+                          type="url"
+                          placeholder="Or paste image URL and press Enter"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter' && e.target.value.trim()) {
+                              const newImages = [...formData.images, e.target.value.trim()];
+                              setFormData(prev => ({ ...prev, images: newImages }));
+                              e.target.value = '';
+                            }
+                          }}
+                        />
+                      </div>
+                      {formData.images.length > 0 && (
+                        <div className="mt-4 grid grid-cols-3 gap-2">
+                          {formData.images.map((img, index) => (
+                            <div key={index} className="relative">
+                              <img
+                                src={img}
+                                alt={`Product ${index + 1}`}
+                                className="w-full h-20 object-cover rounded border"
+                                onError={(e) => {
+                                  e.target.src = getPlaceholderImageUrl();
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newImages = formData.images.filter((_, i) => i !== index);
+                                  setFormData(prev => ({ ...prev, images: newImages }));
+                                }}
+                                className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tags
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter tags separated by commas"
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
-                    placeholder="Describe your product..."
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const tags = e.target.value.split(',').map(tag => tag.trim()).filter(Boolean);
+                        setFormData(prev => ({ ...prev, tags: [...new Set([...prev.tags, ...tags])] }));
+                        e.target.value = '';
+                      }
+                    }}
                   />
+                  {formData.tags.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {formData.tags.map((tag, index) => (
+                        <span
+                          key={index}
+                          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                        >
+                          {tag}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newTags = formData.tags.filter((_, i) => i !== index);
+                              setFormData(prev => ({ ...prev, tags: newTags }));
+                            }}
+                            className="ml-1 text-blue-600 hover:text-blue-900"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Colors & Sizes */}
+              <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 rounded-xl">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <TagIcon className="h-5 w-5 mr-2 text-indigo-600" />
+                  Colors & Sizes
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Available Colors
+                    </label>
+                    <div className="flex gap-2 mb-2">
+                      <input
+                        type="text"
+                        placeholder="Color name"
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm"
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter' && e.target.value.trim()) {
+                            const colorName = e.target.value.trim();
+                            const newColor = { name: colorName, hex: '#000000', available: true };
+                            setFormData(prev => ({ ...prev, colors: [...prev.colors, newColor] }));
+                            e.target.value = '';
+                          }
+                        }}
+                      />
+                      <input
+                        type="color"
+                        className="w-12 h-10 border border-gray-300 rounded cursor-pointer"
+                        onChange={(e) => {
+                          // Update the last added color's hex value
+                          if (formData.colors.length > 0) {
+                            const updatedColors = [...formData.colors];
+                            updatedColors[updatedColors.length - 1].hex = e.target.value;
+                            setFormData(prev => ({ ...prev, colors: updatedColors }));
+                          }
+                        }}
+                      />
+                    </div>
+                    {formData.colors.length > 0 && (
+                      <div className="space-y-2">
+                        {formData.colors.map((color, index) => (
+                          <div key={index} className="flex items-center gap-2 p-2 border border-gray-200 rounded">
+                            <div
+                              className="w-6 h-6 rounded-full border"
+                              style={{ backgroundColor: color.hex }}
+                            />
+                            <span className="flex-1 text-sm">{color.name}</span>
+                            <label className="flex items-center text-sm">
+                              <input
+                                type="checkbox"
+                                checked={color.available}
+                                onChange={(e) => {
+                                  const updatedColors = [...formData.colors];
+                                  updatedColors[index].available = e.target.checked;
+                                  setFormData(prev => ({ ...prev, colors: updatedColors }));
+                                }}
+                                className="mr-1"
+                              />
+                              Available
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newColors = formData.colors.filter((_, i) => i !== index);
+                                setFormData(prev => ({ ...prev, colors: newColors }));
+                              }}
+                              className="text-red-500 hover:text-red-700 text-sm"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Available Sizes
+                    </label>
+                    <div className="flex gap-2 mb-2">
+                      <input
+                        type="text"
+                        placeholder="Size (e.g., S, M, L, 32, 34)"
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm"
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter' && e.target.value.trim()) {
+                            const sizeName = e.target.value.trim();
+                            const newSize = { name: sizeName, available: true, stock: 0 };
+                            setFormData(prev => ({ ...prev, sizes: [...prev.sizes, newSize] }));
+                            e.target.value = '';
+                          }
+                        }}
+                      />
+                    </div>
+                    {formData.sizes.length > 0 && (
+                      <div className="space-y-2">
+                        {formData.sizes.map((size, index) => (
+                          <div key={index} className="flex items-center gap-2 p-2 border border-gray-200 rounded">
+                            <span className="flex-1 text-sm font-medium">{size.name}</span>
+                            <input
+                              type="number"
+                              placeholder="Stock"
+                              value={size.stock}
+                              onChange={(e) => {
+                                const updatedSizes = [...formData.sizes];
+                                updatedSizes[index].stock = parseInt(e.target.value) || 0;
+                                setFormData(prev => ({ ...prev, sizes: updatedSizes }));
+                              }}
+                              className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
+                              min="0"
+                            />
+                            <label className="flex items-center text-sm">
+                              <input
+                                type="checkbox"
+                                checked={size.available}
+                                onChange={(e) => {
+                                  const updatedSizes = [...formData.sizes];
+                                  updatedSizes[index].available = e.target.checked;
+                                  setFormData(prev => ({ ...prev, sizes: updatedSizes }));
+                                }}
+                                className="mr-1"
+                              />
+                              Available
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newSizes = formData.sizes.filter((_, i) => i !== index);
+                                setFormData(prev => ({ ...prev, sizes: newSizes }));
+                              }}
+                              className="text-red-500 hover:text-red-700 text-sm"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -1043,22 +1367,7 @@ const Products = () => {
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Current Stock <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      name="inventory.totalStock"
-                      value={formData.inventory.totalStock}
-                      onChange={handleInputChange}
-                      required
-                      min="0"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
-                    />
-                  </div>
-                  
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Low Stock Threshold
@@ -1070,7 +1379,9 @@ const Products = () => {
                       onChange={handleInputChange}
                       min="0"
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                      placeholder="10"
                     />
+                    <p className="text-xs text-gray-500 mt-1">Alert when stock falls below this level</p>
                   </div>
                   
                   <div>
@@ -1084,7 +1395,9 @@ const Products = () => {
                       onChange={handleInputChange}
                       min="0"
                       className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                      placeholder="5"
                     />
+                    <p className="text-xs text-gray-500 mt-1">Critical alert level</p>
                   </div>
                   
                   <div>
@@ -1098,6 +1411,101 @@ const Products = () => {
                       onChange={handleInputChange}
                       min="0"
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                      placeholder="20"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Trigger automatic reordering</p>
+                  </div>
+                </div>
+                
+                <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                  <div className="flex items-start">
+                    <InformationCircleIcon className="h-5 w-5 text-blue-500 mt-0.5 mr-2" />
+                    <div>
+                      <p className="text-sm font-medium text-blue-900">Stock Management Note</p>
+                      <p className="text-xs text-blue-700 mt-1">
+                        Stock levels are managed separately in the Inventory section. 
+                        These settings control when alerts and reorder notifications are triggered.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Product Specifications */}
+              <div className="bg-gradient-to-r from-orange-50 to-red-50 p-6 rounded-xl">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <CubeIcon className="h-5 w-5 mr-2 text-orange-600" />
+                  Product Specifications
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Material
+                    </label>
+                    <input
+                      type="text"
+                      name="specifications.material"
+                      value={formData.specifications.material}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                      placeholder="e.g., 100% Cotton, Leather, etc."
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Care Instructions
+                    </label>
+                    <input
+                      type="text"
+                      name="specifications.care"
+                      value={formData.specifications.care}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                      placeholder="e.g., Machine wash cold, Hand wash only"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Weight (kg)
+                    </label>
+                    <input
+                      type="number"
+                      name="specifications.weight"
+                      value={formData.specifications.weight}
+                      onChange={handleInputChange}
+                      min="0"
+                      step="0.01"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Country of Origin
+                    </label>
+                    <input
+                      type="text"
+                      name="specifications.countryOfOrigin"
+                      value={formData.specifications.countryOfOrigin}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                      placeholder="e.g., Sri Lanka, USA, etc."
+                    />
+                  </div>
+                  
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Warranty
+                    </label>
+                    <input
+                      type="text"
+                      name="specifications.warranty"
+                      value={formData.specifications.warranty}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                      placeholder="e.g., 1 year warranty, No warranty"
                     />
                   </div>
                 </div>

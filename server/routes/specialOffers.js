@@ -70,9 +70,8 @@ router.post('/', [auth, admin], [
   body('description').notEmpty().withMessage('Description is required'),
   body('type').isIn(['flash_sale', 'seasonal', 'birthday', 'anniversary', 'milestone', 'referral', 'loyalty', 'custom']).withMessage('Invalid offer type'),
   body('discountType').isIn(['percentage', 'fixed', 'free_shipping', 'buy_one_get_one', 'bundle']).withMessage('Invalid discount type'),
-  body('discountValue').isFloat({ min: 0 }).withMessage('Discount value must be positive'),
-  body('startDate').isISO8601().withMessage('Valid start date is required'),
-  body('endDate').isISO8601().withMessage('Valid end date is required')
+  body('discountValue').isFloat({ min: 0 }).withMessage('Discount value must be positive')
+  // startDate and endDate are auto-assigned from events, so validation is not required
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -89,10 +88,7 @@ router.post('/', [auth, admin], [
       priority, tags, notes
     } = req.body;
 
-    // Validate dates
-    if (new Date(startDate) >= new Date(endDate)) {
-      return res.status(400).json({ message: 'Start date must be before end date' });
-    }
+    // Dates are auto-assigned from events, so no validation needed
 
     const offer = new SpecialOffer({
       name,
@@ -152,8 +148,8 @@ router.put('/:id', [auth, admin], async (req, res) => {
       }
     });
 
-    // Validate dates if updated
-    if (offer.startDate && offer.endDate && offer.startDate >= offer.endDate) {
+    // Validate dates if both are provided and updated
+    if (req.body.startDate && req.body.endDate && new Date(req.body.startDate) >= new Date(req.body.endDate)) {
       return res.status(400).json({ message: 'Start date must be before end date' });
     }
 

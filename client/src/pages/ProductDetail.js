@@ -37,6 +37,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import { useWishlist } from '../contexts/WishlistContext';
 import api from '../utils/api';
+import Banner from '../components/Banner';
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -54,16 +55,18 @@ const ProductDetail = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [validationErrors, setValidationErrors] = useState({});
+  const [salesData, setSalesData] = useState(null);
 
   useEffect(() => {
     loadProduct();
-  }, [id]);
+    loadSalesData();
+  }, [id, loadSalesData]);
 
   useEffect(() => {
     if (product) {
       loadRelatedProducts();
     }
-  }, [product, id]);
+  }, [product, id, loadRelatedProducts]);
 
   const loadProduct = useCallback(async () => {
     setLoading(true);
@@ -164,6 +167,20 @@ const ProductDetail = () => {
       setRelatedProducts([]);
     }
   }, [product?.category, id]);
+
+  const loadSalesData = useCallback(async () => {
+    try {
+      if (id) {
+        const response = await api.get(`/api/orders/analytics/product-sales`);
+        const productSales = response.data[id];
+        setSalesData(productSales || { quantity: 0, total: 0, orders: 0 });
+      }
+    } catch (error) {
+      console.error('Error loading sales data:', error);
+      // Set default values if API fails
+      setSalesData({ quantity: 0, total: 0, orders: 0 });
+    }
+  }, [id]);
 
   const renderStars = (rating) => {
     const stars = [];
@@ -351,8 +368,24 @@ const ProductDetail = () => {
           </ol>
         </motion.nav>
 
+        {/* Product Page Banner */}
         <motion.div 
-          className="grid grid-cols-1 lg:grid-cols-2 gap-16"
+          className="mb-8"
+          variants={itemVariants}
+        >
+          <Banner 
+            position="top" 
+            page="product" 
+            autoPlay={true}
+            interval={4000}
+            showNavigation={true}
+            showDots={true}
+            height="250px"
+          />
+        </motion.div>
+
+        <motion.div 
+          className="grid grid-cols-1 lg:grid-cols-3 gap-16"
           variants={containerVariants}
         >
           {/* Enhanced Product Images */}
@@ -564,6 +597,34 @@ const ProductDetail = () => {
                   Write a review
                 </motion.button>
               </div>
+              
+              {/* Sales Information */}
+              {salesData && (salesData.quantity > 0 || salesData.orders > 0) && (
+                <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <FiUsers className="h-5 w-5 text-blue-600" />
+                      <span className="text-sm font-medium text-blue-900">
+                        {salesData.quantity} sold recently
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <FiTruck className="h-5 w-5 text-green-600" />
+                      <span className="text-sm font-medium text-green-900">
+                        {salesData.orders} happy customers
+                      </span>
+                    </div>
+                    {salesData.quantity > 10 && (
+                      <div className="flex items-center gap-2">
+                        <FiCheck className="h-5 w-5 text-orange-600" />
+                        <span className="text-sm font-medium text-orange-900">
+                          Popular choice
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
               
               <div className="flex items-center gap-4 mb-6">
                 {product.discount > 0 ? (
@@ -967,6 +1028,21 @@ const ProductDetail = () => {
               </div>
             </motion.div>
           </motion.div>
+
+          {/* Sidebar Banner */}
+          <motion.div 
+            className="lg:col-span-1"
+            variants={itemVariants}
+          >
+            <Banner 
+              position="sidebar" 
+              page="product" 
+              autoPlay={false}
+              showNavigation={false}
+              showDots={false}
+              height="400px"
+            />
+          </motion.div>
         </motion.div>
 
         {/* Enhanced Reviews Section */}
@@ -1121,6 +1197,22 @@ const ProductDetail = () => {
             ))}
           </motion.div>
         </motion.section>
+
+        {/* Sticky Bottom Banner */}
+        <motion.div 
+          className="fixed bottom-0 left-0 right-0 z-40"
+          variants={itemVariants}
+        >
+          <Banner 
+            position="sticky" 
+            page="product" 
+            autoPlay={true}
+            interval={8000}
+            showNavigation={true}
+            showDots={false}
+            height="80px"
+          />
+        </motion.div>
       </div>
     </motion.div>
   );

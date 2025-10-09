@@ -574,4 +574,132 @@ router.get('/:id/invoice', auth, async (req, res) => {
   }
 });
 
+// Get product sales analytics (admin only)
+router.get('/analytics/product-sales', auth, admin, async (req, res) => {
+  try {
+    const { days = 30 } = req.query;
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - parseInt(days));
+
+    // Aggregate sales data by product
+    const salesData = await Order.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startDate },
+          status: { $nin: ['cancelled'] } // Exclude cancelled orders
+        }
+      },
+      {
+        $unwind: '$items'
+      },
+      {
+        $group: {
+          _id: '$items.product',
+          totalQuantity: { $sum: '$items.quantity' },
+          totalRevenue: { $sum: '$items.total' },
+          orderCount: { $sum: 1 },
+          averagePrice: { $avg: '$items.price' }
+        }
+      }
+    ]);
+
+    // Convert to object format for easier frontend consumption
+    const salesMap = {};
+    salesData.forEach(item => {
+      salesMap[item._id] = {
+        quantity: item.totalQuantity,
+        total: item.totalRevenue,
+        orders: item.orderCount,
+        avgPrice: item.averagePrice
+      };
+    });
+
+    res.json(salesMap);
+  } catch (error) {
+    console.error('Error fetching product sales analytics:', error);
+    res.status(500).json({ message: 'Failed to fetch sales analytics' });
+  }
+});
+
+// Get inventory overview analytics (admin only)
+router.get('/analytics/inventory-overview', auth, admin, async (req, res) => {
+  try {
+    const { days = 30 } = req.query;
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - parseInt(days));
+
+    // Get total orders and revenue
+    const orderStats = await Order.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startDate },
+          status: { $nin: ['cancelled'] }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalOrders: { $sum: 1 },
+          totalRevenue: { $sum: '$total' },
+          totalItems: { $sum: { $size: '$items' } }
+        }
+      }
+    ]);
+
+    // Get top selling products
+    const topProducts = await Order.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startDate },
+          status: { $nin: ['cancelled'] }
+        }
+      },
+      {
+        $unwind: '$items'
+      },
+      {
+        $group: {
+          _id: '$items.product',
+          totalQuantity: { $sum: '$items.quantity' },
+          totalRevenue: { $sum: '$items.total' },
+          productName: { $first: '$items.name' }
+        }
+      },
+      {
+        $sort: { totalQuantity: -1 }
+      },
+      {
+        $limit: 10
+      }
+    ]);
+
+    // Get products count from Product collection
+    const totalProducts = await Product.countDocuments({ isActive: true });
+    const lowStockProducts = await Product.countDocuments({
+      isActive: true,
+      $expr: { $lte: ['$inventory.totalStock', '$inventory.lowStockThreshold'] }
+    });
+    const outOfStockProducts = await Product.countDocuments({
+      isActive: true,
+      'inventory.totalStock': 0
+    });
+
+    const overview = {
+      period: `${days} days`,
+      orders: orderStats[0] || { totalOrders: 0, totalRevenue: 0, totalItems: 0 },
+      inventory: {
+        totalProducts,
+        lowStockProducts,
+        outOfStockProducts
+      },
+      topProducts
+    };
+
+    res.json(overview);
+  } catch (error) {
+    console.error('Error fetching inventory overview:', error);
+    res.status(500).json({ message: 'Failed to fetch inventory overview' });
+  }
+});
+
 module.exports = router; 

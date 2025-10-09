@@ -7,6 +7,11 @@ const spinWheelSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  title: {
+    type: String,
+    required: true,
+    trim: true
+  },
   description: String,
   
   // Event Integration
@@ -21,18 +26,18 @@ const spinWheelSchema = new mongoose.Schema({
   
   // Wheel Configuration
   segments: [{
-    label: {
+    name: {
       type: String,
       required: true
     },
-    value: {
+    reward: {
       type: String,
       required: true
     },
     type: {
       type: String,
       enum: ['discount', 'free_shipping', 'cashback', 'product', 'loyalty_points'],
-      required: true
+      required: false
     },
     probability: {
       type: Number,

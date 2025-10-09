@@ -42,6 +42,9 @@ import Users from './pages/Admin/Users';
 import Categories from './pages/Admin/Categories';
 import Coupons from './pages/Admin/Coupons';
 import Banners from './pages/Admin/Banners';
+import ReviewsAdmin from './pages/Admin/Reviews';
+import IssuesAdmin from './pages/Admin/Issues';
+import Inventory from './pages/Admin/Inventory';
 
 import Analytics from './pages/Admin/Analytics';
 import Settings from './pages/Admin/Settings';
@@ -260,6 +263,29 @@ function App() {
                     </AdminRoute>
                   } />
                   
+                  <Route path="/admin/inventory" element={
+                    <AdminRoute>
+                      <AdminLayout>
+                        <Inventory />
+                      </AdminLayout>
+                    </AdminRoute>
+                  } />
+                  
+                  <Route path="/admin/reviews" element={
+                    <AdminRoute>
+                      <AdminLayout>
+                        <ReviewsAdmin />
+                      </AdminLayout>
+                    </AdminRoute>
+                  } />
+                  
+                  <Route path="/admin/issues" element={
+                    <AdminRoute>
+                      <AdminLayout>
+                        <IssuesAdmin />
+                      </AdminLayout>
+                    </AdminRoute>
+                  } />
 
                   
                   <Route path="/admin/analytics" element={
