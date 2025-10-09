@@ -702,4 +702,419 @@ router.get('/analytics/inventory-overview', auth, admin, async (req, res) => {
   }
 });
 
+// Enhanced Order Management Endpoints
+
+// Check inventory for order items before shipping
+router.post('/:id/check-inventory', [auth, admin], async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id)
+      .populate('items.product', 'name inventory stock');
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    const inventoryIssues = [];
+    const inventoryChecks = [];
+
+    for (const item of order.items) {
+      const product = await Product.findById(item.product._id || item.product);
+      if (!product) {
+        inventoryIssues.push({
+          itemId: item._id,
+          productId: item.product._id || item.product,
+          name: item.name,
+          issue: 'Product not found',
+          requested: item.quantity,
+          available: 0
+        });
+        continue;
+      }
+
+      // Get available stock
+      const availableStock = product.getAvailableStock ? product.getAvailableStock() : (product.stock || 0);
+      
+      inventoryChecks.push({
+        itemId: item._id,
+        productId: product._id,
+        name: product.name,
+        requested: item.quantity,
+        available: availableStock,
+        sufficient: availableStock >= item.quantity
+      });
+
+      if (availableStock < item.quantity) {
+        inventoryIssues.push({
+          itemId: item._id,
+          productId: product._id,
+          name: product.name,
+          issue: 'Insufficient stock',
+          requested: item.quantity,
+          available: availableStock
+        });
+      }
+    }
+
+    res.json({
+      orderId: order._id,
+      canShip: inventoryIssues.length === 0,
+      inventoryChecks,
+      issues: inventoryIssues
+    });
+
+  } catch (error) {
+    console.error('Error checking inventory:', error);
+    res.status(500).json({ message: 'Failed to check inventory' });
+  }
+});
+
+// Ship Complete - Enhanced with inventory validation
+router.post('/:id/ship-complete', [auth, admin], async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id)
+      .populate('items.product', 'name inventory stock')
+      .populate('user', 'name email');
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // Only allow shipping for processing orders
+    if (order.status !== 'processing') {
+      return res.status(400).json({ 
+        message: `Cannot ship order with status: ${order.status}. Order must be in 'processing' status.` 
+      });
+    }
+
+    // Check inventory for all items
+    const inventoryIssues = [];
+    for (const item of order.items) {
+      const product = await Product.findById(item.product._id || item.product);
+      if (!product) {
+        inventoryIssues.push({
+          itemId: item._id,
+          productId: item.product._id || item.product,
+          name: item.name,
+          issue: 'Product not found',
+          requested: item.quantity,
+          available: 0
+        });
+        continue;
+      }
+
+      const availableStock = product.getAvailableStock ? product.getAvailableStock() : (product.stock || 0);
+      if (availableStock < item.quantity) {
+        inventoryIssues.push({
+          itemId: item._id,
+          productId: product._id,
+          name: product.name,
+          issue: 'Insufficient stock',
+          requested: item.quantity,
+          available: availableStock
+        });
+      }
+    }
+
+    // If there are inventory issues, return them
+    if (inventoryIssues.length > 0) {
+      return res.status(400).json({
+        message: 'Cannot ship due to inventory issues',
+        canShip: false,
+        issues: inventoryIssues
+      });
+    }
+
+    // Deduct stock from inventory
+    for (const item of order.items) {
+      const product = await Product.findById(item.product._id || item.product);
+      if (product) {
+        try {
+          if (product.confirmStockDeduction) {
+            product.confirmStockDeduction(item.quantity);
+          } else {
+            // Fallback stock deduction
+            product.stock = Math.max(0, (product.stock || 0) - item.quantity);
+          }
+          await product.save();
+        } catch (stockError) {
+          console.error(`Stock deduction failed for ${product.name}:`, stockError);
+          // Continue with other items even if one fails
+        }
+      }
+    }
+
+    // Update order status to shipped then completed
+    order.status = 'shipped';
+    order.shippedAt = new Date();
+    
+    // Auto-complete after shipping (as per PRD)
+    setTimeout(async () => {
+      try {
+        order.status = 'completed';
+        order.completedAt = new Date();
+        await order.save();
+      } catch (error) {
+        console.error('Error auto-completing order:', error);
+      }
+    }, 1000); // Small delay to ensure shipped status is saved first
+
+    await order.save();
+
+    // Create audit log
+    const auditLog = {
+      orderId: order._id,
+      action: 'ship_complete',
+      adminId: req.user._id,
+      timestamp: new Date(),
+      details: {
+        previousStatus: 'processing',
+        newStatus: 'shipped',
+        itemsShipped: order.items.length
+      }
+    };
+
+    console.log('Order shipped successfully:', auditLog);
+
+    res.json({
+      message: 'Order shipped successfully',
+      order: {
+        id: order._id,
+        status: order.status,
+        shippedAt: order.shippedAt
+      },
+      auditLog
+    });
+
+  } catch (error) {
+    console.error('Error shipping order:', error);
+    res.status(500).json({ message: 'Failed to ship order' });
+  }
+});
+
+// Process Refund - Full or Partial
+router.post('/:id/refund', [auth, admin], [
+  body('type').isIn(['full', 'partial']).withMessage('Refund type must be full or partial'),
+  body('reason').notEmpty().withMessage('Refund reason is required'),
+  body('amount').optional().isNumeric().withMessage('Refund amount must be numeric'),
+  body('items').optional().isArray().withMessage('Items must be an array for partial refunds')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { type, reason, amount, items: refundItems } = req.body;
+    const order = await Order.findById(req.params.id)
+      .populate('items.product', 'name inventory stock')
+      .populate('user', 'name email');
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // Check if order can be refunded
+    const refundableStatuses = ['processing', 'shipped', 'completed'];
+    if (!refundableStatuses.includes(order.status)) {
+      return res.status(400).json({ 
+        message: `Cannot refund order with status: ${order.status}` 
+      });
+    }
+
+    let refundAmount = 0;
+    let refundedItems = [];
+
+    if (type === 'full') {
+      refundAmount = order.total;
+      refundedItems = order.items.map(item => ({
+        itemId: item._id,
+        productId: item.product._id || item.product,
+        name: item.name,
+        quantity: item.quantity,
+        refundAmount: item.total
+      }));
+
+      // Restore inventory for unshipped items
+      if (order.status !== 'shipped' && order.status !== 'completed') {
+        for (const item of order.items) {
+          const product = await Product.findById(item.product._id || item.product);
+          if (product) {
+            try {
+              if (product.restoreStock) {
+                product.restoreStock(item.quantity);
+              } else {
+                product.stock = (product.stock || 0) + item.quantity;
+              }
+              await product.save();
+            } catch (stockError) {
+              console.error(`Stock restoration failed for ${product.name}:`, stockError);
+            }
+          }
+        }
+      }
+
+      order.status = 'refunded';
+    } else if (type === 'partial') {
+      if (!refundItems || refundItems.length === 0) {
+        return res.status(400).json({ message: 'Items are required for partial refund' });
+      }
+
+      for (const refundItem of refundItems) {
+        const orderItem = order.items.find(item => 
+          item._id.toString() === refundItem.itemId
+        );
+        
+        if (!orderItem) {
+          return res.status(400).json({ 
+            message: `Item ${refundItem.itemId} not found in order` 
+          });
+        }
+
+        const itemRefundAmount = (orderItem.price * refundItem.quantity);
+        refundAmount += itemRefundAmount;
+        
+        refundedItems.push({
+          itemId: orderItem._id,
+          productId: orderItem.product._id || orderItem.product,
+          name: orderItem.name,
+          quantity: refundItem.quantity,
+          refundAmount: itemRefundAmount
+        });
+
+        // Restore inventory for unshipped items
+        if (order.status !== 'shipped' && order.status !== 'completed') {
+          const product = await Product.findById(orderItem.product._id || orderItem.product);
+          if (product) {
+            try {
+              if (product.restoreStock) {
+                product.restoreStock(refundItem.quantity);
+              } else {
+                product.stock = (product.stock || 0) + refundItem.quantity;
+              }
+              await product.save();
+            } catch (stockError) {
+              console.error(`Stock restoration failed for ${product.name}:`, stockError);
+            }
+          }
+        }
+      }
+
+      // Update order status
+      const totalRefunded = (order.refundAmount || 0) + refundAmount;
+      if (totalRefunded >= order.total) {
+        order.status = 'refunded';
+      } else {
+        order.status = 'partially_refunded';
+      }
+    }
+
+    // Update order with refund information
+    order.refundAmount = (order.refundAmount || 0) + refundAmount;
+    order.refundReason = reason;
+    order.refundedAt = new Date();
+    order.refundedBy = req.user._id;
+    
+    if (!order.refunds) {
+      order.refunds = [];
+    }
+    
+    order.refunds.push({
+      type,
+      amount: refundAmount,
+      reason,
+      items: refundedItems,
+      processedAt: new Date(),
+      processedBy: req.user._id,
+      transactionId: `REF-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    });
+
+    await order.save();
+
+    // Create audit log
+    const auditLog = {
+      orderId: order._id,
+      action: 'refund_processed',
+      adminId: req.user._id,
+      timestamp: new Date(),
+      details: {
+        type,
+        amount: refundAmount,
+        reason,
+        itemsRefunded: refundedItems.length,
+        newStatus: order.status
+      }
+    };
+
+    console.log('Refund processed successfully:', auditLog);
+
+    res.json({
+      message: `${type.charAt(0).toUpperCase() + type.slice(1)} refund processed successfully`,
+      refund: {
+        transactionId: order.refunds[order.refunds.length - 1].transactionId,
+        amount: refundAmount,
+        type,
+        status: 'processed'
+      },
+      order: {
+        id: order._id,
+        status: order.status,
+        totalRefunded: order.refundAmount
+      },
+      auditLog
+    });
+
+  } catch (error) {
+    console.error('Error processing refund:', error);
+    res.status(500).json({ message: 'Failed to process refund' });
+  }
+});
+
+// Get inventory status for products
+router.get('/inventory/check', [auth, admin], async (req, res) => {
+  try {
+    const { skus, productIds } = req.query;
+    let query = { isActive: true };
+    
+    if (skus) {
+      const skuArray = Array.isArray(skus) ? skus : skus.split(',');
+      query.sku = { $in: skuArray };
+    }
+    
+    if (productIds) {
+      const idArray = Array.isArray(productIds) ? productIds : productIds.split(',');
+      query._id = { $in: idArray };
+    }
+
+    const products = await Product.find(query).select('name sku stock inventory lowStockThreshold');
+    
+    const inventoryStatus = products.map(product => {
+      const availableStock = product.getAvailableStock ? product.getAvailableStock() : (product.stock || 0);
+      const lowStockThreshold = product.lowStockThreshold || product.inventory?.lowStockThreshold || 5;
+      
+      return {
+        productId: product._id,
+        name: product.name,
+        sku: product.sku,
+        availableStock,
+        lowStockThreshold,
+        isLowStock: availableStock <= lowStockThreshold,
+        isOutOfStock: availableStock === 0
+      };
+    });
+
+    res.json({
+      products: inventoryStatus,
+      summary: {
+        total: inventoryStatus.length,
+        lowStock: inventoryStatus.filter(p => p.isLowStock).length,
+        outOfStock: inventoryStatus.filter(p => p.isOutOfStock).length
+      }
+    });
+
+  } catch (error) {
+    console.error('Error checking inventory status:', error);
+    res.status(500).json({ message: 'Failed to check inventory status' });
+  }
+});
+
 module.exports = router; 

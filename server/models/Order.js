@@ -99,7 +99,7 @@ const orderSchema = new mongoose.Schema({
   status: {
     type: String,
     required: true,
-    enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'],
+    enum: ['pending', 'processing', 'shipped', 'delivered', 'completed', 'cancelled', 'refunded', 'partially_refunded'],
     default: 'pending'
   },
   isPaid: {
@@ -166,6 +166,104 @@ const orderSchema = new mongoose.Schema({
       type: Date,
       default: Date.now
     }
+  }],
+  
+  // Enhanced Order Management Fields
+  shippedAt: {
+    type: Date
+  },
+  completedAt: {
+    type: Date
+  },
+  
+  // Refund Management
+  refundAmount: {
+    type: Number,
+    default: 0
+  },
+  refundReason: {
+    type: String
+  },
+  refundedAt: {
+    type: Date
+  },
+  refundedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  refunds: [{
+    type: {
+      type: String,
+      enum: ['full', 'partial'],
+      required: true
+    },
+    amount: {
+      type: Number,
+      required: true
+    },
+    reason: {
+      type: String,
+      required: true
+    },
+    items: [{
+      itemId: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true
+      },
+      productId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Product',
+        required: true
+      },
+      name: {
+        type: String,
+        required: true
+      },
+      quantity: {
+        type: Number,
+        required: true
+      },
+      refundAmount: {
+        type: Number,
+        required: true
+      }
+    }],
+    processedAt: {
+      type: Date,
+      default: Date.now
+    },
+    processedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    transactionId: {
+      type: String,
+      required: true,
+      unique: true
+    }
+  }],
+  
+  // Audit Trail
+  auditLog: [{
+    action: {
+      type: String,
+      required: true
+    },
+    performedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    timestamp: {
+      type: Date,
+      default: Date.now
+    },
+    details: {
+      type: mongoose.Schema.Types.Mixed
+    },
+    ipAddress: String,
+    userAgent: String
   }]
 }, {
   timestamps: true
