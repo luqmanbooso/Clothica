@@ -2,6 +2,7 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const Order = require('../models/Order');
 const Product = require('../models/Product');
+const LoyaltyMember = require('../models/LoyaltyMember');
 const { auth } = require('../middleware/auth');
 const { admin } = require('../middleware/admin');
 const User = require('../models/User'); // Added for user details
@@ -853,6 +854,16 @@ router.post('/:id/ship-complete', [auth, admin], async (req, res) => {
         order.status = 'completed';
         order.completedAt = new Date();
         await order.save();
+        
+        // Award loyalty points when order is completed
+        if (order.user) {
+          try {
+            await awardLoyaltyPoints(order.user._id || order.user, order.total, order._id);
+          } catch (loyaltyError) {
+            console.error('Error awarding loyalty points:', loyaltyError);
+            // Don't fail the order completion if loyalty fails
+          }
+        }
       } catch (error) {
         console.error('Error auto-completing order:', error);
       }
@@ -1116,5 +1127,54 @@ router.get('/inventory/check', [auth, admin], async (req, res) => {
     res.status(500).json({ message: 'Failed to check inventory status' });
   }
 });
+
+// Helper function to award loyalty points
+async function awardLoyaltyPoints(userId, orderTotal, orderId) {
+  try {
+    // Find or create loyalty member
+    let loyaltyMember = await LoyaltyMember.findOne({ userId });
+    if (!loyaltyMember) {
+      loyaltyMember = new LoyaltyMember({
+        userId,
+        points: 0,
+        tier: 'Bronze',
+        totalSpent: 0
+      });
+    }
+
+    // Calculate points (1 point per $1 spent)
+    const benefits = loyaltyMember.getTierBenefits();
+    const basePoints = Math.floor(orderTotal);
+    const pointsToAdd = Math.floor(basePoints * benefits.pointsMultiplier);
+
+    // Add points and update total spent
+    const tierUpdated = loyaltyMember.addPoints(
+      pointsToAdd, 
+      'earned', 
+      `Order #${orderId}`, 
+      orderId
+    );
+    
+    loyaltyMember.totalSpent += orderTotal;
+    
+    // Check for tier update again after spending update
+    const finalTierUpdate = loyaltyMember.updateTier();
+    
+    await loyaltyMember.save();
+
+    console.log(`Awarded ${pointsToAdd} loyalty points to user ${userId} for order ${orderId}`);
+    
+    return {
+      pointsEarned: pointsToAdd,
+      totalPoints: loyaltyMember.points,
+      tier: loyaltyMember.tier,
+      tierUpdated: tierUpdated || finalTierUpdate,
+      totalSpent: loyaltyMember.totalSpent
+    };
+  } catch (error) {
+    console.error('Error awarding loyalty points:', error);
+    throw error;
+  }
+}
 
 module.exports = router; 

@@ -49,6 +49,7 @@ import Inventory from './pages/Admin/Inventory';
 import Analytics from './pages/Admin/Analytics';
 import Settings from './pages/Admin/Settings';
 import Events from './pages/Admin/Events';
+import EventsPromotions from './pages/Admin/EventsPromotions';
 import Finance from './pages/Admin/Finance';
 import ClientFeatures from './pages/Admin/ClientFeatures';
 import CampaignHub from './pages/Admin/CampaignHub';
@@ -308,6 +309,14 @@ function App() {
                     <AdminRoute>
                       <AdminLayout>
                         <Events />
+                      </AdminLayout>
+                    </AdminRoute>
+                  } />
+                  
+                  <Route path="/admin/events-promotions" element={
+                    <AdminRoute>
+                      <AdminLayout>
+                        <EventsPromotions />
                       </AdminLayout>
                     </AdminRoute>
                   } />

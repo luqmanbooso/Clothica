@@ -8,14 +8,13 @@ import {
   ArrowRightIcon, 
   ChevronLeftIcon, 
   ChevronRightIcon,
-  SparklesIcon,
-  FireIcon,
   StarIcon as StarIconSolid
 } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
 import WelcomeModal from '../components/WelcomeModal';
 import Banner from '../components/Banner';
 import LoyaltyDashboard from '../components/LoyaltyDashboard';
+import LoyaltyPromoSection from '../components/Homepage/LoyaltyPromoSection';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 
@@ -26,45 +25,6 @@ const Home = () => {
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    setIsVisible(true);
-    if (isAuthenticated) {
-      loadFeaturedProducts();
-    }
-    const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [isAuthenticated]);
-
-  const loadFeaturedProducts = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get('/api/products/featured');
-      setFeaturedProducts(response.data);
-    } catch (error) {
-      console.error('Error loading featured products:', error);
-      // Fallback to empty array if API fails
-      setFeaturedProducts([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Show welcome modal for new users (only on first login, not page refresh)
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      // Check if this is a new user session (not just page refresh)
-      const hasSeenWelcome = sessionStorage.getItem('welcomeModalShown');
-      const isNewUser = !hasSeenWelcome;
-      
-      if (isNewUser) {
-        setShowWelcomeModal(true);
-        sessionStorage.setItem('welcomeModalShown', 'true');
-      }
-    }
-  }, [isAuthenticated, user]);
 
   const heroSlides = [
     {
@@ -180,6 +140,40 @@ const Home = () => {
       opacity: 0
     })
   };
+
+  const loadFeaturedProducts = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get('/api/products/featured');
+      setFeaturedProducts(response.data);
+    } catch (error) {
+      console.error('Error loading featured products:', error);
+      // Fallback to empty array if API fails
+      setFeaturedProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    setIsVisible(true);
+    if (isAuthenticated) {
+      loadFeaturedProducts();
+    }
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated, loadFeaturedProducts, heroSlides.length]);
+
+  useEffect(() => {
+    // Check if user is new (first time visiting)
+    const hasVisited = localStorage.getItem('hasVisited');
+    if (!hasVisited && isAuthenticated) {
+      setShowWelcomeModal(true);
+      localStorage.setItem('hasVisited', 'true');
+    }
+  }, [isAuthenticated, user]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -397,27 +391,8 @@ const Home = () => {
         </div>
       )}
 
-      {/* Smart Discounts Section */}
-      <div className="py-8 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Available Coupons & Discounts</h2>
-            <p className="text-lg text-gray-600">Find the best deals for your next purchase!</p>
-          </div>
-          <div className="text-center py-12">
-            <div className="text-6xl mb-4">🎫</div>
-            <h3 className="text-xl font-medium text-gray-900 mb-2">Discounts in Campaign System</h3>
-            <p className="text-gray-600 mb-6">All discounts and coupons are managed through our event-driven campaigns</p>
-            <Link 
-              to="/admin/campaign-hub" 
-              className="inline-flex items-center px-6 py-3 bg-[#6C7A59] text-white rounded-lg hover:bg-[#5A6A4A] transition-colors"
-            >
-              Browse Discounts
-              <ArrowRightIcon className="ml-2 h-5 w-5" />
-            </Link>
-          </div>
-        </div>
-      </div>
+      {/* Loyalty & Promotions Section */}
+      <LoyaltyPromoSection />
 
       {/* Featured Products Section */}
       <section className="py-20 px-6 bg-white">
