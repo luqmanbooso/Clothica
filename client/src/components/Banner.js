@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import api from '../utils/api';
+import { getSocket } from '../utils/socket';
 
 const Banner = ({ 
   position = 'hero', 
@@ -61,6 +62,16 @@ const Banner = ({
 
   useEffect(() => {
     fetchBanners();
+  }, [fetchBanners]);
+
+  // Listen for banner updates via socket
+  useEffect(() => {
+    const socket = getSocket();
+    const handleUpdate = () => fetchBanners();
+    socket.on('banners:update', handleUpdate);
+    return () => {
+      socket.off('banners:update', handleUpdate);
+    };
   }, [fetchBanners]);
 
   // Auto-advance banners

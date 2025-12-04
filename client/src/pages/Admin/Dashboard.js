@@ -34,6 +34,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import { useToast } from '../../contexts/ToastContext';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
+import { getSocket } from '../../utils/socket';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -42,7 +43,6 @@ const AdminDashboard = () => {
   const [error, setError] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
   const [activeTab, setActiveTab] = useState('overview');
-  const [refreshInterval, setRefreshInterval] = useState(30000);
   const [timeRange, setTimeRange] = useState('30');
   const [selectedPeriod, setSelectedPeriod] = useState('month');
 
@@ -158,9 +158,26 @@ const AdminDashboard = () => {
   // Auto-refresh dashboard
   useEffect(() => {
     fetchDashboardData();
-    const interval = setInterval(fetchDashboardData, refreshInterval);
-    return () => clearInterval(interval);
-  }, [fetchDashboardData, refreshInterval]);
+  }, [fetchDashboardData]);
+
+  // Listen for real-time dashboard updates
+  useEffect(() => {
+    const socket = getSocket();
+    const handleUpdate = (payload) => {
+      if (payload) {
+        setDashboardData((prev) => ({
+          ...prev,
+          ...payload
+        }));
+      } else {
+        fetchDashboardData();
+      }
+    };
+    socket.on('dashboard:update', handleUpdate);
+    return () => {
+      socket.off('dashboard:update', handleUpdate);
+    };
+  }, [fetchDashboardData]);
 
   if (loading) {
     return (

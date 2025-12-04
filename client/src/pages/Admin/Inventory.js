@@ -25,6 +25,7 @@ import {
 import axios from 'axios';
 import { useToast } from '../../contexts/ToastContext';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
+import { getSocket } from '../../utils/socket';
 
 const Inventory = () => {
   const { success: showSuccess, error: showError } = useToast();
@@ -265,7 +266,7 @@ const Inventory = () => {
   };
 
   // Fetch products with stock information
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       const response = await axios.get('/api/admin/products');
       setProducts(response.data.products || []);
@@ -273,10 +274,10 @@ const Inventory = () => {
       console.error('Error fetching products:', error);
       showError('Failed to load products');
     }
-  };
+  }, [showError]);
 
   // Fetch sales data for products
-  const fetchSalesData = async () => {
+  const fetchSalesData = useCallback(async () => {
     try {
       const response = await axios.get('/api/admin/orders/analytics/product-sales');
       setSalesData(response.data || {});
@@ -284,7 +285,7 @@ const Inventory = () => {
       console.error('Error fetching sales data:', error);
       // Don't show error for sales data as it's supplementary info
     }
-  };
+  }, []);
 
   // Enhanced useEffect to fetch all data
   useEffect(() => {
@@ -292,15 +293,25 @@ const Inventory = () => {
     fetchProducts();
     fetchSalesData();
     fetchWarehouseData();
-    
-    const interval = setInterval(() => {
-      fetchInventoryData();
-      fetchProducts();
-      fetchSalesData();
-    }, 60000); // 1 minute
-    
-    return () => clearInterval(interval);
-  }, [fetchInventoryData]);
+  }, [fetchInventoryData, fetchProducts, fetchSalesData]);
+
+  // Socket-based updates
+  useEffect(() => {
+    const socket = getSocket();
+    const onInventoryUpdate = () => fetchInventoryData();
+    const onProductsUpdate = () => fetchProducts();
+    const onOrdersUpdate = () => fetchSalesData();
+
+    socket.on('inventory:update', onInventoryUpdate);
+    socket.on('products:update', onProductsUpdate);
+    socket.on('orders:update', onOrdersUpdate);
+
+    return () => {
+      socket.off('inventory:update', onInventoryUpdate);
+      socket.off('products:update', onProductsUpdate);
+      socket.off('orders:update', onOrdersUpdate);
+    };
+  }, [fetchInventoryData, fetchProducts, fetchSalesData]);
 
   // Stock adjustment functions
   const handleStockAdjustment = async () => {
