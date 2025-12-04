@@ -25,7 +25,7 @@ public class UserInfo{
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
     private Cart cart;
 
-    @OneToMany(mappedBy = "user")
+    @OneToMany(mappedBy = "user",fetch = FetchType.LAZY)
     private List<Order> orders;
 
     public UserInfo(String username, String email, String password, String roles) {

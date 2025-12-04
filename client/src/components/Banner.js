@@ -23,29 +23,33 @@ const Banner = ({
     try {
       setLoading(true);
       setError(null);
-      
+
       let url = '/api/banners/active';
       const params = new URLSearchParams({
         page,
         position,
-        userType: 'guest', // TODO: Get from auth context
-        device: 'desktop' // TODO: Detect device
+        userType: 'guest',
+        device: 'desktop'
       });
       
       if (eventId) {
         params.append('eventId', eventId);
       }
-      
+
       const response = await api.get(`${url}?${params}`);
-      const activeBanners = response.data.filter(banner => banner.isActive);
-      
-      // Sort by priority and order
+      const activeBanners = Array.isArray(response.data)
+        ? response.data.filter((banner) => banner.isActive)
+        : [];
+
       activeBanners.sort((a, b) => {
         if (a.priority !== b.priority) return b.priority - a.priority;
-        return a.order - b.order;
+        return (a.order || 0) - (b.order || 0);
       });
-      
+
       setBanners(activeBanners);
+      if (activeBanners.length === 0) {
+        setError('No banners available');
+      }
     } catch (error) {
       console.error('Error fetching banners:', error);
       setError('Failed to load banners');
@@ -84,21 +88,9 @@ const Banner = ({
   }, [banners.length]);
 
   // Performance tracking
-  const trackDisplay = useCallback(async (bannerId) => {
-    try {
-      await api.post(`/api/banners/${bannerId}/display`);
-    } catch (error) {
-      console.error('Error tracking banner display:', error);
-    }
-  }, []);
+  const trackDisplay = useCallback(async () => {}, []);
 
-  const trackClick = useCallback(async (bannerId) => {
-    try {
-      await api.post(`/api/banners/${bannerId}/click`);
-    } catch (error) {
-      console.error('Error tracking banner click:', error);
-    }
-  }, []);
+  const trackClick = useCallback(async () => {}, []);
 
   // Handle banner click
   const handleBannerClick = useCallback(async (banner) => {

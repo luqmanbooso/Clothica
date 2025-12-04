@@ -17,31 +17,15 @@ export const CouponProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Fetch available coupons (public endpoint for active coupons)
+  // Fetch available coupons (not yet supported in Spring Boot backend)
   const fetchCoupons = async () => {
-    try {
-      setLoading(true);
-      // Use the api instance and public coupons endpoint
-      const response = await api.get('/api/coupons/available');
-      setCoupons(response.data);
-    } catch (error) {
-      console.error('Failed to fetch coupons:', error);
-      setError('Failed to load coupons');
-      // Don't set coupons to empty array, just log the error
-      // Some functionality can still work without coupons
-    } finally {
-      setLoading(false);
-    }
+    setLoading(false);
+    setCoupons([]);
   };
 
   // Validate coupon code
   const validateCoupon = async (code, subtotal) => {
-    try {
-      const response = await api.post('/api/coupons/validate', { code, subtotal });
-      return response.data;
-    } catch (error) {
-      return { valid: false, message: error.response?.data?.message || 'Invalid coupon code' };
-    }
+    return { valid: false, message: 'Coupons are not supported with the current backend' };
   };
 
   // Apply coupon discount

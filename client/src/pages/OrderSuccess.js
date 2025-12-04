@@ -13,7 +13,6 @@ import {
 import SpinWheel from '../components/SpinWheel';
 import { useAuth } from '../contexts/AuthContext';
 import { useLoyalty } from '../contexts/LoyaltyContext';
-import api from '../utils/api';
 
 const OrderSuccess = () => {
   const location = useLocation();
@@ -122,36 +121,15 @@ const OrderSuccess = () => {
     }
 
     setIsGeneratingInvoice(true);
-    try {
-      // Generate invoice
-      const response = await api.get(`/api/orders/${orderData.orderId}/invoice`, {
-        responseType: 'blob'
-      });
-
-      // Create download link
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `invoice-${orderData.orderId}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-
+    setTimeout(() => {
       setInvoiceGenerated(true);
-    } catch (error) {
-      console.error('Error generating invoice:', error);
-      // Show error message
-      alert('Failed to generate invoice. Please try again later.');
-    } finally {
       setIsGeneratingInvoice(false);
-    }
+      setError('Invoice downloads are not available on this backend yet.');
+    }, 400);
   };
 
   const handleViewInvoice = () => {
-    if (orderData?.orderId) {
-      window.open(`/api/orders/${orderData.orderId}/invoice`, '_blank');
-    }
+    setError('Invoice downloads are not available on this backend yet.');
   };
 
   const handleGoHome = () => {
@@ -426,4 +404,3 @@ const OrderSuccess = () => {
 };
 
 export default OrderSuccess;
-

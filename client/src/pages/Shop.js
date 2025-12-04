@@ -39,36 +39,28 @@ const Shop = () => {
   const loadProducts = useCallback(async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams({
-        page: currentPage,
-        limit: 12,
-        category: selectedCategory !== 'all' ? selectedCategory : '',
-        search: searchTerm,
-        sort: sortBy
-      });
-
-      const response = await api.get(`/api/products?${params}`);
-      setProducts(response.data.products);
-      setTotalProducts(response.data.total);
+      const response = await api.get('/api/products/');
+      const list = Array.isArray(response.data) ? response.data : [];
+      const normalized = list.map((p) => ({
+        ...p,
+        _id: p._id || p.id,
+        id: p.id || p._id,
+        images: p.images || [],
+        image: p.image || null,
+        price: p.price || 0,
+        stock: p.stock ?? 0
+      }));
+      setProducts(normalized);
+      setTotalProducts(normalized.length);
+      setCategories(['all']);
     } catch (error) {
       console.error('Error loading products:', error);
+      setProducts([]);
+      setTotalProducts(0);
     } finally {
       setLoading(false);
     }
-  }, [currentPage, selectedCategory, searchTerm, sortBy]);
-
-  const loadCategories = useCallback(async () => {
-    try {
-      const response = await api.get('/api/categories');
-      setCategories(response.data);
-    } catch (error) {
-      console.error('Error loading categories:', error);
-    }
   }, []);
-
-  useEffect(() => {
-    loadCategories();
-  }, [loadCategories]);
 
   useEffect(() => {
     loadProducts();

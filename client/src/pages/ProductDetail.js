@@ -56,6 +56,7 @@ const ProductDetail = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [validationErrors, setValidationErrors] = useState({});
   const [salesData, setSalesData] = useState(null);
+  const [loadError, setLoadError] = useState(null);
 
   useEffect(() => {
     loadProduct();
@@ -73,83 +74,26 @@ const ProductDetail = () => {
     try {
       console.log('Loading product with ID:', id);
       const response = await api.get(`/api/products/${id}`);
-      console.log('Product response:', response.data);
-      const data = response.data;
-      setProduct(data);
-      
-      // Set default selections if available
-      if (data.colors && data.colors.length > 0) {
-        setSelectedColor(data.colors[0].name || data.colors[0]);
-      }
-      if (data.sizes && data.sizes.length > 0) {
-        setSelectedSize(data.sizes[0].name || data.sizes[0]);
-      }
+      const data = response.data || {};
+      const normalized = {
+        ...data,
+        _id: data._id || data.id || id,
+        id: data.id || data._id || id,
+        images: data.images || [],
+        image: data.image || data.images?.[0],
+        price: data.price || 0,
+        stock: data.stock ?? 0,
+        rating: data.rating || 0,
+        numReviews: data.numReviews || 0
+      };
+      setProduct(normalized);
+      setSelectedColor('Default');
+      setSelectedSize('Default');
     } catch (error) {
       console.error('Error loading product:', error);
       console.error('Error details:', error.response?.data || error.message);
-      
-      // Temporary fallback product for testing the enhanced UI
-      const fallbackProduct = {
-        _id: id,
-        name: "Premium Cotton T-Shirt",
-        description: "A luxurious, soft cotton t-shirt perfect for everyday wear. Made with 100% organic cotton for ultimate comfort and breathability.",
-        price: 2500,
-        discount: 15,
-        stock: 25,
-        rating: 4.8,
-        numReviews: 127,
-        isNew: true,
-        images: [
-          "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=500&h=500&fit=crop",
-          "https://images.unsplash.com/photo-1503341504253-dff4815485f1?w=500&h=500&fit=crop",
-          "https://images.unsplash.com/photo-1581655353564-df123a1eb820?w=500&h=500&fit=crop"
-        ],
-        colors: [
-          { name: "Navy Blue", hex: "#1e3a8a" },
-          { name: "Forest Green", hex: "#166534" },
-          { name: "Charcoal Gray", hex: "#374151" }
-        ],
-        sizes: ["S", "M", "L", "XL"],
-        features: [
-          "100% Organic Cotton",
-          "Breathable fabric",
-          "Pre-shrunk material",
-          "Reinforced stitching",
-          "Eco-friendly production"
-        ],
-        material: "100% Organic Cotton",
-        care: "Machine wash cold, tumble dry low",
-        category: "T-Shirts",
-        brand: "Clothica Premium",
-        sku: "CT-001",
-        subcategory: "Casual",
-        reviews: [
-          {
-            _id: "1",
-            user: { name: "Sarah M." },
-            rating: 5,
-            title: "Amazing quality!",
-            comment: "This is the softest t-shirt I've ever owned. The fit is perfect and it washes beautifully.",
-            verified: true,
-            createdAt: new Date().toISOString(),
-            date: new Date().toISOString()
-          },
-          {
-            _id: "2",
-            user: { name: "Mike R." },
-            rating: 4,
-            title: "Great value",
-            comment: "Excellent quality for the price. The fabric is soft and comfortable.",
-            verified: true,
-            createdAt: new Date().toISOString(),
-            date: new Date().toISOString()
-          }
-        ]
-      };
-      
-      setProduct(fallbackProduct);
-      setSelectedColor(fallbackProduct.colors[0].name);
-      setSelectedSize(fallbackProduct.sizes[0]);
+      setLoadError('Failed to load product');
+      setProduct(null);
     } finally {
       setLoading(false);
     }
@@ -157,30 +101,28 @@ const ProductDetail = () => {
 
   const loadRelatedProducts = useCallback(async () => {
     try {
-      // Fetch related products from the same category
-      if (product?.category) {
-        const response = await api.get(`/api/products?category=${product.category}&limit=4`);
-        setRelatedProducts(response.data.products.filter(p => p._id !== id));
-      }
+      const response = await api.get('/api/products/');
+      const list = Array.isArray(response.data) ? response.data : [];
+      const normalized = list
+        .filter(p => (p.id || p._id || '').toString() !== id.toString())
+        .slice(0, 4)
+        .map((p) => ({
+          ...p,
+          _id: p._id || p.id,
+          id: p.id || p._id,
+          image: p.image || p.images?.[0],
+          price: p.price || 0
+        }));
+      setRelatedProducts(normalized);
     } catch (error) {
       console.error('Error loading related products:', error);
       setRelatedProducts([]);
     }
-  }, [product?.category, id]);
+  }, [id]);
 
   const loadSalesData = useCallback(async () => {
-    try {
-      if (id) {
-        const response = await api.get(`/api/orders/analytics/product-sales`);
-        const productSales = response.data[id];
-        setSalesData(productSales || { quantity: 0, total: 0, orders: 0 });
-      }
-    } catch (error) {
-      console.error('Error loading sales data:', error);
-      // Set default values if API fails
-      setSalesData({ quantity: 0, total: 0, orders: 0 });
-    }
-  }, [id]);
+    setSalesData({ quantity: 0, total: 0, orders: 0 });
+  }, []);
 
   const renderStars = (rating) => {
     const stars = [];
@@ -205,14 +147,6 @@ const ProductDetail = () => {
 
   const handleAddToCart = async () => {
     const errors = {};
-    
-    if (!selectedSize) {
-      errors.size = 'Please select a size';
-    }
-    if (!selectedColor) {
-      errors.color = 'Please select a color';
-    }
-    
     if (Object.keys(errors).length > 0) {
       setValidationErrors(errors);
       return;

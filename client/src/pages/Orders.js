@@ -36,22 +36,46 @@ const Orders = () => {
   const [showFilters, setShowFilters] = useState(false);
   const { user } = useAuth();
 
+  const getUserId = () => {
+    if (user?.id) return user.id;
+    if (user?.userId) return user.userId;
+    const stored = localStorage.getItem('userId');
+    if (stored) return parseInt(stored, 10);
+    if (process.env.REACT_APP_DEFAULT_USER_ID) {
+      return parseInt(process.env.REACT_APP_DEFAULT_USER_ID, 10);
+    }
+    return null;
+  };
+
   const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
-      
-      // Debug: Check if user is authenticated and token exists
-      const token = localStorage.getItem('token');
-      console.log('User authenticated:', !!user);
-      console.log('Token exists:', !!token);
-      console.log('Token preview:', token ? `${token.substring(0, 20)}...` : 'No token');
-      
-      const response = await api.get('/api/orders/my-orders');
-      setOrders(response.data || []);
+      const userId = getUserId();
+      if (!userId) {
+        setOrders([]);
+        return;
+      }
+      const response = await api.get(`/api/orders/user/${userId}`);
+      const list = Array.isArray(response.data) ? response.data : [];
+      const normalized = list.map((order) => ({
+        ...order,
+        _id: order.id || order._id,
+        id: order.id || order._id,
+        orderNumber: order.orderNumber,
+        total: order.totalAmount || order.total || 0,
+        status: order.status?.toLowerCase() || 'pending',
+        date: order.orderDate,
+        items: (order.orderItems || []).map((item) => ({
+          _id: item.productId,
+          id: item.productId,
+          name: item.productName,
+          quantity: item.quantity,
+          price: item.price || item.itemTotal || 0
+        }))
+      }));
+      setOrders(normalized);
     } catch (error) {
       console.error('Error fetching orders:', error);
-      console.error('Error response:', error.response?.data);
-      console.error('Error status:', error.response?.status);
       showError('Failed to load orders');
       setOrders([]);
     } finally {
@@ -96,7 +120,7 @@ const Orders = () => {
     // Search filter
     if (searchTerm) {
       filtered = filtered.filter(order => 
-        order._id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (order.orderNumber || order._id || order.id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.items?.some(item => 
           item.name?.toLowerCase().includes(searchTerm.toLowerCase())
         )
@@ -386,7 +410,7 @@ const Orders = () => {
           }`}>
             {filteredOrders.map((order, index) => (
               <div 
-                key={order._id} 
+                key={order.id || order._id} 
                 className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl border border-[#6C7A59]/20 p-6 hover:shadow-3xl transition-all duration-500 transform hover:scale-[1.02]"
                 style={{animationDelay: `${index * 0.1}s`}}
               >
@@ -394,7 +418,7 @@ const Orders = () => {
                 <div className="flex items-center justify-between mb-6">
                   <div>
                     <h3 className="text-xl font-display font-bold text-[#1E1E1E] mb-2">
-                      Order #{order._id?.slice(-8) || 'Unknown'}
+                      Order #{(order.orderNumber || order._id || order.id || '').toString().slice(-8) || 'Unknown'}
                     </h3>
                     <div className="flex items-center space-x-4 text-sm text-[#6C7A59]">
                       <div className="flex items-center space-x-2">
@@ -549,7 +573,7 @@ const Orders = () => {
                     </div>
                     <div className="flex flex-col space-y-3">
                       <Link
-                        to={`/order/${order._id}`}
+                        to={`/order/${order.id || order._id}`}
                         className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-[#6C7A59] to-[#5A6A4A] text-white font-semibold rounded-2xl hover:from-[#5A6A4A] hover:to-[#4A5A3A] transition-all duration-300 transform hover:scale-105 shadow-lg"
                       >
                         <FiEye className="h-4 w-4 mr-2" />

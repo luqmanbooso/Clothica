@@ -22,7 +22,28 @@ const OrderDetail = () => {
     try {
       setLoading(true);
       const response = await api.get(`/api/orders/${id}`);
-      setOrder(response.data);
+      const data = response.data || {};
+      const mappedItems = (data.orderItems || data.items || []).map((item) => ({
+        ...item,
+        _id: item.id || item._id || item.productId,
+        id: item.id || item._id || item.productId,
+        productId: item.productId,
+        productName: item.productName,
+        quantity: item.quantity,
+        price: item.price || item.itemTotal || 0
+      }));
+
+      const normalized = {
+        ...data,
+        _id: data.id || data._id || id,
+        id: data.id || data._id || id,
+        orderNumber: data.orderNumber || data.id || data._id,
+        total: data.totalAmount || data.total || 0,
+        status: data.status?.toLowerCase() || 'pending',
+        orderItems: mappedItems,
+        items: mappedItems
+      };
+      setOrder(normalized);
     } catch (error) {
       console.error('Error fetching order:', error);
       showError('Failed to load order details');
@@ -99,7 +120,7 @@ const OrderDetail = () => {
                   Order Details
                 </h1>
                 <p className="mt-2 text-secondary-600">
-                  Order #{order._id.slice(-8)}
+                  Order #{(order.orderNumber || order._id || '').toString().slice(-8)}
                 </p>
               </div>
               <button
@@ -257,13 +278,13 @@ const OrderDetail = () => {
                         
                         <div className="flex space-x-3">
                           <button
-                            onClick={() => setShowReviewModal({ show: true, item, orderId: order._id })}
+                            onClick={() => setShowReviewModal({ show: true, item, orderId: order.id || order._id })}
                             className="flex-1 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
                           >
                             Write Review
                           </button>
                           <button
-                            onClick={() => setShowIssueModal({ show: true, item, orderId: order._id })}
+                            onClick={() => setShowIssueModal({ show: true, item, orderId: order.id || order._id })}
                             className="flex-1 px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 transition-colors"
                           >
                             Report Issue
@@ -285,7 +306,7 @@ const OrderDetail = () => {
                     Having an issue with your order? We're here to help!
                   </p>
                   <button
-                    onClick={() => setShowIssueModal({ show: true, item: null, orderId: order._id })}
+                    onClick={() => setShowIssueModal({ show: true, item: null, orderId: order.id || order._id })}
                     className="px-6 py-2 bg-orange-600 text-white font-medium rounded-lg hover:bg-orange-700 transition-colors"
                   >
                     Report Issue

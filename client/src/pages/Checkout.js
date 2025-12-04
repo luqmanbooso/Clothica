@@ -328,108 +328,27 @@ const Checkout = () => {
       const shippingCost = selectedShipping ? selectedShipping.price : 0;
       const total = subtotal + shippingCost;
 
-      // Prepare order data
-      const orderData = {
-        items: cart?.map(item => ({
-          productId: item._id || item.id,
-          quantity: item.quantity,
-          selectedSize: item.selectedSize,
-          selectedColor: item.selectedColor
-        })),
-        shippingAddress: {
-          street: formData.address,
-          city: formData.city,
-          state: formData.province,
-          zipCode: formData.postalCode,
-          country: formData.country,
-          phone: formData.phone
-        },
-        paymentMethod,
-        shippingMethod,
-        subtotal,
-        shippingCost,
-        total
-      };
+      const userId =
+        user?.id ||
+        user?.userId ||
+        parseInt(localStorage.getItem('userId') || process.env.REACT_APP_DEFAULT_USER_ID || '1', 10);
 
-      // Process payment first for card payments
-      if (paymentMethod === 'credit_card') {
-        try {
-          // Create Stripe payment intent
-          const paymentResponse = await api.post('/api/payments/stripe/create-intent', {
-            amount: total,
-            currency: 'lkr',
-            metadata: {
-              orderDescription: `Order for ${formData.firstName} ${formData.lastName}`,
-              userEmail: formData.email
-            }
-          });
+      const response = await api.post(`/api/orders/create/${userId}`);
+      const order = response.data;
 
-          if (!paymentResponse.data.success) {
-            throw new Error('Failed to create payment intent');
-          }
+      showSuccess('Order placed successfully! Redirecting to order confirmation...');
+      clearCart();
 
-          // Test card validation (simulating Stripe test environment behavior)
-          const cardNumber = cardData.cardNumber.replace(/\s/g, '');
-          
-          // Test card validation results
-          const testCardResult = validateTestCard(cardNumber, cardData.cvv, cardData.expiryMonth, cardData.expiryYear);
-          
-          if (!testCardResult.valid) {
-            throw new Error(testCardResult.error);
-          }
-
-          // Add payment data to order
-          orderData.paymentData = {
-            cardNumber: cardData.cardNumber.slice(-4),
-            cardType: 'credit',
-            cardholderName: cardData.cardholderName,
-            paymentIntentId: paymentResponse.data.data.paymentIntentId,
-            paymentStatus: 'succeeded'
-          };
-
-          console.log('Payment processed successfully');
-        } catch (paymentError) {
-          console.error('Payment error:', paymentError);
-          showError(paymentError.message || 'Payment failed. Please try again.');
-          setIsProcessing(false);
-          return;
-        }
-      } else if (paymentMethod === 'debit_card') {
-        // Handle debit card similarly
-        orderData.paymentData = {
-          cardNumber: cardData.cardNumber.slice(-4),
-          cardType: 'debit',
-          cardholderName: cardData.cardholderName,
-          paymentStatus: 'pending'
-        };
-      }
-
-      console.log('Order Data being sent:', orderData);
-      console.log('API instance baseURL:', api.defaults.baseURL);
-
-      // Create order via API
-      const response = await api.post('/api/orders', orderData);
-      
-      if (response.data.success || response.data.message) {
-        showSuccess('Order placed successfully! Redirecting to order confirmation...');
-        clearCart();
-        
-        // For card payments, show additional success info
-        if (paymentMethod === 'credit_card') {
-          showSuccess('Payment processed successfully via Stripe! Your order has been confirmed.');
-        }
-        
-        // Create a complete order object for the success page
-        const successOrderData = {
-          _id: response.data.order?.id,
-          id: response.data.order?.id,
-          total: total,
-          subtotal: subtotal,
-          shippingCost: shippingCost,
-          discount: 0, // No discounts implemented yet
-          status: paymentMethod === 'cash_on_delivery' ? 'pending' : 'processing',
-          paymentMethod: paymentMethod,
-          shippingMethod: shippingMethod,
+      const successOrderData = {
+        _id: order?.id,
+        id: order?.id,
+        total: order?.totalAmount || total,
+        subtotal: subtotal,
+        shippingCost: shippingCost,
+        discount: 0,
+        status: order?.status?.toLowerCase() || 'pending',
+        paymentMethod: paymentMethod,
+        shippingMethod: shippingMethod,
         shippingAddress: {
           firstName: formData.firstName,
           lastName: formData.lastName,
@@ -439,46 +358,35 @@ const Checkout = () => {
           city: formData.city,
           province: formData.province,
           postalCode: formData.postalCode,
-            country: formData.country
-          },
-          items: cart?.map(item => ({
-            _id: item._id,
-            id: item._id,
-            name: item.name,
-            price: item.price,
-            quantity: item.quantity,
-            selectedSize: item.selectedSize,
-            selectedColor: item.selectedColor,
-            images: item.images,
-            image: item.image
-          })),
-          createdAt: new Date(),
-          estimatedDelivery: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000) // 5 days from now
-        };
-        
-        navigate('/order-success', { 
-          state: { 
-            order: successOrderData,
-            orderId: response.data.order?.id,
-            total: total,
-            shippingCost: shippingCost,
-            paymentMethod: paymentMethod,
-            shippingMethod: shippingMethod,
-            items: cart,
-            shippingAddress: {
-              firstName: formData.firstName,
-              lastName: formData.lastName,
-              email: formData.email,
-              phone: formData.phone,
-              address: formData.address,
-              city: formData.city,
-              province: formData.province,
-              postalCode: formData.postalCode,
-              country: formData.country
-            }
-          }
-        });
-      }
+          country: formData.country
+        },
+        items: (order?.orderItems || cart || []).map((item) => ({
+          _id: item.productId || item._id,
+          id: item.productId || item._id,
+          name: item.productName || item.name,
+          price: item.price || item.productPrice || item.itemTotal || 0,
+          quantity: item.quantity,
+          selectedSize: item.selectedSize,
+          selectedColor: item.selectedColor,
+          images: item.images,
+          image: item.image
+        })),
+        createdAt: order?.orderDate || new Date(),
+        estimatedDelivery: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000)
+      };
+
+      navigate('/order-success', { 
+        state: { 
+          order: successOrderData,
+          orderId: order?.id,
+          total: successOrderData.total,
+          shippingCost: shippingCost,
+          paymentMethod: paymentMethod,
+          shippingMethod: shippingMethod,
+          items: successOrderData.items,
+          shippingAddress: successOrderData.shippingAddress
+        }
+      });
     } catch (error) {
       console.error('Order creation error:', error);
       if (error.response?.data?.message) {

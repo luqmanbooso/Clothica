@@ -1,7 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import api from '../utils/api';
 import { useAuth } from './AuthContext';
-
 
 const CartContext = createContext();
 
@@ -13,236 +12,172 @@ export const useCart = () => {
   return context;
 };
 
+const getUserId = (user) => {
+  if (user?.id) return user.id;
+  if (user?.userId) return user.userId;
+  const stored = localStorage.getItem('userId');
+  if (stored) return parseInt(stored, 10);
+  if (process.env.REACT_APP_DEFAULT_USER_ID) {
+    return parseInt(process.env.REACT_APP_DEFAULT_USER_ID, 10);
+  }
+  return null;
+};
+
+const normalizeCartItems = (cartDto) => {
+  const items = cartDto?.items || [];
+  return items.map((item) => ({
+    _id: item.productId,
+    id: item.productId,
+    name: item.productName,
+    price: item.productPrice || 0,
+    quantity: item.quantity,
+    images: [],
+    image: null,
+    itemTotal: item.itemTotal
+  }));
+};
+
 export const CartProvider = ({ children }) => {
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(false);
   const { isAuthenticated, user, loading: authLoading } = useAuth();
 
-  // Load cart when authentication status changes
   useEffect(() => {
-    if (authLoading) return; // Wait for auth to finish loading
-    
+    if (authLoading) return;
     if (isAuthenticated && user) {
-      console.log('🛒 User authenticated, loading cart from backend for:', user.email);
       loadCartFromBackend();
     } else {
-      console.log('🛒 User not authenticated, clearing cart');
-      setCart([]); // Clear cart when user logs out
-      localStorage.removeItem('cart'); // Clear localStorage cart
+      setCart([]);
+      localStorage.removeItem('cart');
     }
-  }, [isAuthenticated, user, authLoading]);
+  }, [authLoading, isAuthenticated, user]);
 
-  // Load cart from backend (requires authentication)
   const loadCartFromBackend = async () => {
+    const userId = getUserId(user);
+    if (!userId) {
+      loadCartFromLocalStorage();
+      return;
+    }
     try {
       setLoading(true);
-      const response = await api.get('/api/cart');
-      const cartData = Array.isArray(response.data) ? response.data : [];
+      const response = await api.get(`/api/cart/user/${userId}`);
+      const cartData = normalizeCartItems(response.data);
       setCart(cartData);
-      // Also save to localStorage as backup
       localStorage.setItem('cart', JSON.stringify(cartData));
     } catch (error) {
       console.error('Error loading cart from backend:', error);
-      // If it's a 401 error, user is not authenticated, fallback to localStorage
-      if (error.response?.status === 401) {
-        console.log('User not authenticated, loading cart from localStorage');
-        loadCartFromLocalStorage();
-      } else {
-        // For other errors, still try localStorage
-        loadCartFromLocalStorage();
-      }
+      loadCartFromLocalStorage();
     } finally {
       setLoading(false);
     }
   };
 
-  // Load cart from localStorage
   const loadCartFromLocalStorage = () => {
     const savedCart = localStorage.getItem('cart');
-    if (savedCart) {
-      try {
-        const parsedCart = JSON.parse(savedCart);
-        const cartData = Array.isArray(parsedCart) ? parsedCart : [];
-        setCart(cartData);
-      } catch (parseError) {
-        console.error('Error parsing localStorage cart:', parseError);
-        localStorage.removeItem('cart');
-        setCart([]); // Ensure cart is always an array
-      }
-    } else {
-      setCart([]); // Initialize empty cart if no localStorage data
+    if (!savedCart) {
+      setCart([]);
+      return;
+    }
+    try {
+      const parsed = JSON.parse(savedCart);
+      setCart(Array.isArray(parsed) ? parsed : []);
+    } catch (error) {
+      console.error('Error parsing local cart:', error);
+      localStorage.removeItem('cart');
+      setCart([]);
     }
   };
 
-  // Save cart to localStorage whenever it changes (as backup)
   useEffect(() => {
-    if (cart && Array.isArray(cart) && cart.length > 0) {
+    if (cart && Array.isArray(cart)) {
       localStorage.setItem('cart', JSON.stringify(cart));
     }
   }, [cart]);
 
-  const addToCart = async (product, quantity = 1, size, color) => {
-    // Check if user is authenticated
+  const addToCart = async (product, quantity = 1) => {
     if (!isAuthenticated || !user) {
-      console.log('🚫 User not authenticated, cannot add to cart');
       return { success: false, message: 'Please login to add items to cart' };
     }
-
-    // Optimistic update - update UI immediately for better UX
-    const optimisticItem = {
-      _id: product._id || product.id,
-      id: product._id || product.id,
-      name: product.name,
-      price: product.price,
-      images: product.images || [],
-      image: product.image || (product.images && product.images[0]),
-      quantity,
-      selectedSize: size,
-      selectedColor: color,
-      addedAt: new Date()
-    };
-
-    // Check if item already exists in cart
-    const currentCart = Array.isArray(cart) ? cart : [];
-    const existingItemIndex = currentCart.findIndex(
-      item => 
-        item._id === optimisticItem._id && 
-        item.selectedSize === size && 
-        item.selectedColor === color
-    );
-
-    let optimisticCart;
-    if (existingItemIndex > -1) {
-      // Update existing item quantity
-      optimisticCart = [...currentCart];
-      optimisticCart[existingItemIndex].quantity += quantity;
-    } else {
-      // Add new item
-      optimisticCart = [...currentCart, optimisticItem];
-    }
-
-    // Update cart immediately for instant UI feedback
-    setCart(optimisticCart);
-    console.log('🚀 Optimistic update applied, syncing with server...');
+    const userId = getUserId(user);
+    if (!userId) return { success: false, message: 'User id is missing' };
 
     try {
-      const response = await api.post('/api/cart/add', {
-        productId: product._id || product.id,
-        quantity,
-        selectedSize: size,
-        selectedColor: color
-      });
-
-      // Update with real server response
-      const cartData = Array.isArray(response.data) ? response.data : [];
+      setLoading(true);
+      const response = await api.post(
+        `/api/cart/user/${userId}/add/${product._id || product.id}?quantity=${quantity}`
+      );
+      const cartData = normalizeCartItems(response.data);
       setCart(cartData);
-      console.log('✅ Cart synced with server successfully');
+      localStorage.setItem('cart', JSON.stringify(cartData));
       return { success: true, message: 'Item added to cart' };
     } catch (error) {
-      console.error('❌ Error syncing cart with server:', error);
-      
-      // Rollback optimistic update on error
-      setCart(currentCart);
-      console.log('↩️ Rolled back optimistic update');
-      
-      if (error.response?.status === 401) {
-        return { success: false, message: 'Please login to add items to cart' };
-      }
+      console.error('Error adding to cart:', error);
       return { success: false, message: 'Failed to add item to cart' };
+    } finally {
+      setLoading(false);
     }
   };
 
-    const removeFromCart = async (itemId) => {
-    if (!isAuthenticated || !user) {
-      console.log('🚫 User not authenticated, cannot remove from cart');
-      return;
-    }
+  const removeFromCart = async (productId) => {
+    if (!isAuthenticated || !user) return;
+    const userId = getUserId(user);
+    if (!userId) return;
 
-    // Store current cart for rollback
     const currentCart = Array.isArray(cart) ? [...cart] : [];
-    
-    // Optimistic update - remove item immediately
-    const optimisticCart = currentCart.filter(item => item._id !== itemId);
-    setCart(optimisticCart);
-    console.log('🚀 Optimistic cart removal applied');
+    setCart(currentCart.filter((item) => item._id !== productId));
 
     try {
-      const response = await api.delete(`/api/cart/remove/${itemId}`);
-      const cartData = Array.isArray(response.data) ? response.data : [];
+      const response = await api.delete(`/api/cart/user/${userId}/remove/${productId}`);
+      const cartData = normalizeCartItems(response.data);
       setCart(cartData);
-      console.log('✅ Item removed from cart successfully');
+      localStorage.setItem('cart', JSON.stringify(cartData));
     } catch (error) {
-      console.error('❌ Error removing from cart:', error);
-      
-      // Rollback on error
+      console.error('Error removing from cart:', error);
       setCart(currentCart);
-      console.log('↩️ Rolled back cart removal');
     }
   };
 
-    const updateCartItem = async (itemId, quantity) => {
-    if (!isAuthenticated || !user) {
-      console.log('🚫 User not authenticated, cannot update cart');
-      return;
-    }
+  const updateCartItem = async (productId, quantity) => {
+    if (!isAuthenticated || !user) return;
+    const userId = getUserId(user);
+    if (!userId) return;
 
-    // Store current cart for rollback
     const currentCart = Array.isArray(cart) ? [...cart] : [];
-    
-    // Optimistic update
-    const optimisticCart = currentCart.map(item => 
-      item._id === itemId ? { ...item, quantity } : item
-    );
-    setCart(optimisticCart);
-    console.log('� Optimistic cart update applied');
+    setCart(currentCart.map((item) => (item._id === productId ? { ...item, quantity } : item)));
 
     try {
-      const response = await api.put('/api/cart/update', {
-        itemId,
-        quantity
-      });
-
-      const cartData = Array.isArray(response.data) ? response.data : [];
+      const response = await api.put(
+        `/api/cart/user/${userId}/update/${productId}?quantity=${quantity}`
+      );
+      const cartData = normalizeCartItems(response.data);
       setCart(cartData);
-      console.log('✅ Cart quantity updated successfully');
+      localStorage.setItem('cart', JSON.stringify(cartData));
     } catch (error) {
-      console.error('❌ Error updating cart item:', error);
-      
-      // Rollback on error
+      console.error('Error updating cart item:', error);
       setCart(currentCart);
-      console.log('↩️ Rolled back cart update');
     }
   };
 
   const clearCart = async () => {
-    if (!isAuthenticated || !user) {
-      console.log('🚫 User not authenticated, cannot clear cart');
-      return;
-    }
+    if (!isAuthenticated || !user) return;
+    const userId = getUserId(user);
+    if (!userId) return;
 
-    // Store current cart for rollback
     const currentCart = Array.isArray(cart) ? [...cart] : [];
-    
-    // Optimistic update - clear cart immediately
     setCart([]);
     localStorage.removeItem('cart');
-    console.log('🚀 Optimistic cart clear applied');
 
     try {
-      await api.delete('/api/cart/clear');
-      console.log('✅ Cart cleared successfully');
+      await api.delete(`/api/cart/user/${userId}/clear`);
     } catch (error) {
-      console.error('❌ Error clearing cart:', error);
-      
-      // Rollback on error
+      console.error('Error clearing cart:', error);
       setCart(currentCart);
-      console.log('↩️ Rolled back cart clear');
     }
   };
 
   const getCartTotal = () => {
     if (!cart || !Array.isArray(cart)) return 0;
-    return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+    return cart.reduce((total, item) => total + ((item.price || 0) * item.quantity), 0);
   };
 
   const getCartCount = () => {
@@ -250,18 +185,7 @@ export const CartProvider = ({ children }) => {
     return cart.reduce((count, item) => count + item.quantity, 0);
   };
 
-  const getCartItems = () => {
-    return Array.isArray(cart) ? cart : [];
-  };
-
-  // Debug: Log cart changes for real-time monitoring
-  useEffect(() => {
-    console.log('🔄 Cart state updated:', {
-      itemCount: getCartCount(),
-      totalValue: getCartTotal(),
-      items: cart?.map(item => ({ name: item.name, qty: item.quantity })) || []
-    });
-  }, [cart]);
+  const getCartItems = () => (Array.isArray(cart) ? cart : []);
 
   const value = {
     cart,
@@ -276,9 +200,6 @@ export const CartProvider = ({ children }) => {
     setLoading
   };
 
-  return (
-    <CartContext.Provider value={value}>
-      {children}
-    </CartContext.Provider>
-  );
-}; 
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
+};
+

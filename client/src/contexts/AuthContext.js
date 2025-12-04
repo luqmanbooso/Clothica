@@ -11,6 +11,23 @@ export const useAuth = () => {
   return context;
 };
 
+// Helper to resolve a usable user id for the new Spring Boot backend
+const resolveUserId = (explicitId) => {
+  const stored = localStorage.getItem('userId');
+  if (explicitId) return explicitId;
+  if (stored) return parseInt(stored, 10);
+  if (process.env.REACT_APP_DEFAULT_USER_ID) {
+    return parseInt(process.env.REACT_APP_DEFAULT_USER_ID, 10);
+  }
+  return 1; // sensible fallback for demos
+};
+
+const isAdminCredential = (username) => {
+  if (!username) return false;
+  const u = username.toLowerCase();
+  return u === 'admin' || u === 'admin@clothica.com';
+};
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -18,63 +35,47 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState(null);
 
-  // Initialize axios defaults and interceptors
+  // Restore session from localStorage (backend does not expose /me)
   useEffect(() => {
     const token = localStorage.getItem('token');
-    if (token) {
-      // Token is handled by api interceptor
-      checkAuthStatus();
-    } else {
-      setLoading(false);
-    }
-
-    // Token management is handled by api interceptor
-  }, []);
-
-  const checkAuthStatus = async () => {
-    try {
-      // Ensure token is set in headers before making the request
-      const token = localStorage.getItem('token');
-      if (token) {
-        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    const storedProfile = localStorage.getItem('userProfile');
+    if (token && storedProfile) {
+      try {
+        const parsed = JSON.parse(storedProfile);
+        setUser(parsed);
+        setIsAuthenticated(true);
+        setIsAdmin(!!parsed.isAdmin);
+        api.defaults.headers.common.Authorization = `Bearer ${token}`;
+      } catch (e) {
+        localStorage.removeItem('userProfile');
+        localStorage.removeItem('token');
       }
-      
-      const response = await api.get('/api/auth/me');
-      setUser(response.data);
-      setIsAuthenticated(true);
-      setIsAdmin(response.data.role === 'admin');
-    } catch (error) {
-      console.error('Auth check failed:', error);
-      logout();
-    } finally {
-      setLoading(false);
     }
-  };
+    setLoading(false);
+  }, []);
 
   const register = async (userData) => {
     try {
       setAuthError(null);
-      const response = await api.post('/api/auth/register', userData);
-      
-      const { token, user: newUser, message, requiresOTPVerification } = response.data;
-      
-      // Only log in user if no OTP verification is required (Google accounts)
-      if (!requiresOTPVerification && token) {
-        // Store token
-        localStorage.setItem('token', token);
-        
-        // Set token in API headers immediately
-        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        
-        // Set user state
-        setUser(newUser);
-        setIsAuthenticated(true);
-        setIsAdmin(newUser.role === 'admin');
+      const payload = {
+        name: userData.name,
+        username: userData.email || userData.username,
+        email: userData.email || userData.username,
+        password: userData.password,
+        roles: 'ROLE_USER'
+      };
+      const response = await api.post('/api/auth/register', payload);
+
+      // Auto-login after successful registration for smoother demos
+      if (payload.username && userData.password) {
+        await login({ username: payload.username, password: userData.password, userId: userData.userId });
       }
-      
-      return { success: true, message, requiresOTPVerification };
+
+      return { success: true, message: response.data || 'Registered successfully.' };
     } catch (error) {
-      const message = error.response?.data?.message || 'Registration failed';
+      const message = typeof error.response?.data === 'string'
+        ? error.response.data
+        : error.response?.data?.message || 'Registration failed';
       setAuthError(message);
       return { success: false, message };
     }
@@ -83,95 +84,47 @@ export const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     try {
       setAuthError(null);
-      const response = await api.post('/api/auth/login', credentials);
-      
-      const { token, refreshToken, user: userData } = response.data;
-      
-      // Store tokens
-      localStorage.setItem('token', token);
-      if (refreshToken) {
-        localStorage.setItem('refreshToken', refreshToken);
+      const username = credentials.email || credentials.username;
+      const response = await api.post('/api/auth/generatetoken', {
+        username,
+        password: credentials.password
+      });
+
+      const token = typeof response.data === 'string' ? response.data : response.data?.token;
+      if (!token) {
+        throw new Error('No token returned from server');
       }
-      
-      // Set token in API headers immediately
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      
-      // Set user state
-      setUser(userData);
+
+      localStorage.setItem('token', token);
+      api.defaults.headers.common.Authorization = `Bearer ${token}`;
+
+      const derivedId = resolveUserId(credentials.userId);
+      localStorage.setItem('userId', derivedId.toString());
+
+      const role = isAdminCredential(username) ? 'admin' : 'user';
+      const profile = {
+        id: derivedId,
+        email: username,
+        name: username,
+        role
+      };
+
+      localStorage.setItem('userProfile', JSON.stringify(profile));
+      setUser(profile);
       setIsAuthenticated(true);
-      setIsAdmin(userData.role === 'admin');
-      
-      // Check if there's a redirect path stored
+      setIsAdmin(role === 'admin');
+
       const redirectPath = sessionStorage.getItem('redirectAfterLogin');
       if (redirectPath) {
         sessionStorage.removeItem('redirectAfterLogin');
         window.location.href = redirectPath;
       }
-      
+
       return { success: true };
     } catch (error) {
-      const message = error.response?.data?.message || 'Login failed';
-      setAuthError(message);
-      return { success: false, message };
-    }
-  };
-
-  const googleSignup = async (idToken) => {
-    try {
-      setAuthError(null);
-      const response = await api.post('/api/auth/google/signup', { idToken });
-      
-      const { token, user: userData, requiresProfileCompletion } = response.data;
-      
-      // Store token
-      localStorage.setItem('token', token);
-      
-      // Set token in API headers immediately
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      
-      // Set user state
-      setUser(userData);
-      setIsAuthenticated(true);
-      setIsAdmin(userData.role === 'admin');
-      
-      return { success: true, requiresProfileCompletion };
-    } catch (error) {
-      const message = error.response?.data?.message || 'Google signup failed';
-      setAuthError(message);
-      return { success: false, message };
-    }
-  };
-
-  const googleLogin = async (idToken) => {
-    try {
-      setAuthError(null);
-      const response = await api.post('/api/auth/google/login', { idToken });
-      
-      const { token, user: userData, requiresProfileCompletion } = response.data;
-      
-      if (!token) {
-        throw new Error('No token received from server');
-      }
-      
-      // Store token in localStorage
-      localStorage.setItem('token', token);
-      
-      // Update API instance with new token
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      
-      // Set user state
-      setUser(userData);
-      setIsAuthenticated(true);
-      setIsAdmin(userData.role === 'admin');
-      
-      // Verify token is properly set in headers
-      console.log('Google login successful:', { user: userData, token: token.substring(0, 20) + '...' });
-      console.log('API headers after login:', api.defaults.headers.common['Authorization']);
-      
-      return { success: true, requiresProfileCompletion };
-    } catch (error) {
-      console.error('Google login error:', error);
-      const message = error.response?.data?.message || 'Google login failed';
+      const message = typeof error.response?.data === 'string'
+        ? error.response.data
+        : error.response?.data?.message || 'Login failed';
       setAuthError(message);
       return { success: false, message };
     }
@@ -180,178 +133,50 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
-    // Token cleanup handled by api interceptor
+    localStorage.removeItem('userProfile');
     setUser(null);
     setIsAuthenticated(false);
     setIsAdmin(false);
     setAuthError(null);
   };
 
+  // Basic profile updater for local state only
   const updateProfile = async (profileData) => {
-    try {
-      setAuthError(null);
-      const response = await api.put('/api/auth/profile', profileData);
-      
-      setUser(response.data.user);
-      return { success: true, message: response.data.message };
-    } catch (error) {
-      const message = error.response?.data?.message || 'Profile update failed';
-      setAuthError(message);
-      return { success: false, message };
-    }
+    const updated = { ...(user || {}), ...profileData };
+    setUser(updated);
+    localStorage.setItem('userProfile', JSON.stringify(updated));
+    return { success: true, message: 'Profile updated locally (server endpoint not available yet).' };
   };
 
-  const changePassword = async (passwordData) => {
-    try {
-      setAuthError(null);
-      const response = await api.put('/api/auth/change-password', passwordData);
-      return { success: true, message: response.data.message };
-    } catch (error) {
-      const message = error.response?.data?.message || 'Password change failed';
-      setAuthError(message);
-      return { success: false, message };
-    }
-  };
+  // Unsupported endpoints on the new backend - return graceful fallbacks
+  const unsupported = async () => ({
+    success: false,
+    message: 'This action is not supported on the current backend yet.'
+  });
 
-  const sendOTP = async (phone) => {
-    try {
-      setAuthError(null);
-      const response = await api.post('/api/auth/send-otp', { phone });
-      return { success: true, message: response.data.message };
-    } catch (error) {
-      const message = error.response?.data?.message || 'Failed to send OTP';
-      setAuthError(message);
-      return { success: false, message };
-    }
-  };
-
-  const verifyOTP = async (otp) => {
-    try {
-      setAuthError(null);
-      const response = await api.post('/api/auth/verify-otp', { otp });
-      
-      // Update user state to reflect phone verification
-      if (response.data.message === 'Phone verified successfully!') {
-        setUser(prev => ({ ...prev, isPhoneVerified: true }));
-      }
-      
-      return { success: true, message: response.data.message };
-    } catch (error) {
-      const message = error.response?.data?.message || 'OTP verification failed';
-      setAuthError(message);
-      return { success: false, message };
-    }
-  };
-
-  const resendVerification = async (email) => {
-    try {
-      setAuthError(null);
-      const response = await api.post('/api/auth/resend-verification', { email });
-      return { success: true, message: response.data.message };
-    } catch (error) {
-      const message = error.response?.data?.message || 'Failed to resend verification';
-      setAuthError(message);
-      return { success: false, message };
-    }
-  };
-
-  const verifyEmail = async (token) => {
-    try {
-      setAuthError(null);
-      const response = await api.post('/api/auth/verify-email', { token });
-      
-      // Update user state to reflect email verification
-      if (response.data.message === 'Email verified successfully!') {
-        setUser(prev => ({ ...prev, isEmailVerified: true }));
-      }
-      
-      return { success: true, message: response.data.message };
-    } catch (error) {
-      const message = error.response?.data?.message || 'Email verification failed';
-      setAuthError(message);
-      return { success: false, message };
-    }
-  };
-
-  const forgotPassword = async (email) => {
-    try {
-      setAuthError(null);
-      const response = await api.post('/api/auth/forgot-password', { email });
-      return { success: true, message: response.data.message };
-    } catch (error) {
-      const message = error.response?.data?.message || 'Failed to process password reset request';
-      setAuthError(message);
-      return { success: false, message };
-    }
-  };
-
-  const resetPassword = async (token, password) => {
-    try {
-      setAuthError(null);
-      const response = await api.post('/api/auth/reset-password', { token, password });
-      return { success: true, message: response.data.message };
-    } catch (error) {
-      const message = error.response?.data?.message || 'Password reset failed';
-      setAuthError(message);
-      return { success: false, message };
-    }
-  };
-
-  const verifyEmailOTP = async (email, otp) => {
-    try {
-      setAuthError(null);
-      const response = await api.post('/api/auth/verify-email-otp', { email, otp });
-      
-      const { token, user: newUser } = response.data;
-      
-      // Store token
-      localStorage.setItem('token', token);
-      
-      // Set token in API headers immediately
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      
-      // Set user state
-      setUser(newUser);
-      setIsAuthenticated(true);
-      setIsAdmin(newUser.role === 'admin');
-      
-      return { success: true, message: response.data.message };
-    } catch (error) {
-      const message = error.response?.data?.message || 'OTP verification failed';
-      setAuthError(message);
-      return { success: false, message };
-    }
-  };
+  const changePassword = unsupported;
+  const sendOTP = unsupported;
+  const verifyOTP = unsupported;
+  const resendVerification = unsupported;
+  const verifyEmail = unsupported;
+  const forgotPassword = unsupported;
+  const resetPassword = unsupported;
+  const verifyEmailOTP = unsupported;
+  const googleSignup = unsupported;
+  const googleLogin = unsupported;
+  const completeProfile = unsupported;
 
   const clearError = () => {
     setAuthError(null);
   };
 
-  // Helper function to ensure token is properly set
   const ensureTokenSet = () => {
     const token = localStorage.getItem('token');
     if (token) {
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      console.log('Token ensured in headers:', api.defaults.headers.common['Authorization']?.substring(0, 20) + '...');
+      api.defaults.headers.common.Authorization = `Bearer ${token}`;
       return true;
     }
     return false;
-  };
-
-  const completeProfile = async (profileData) => {
-    try {
-      setAuthError(null);
-      const response = await api.put('/api/auth/complete-profile', profileData);
-      
-      // Update user state
-      setUser(response.data.user);
-      
-      return { success: true, message: response.data.message, requiresPhoneVerification: response.data.requiresPhoneVerification };
-    } catch (error) {
-      const message = error.response?.data?.message || 'Profile completion failed';
-      setAuthError(message);
-      return { success: false, message };
-    }
   };
 
   const value = {

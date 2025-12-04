@@ -22,7 +22,7 @@ public class Order {
     @Column(unique = true)
     private String orderNumber;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private UserInfo user;
 

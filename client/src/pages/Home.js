@@ -16,7 +16,7 @@ import Banner from '../components/Banner';
 import LoyaltyDashboard from '../components/LoyaltyDashboard';
 import LoyaltyPromoSection from '../components/Homepage/LoyaltyPromoSection';
 import { useAuth } from '../contexts/AuthContext';
-import axios from 'axios';
+import api from '../utils/api';
 
 const Home = () => {
   const { user, isAuthenticated } = useAuth();
@@ -144,11 +144,18 @@ const Home = () => {
   const loadFeaturedProducts = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/products/featured');
-      setFeaturedProducts(response.data);
+      const response = await api.get('/api/products/');
+      const list = Array.isArray(response.data) ? response.data : [];
+      const normalized = list.slice(0, 6).map((p) => ({
+        ...p,
+        _id: p._id || p.id,
+        id: p.id || p._id,
+        image: p.image || p.images?.[0],
+        price: p.price || 0
+      }));
+      setFeaturedProducts(normalized);
     } catch (error) {
       console.error('Error loading featured products:', error);
-      // Fallback to empty array if API fails
       setFeaturedProducts([]);
     } finally {
       setLoading(false);
@@ -157,9 +164,7 @@ const Home = () => {
 
   useEffect(() => {
     setIsVisible(true);
-    if (isAuthenticated) {
-      loadFeaturedProducts();
-    }
+    loadFeaturedProducts();
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
     }, 5000);
