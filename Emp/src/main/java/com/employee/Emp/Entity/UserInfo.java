@@ -22,6 +22,9 @@ public class UserInfo{
     private String password;
     private String roles;
 
+    @Column(name = "phone", length = 10, nullable = true)
+    private String phone;
+
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
     private Cart cart;
 
