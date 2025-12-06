@@ -7,14 +7,13 @@ import com.employee.Emp.Repository.OrderRepository;
 import com.employee.Emp.Repository.ProductRepository;
 import com.employee.Emp.Repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cglib.core.Local;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class AdminDashboardService {
@@ -175,5 +174,124 @@ public class AdminDashboardService {
         return analytics;
     }
 
+    // Real-time Data
+    public Map<String,Object> getRealTimeData(){
+        Map<String,Object> realTime = new HashMap<>();
 
+        //Get today's orders
+        LocalDateTime todayStart = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0);
+        List<Order> todayOrders = orderRepository.findByOrderDateAfter(todayStart);
+
+        //Active users (users who placed orders today)
+        Set<String> activeUsers = todayOrders.stream()
+                .map(order -> order.getUser().getUsername())
+                .collect(Collectors.toSet());
+
+        // Live orders (pending/processing orders)
+        List<Map<String, Object>> liveOrders = orderRepository.findByStatusIn(Arrays.asList("PENDING", "PROCESSING"))
+                .stream()
+                .limit(10) // Limit to 10 most recent
+                .map(order -> {
+                    Map<String, Object> orderInfo = new HashMap<>();
+                    orderInfo.put("id", order.getId());
+                    orderInfo.put("orderNumber", order.getOrderNumber());
+                    orderInfo.put("customer", order.getUser().getUsername());
+                    orderInfo.put("amount", order.getTotalAmount());
+                    orderInfo.put("status", order.getStatus());
+                    orderInfo.put("time", order.getOrderDate());
+                    return orderInfo;
+                })
+                .toList();
+
+        realTime.put("activeUsers", activeUsers.size());
+        realTime.put("liveOrders", liveOrders);
+        realTime.put("todayOrders", todayOrders.size());
+        realTime.put("todayRevenue", todayOrders.stream()
+                .mapToDouble(Order::getTotalAmount)
+                .sum());
+
+        return realTime;
+    }
+
+
+    // Customer Intelligence
+    public Map<String, Object> getCustomerIntelligence(String range, String period) {
+        Map<String, Object> intelligence = new HashMap<>();
+
+        List<UserInfo> allUsers = userRepository.findAll();
+        List<Order> allOrders = orderRepository.findAll();
+
+        // Customer segments based on order frequency
+        Map<String, Long> segments = new HashMap<>();
+        segments.put("New Customers", allUsers.stream()
+                .filter(user -> user.getCreatedAt() != null &&
+                        user.getCreatedAt().isAfter(LocalDateTime.now().minusDays(30)))
+                .count());
+
+        segments.put("Repeat Customers", allUsers.stream()
+                .filter(user -> {
+                    long userOrderCount = allOrders.stream()
+                            .filter(order -> order.getUser().getId()==user.getId())
+                            .count();
+                    return userOrderCount > 1;
+                })
+                .count());
+
+        segments.put("VIP Customers", allUsers.stream()
+                .filter(user -> {
+                    double totalSpent = allOrders.stream()
+                            .filter(order -> order.getUser().getId()==user.getId())
+                            .mapToDouble(Order::getTotalAmount)
+                            .sum();
+                    return totalSpent > 1000; // VIP if spent over 1000
+                })
+                .count());
+
+        // Customer behavior (most purchased products)
+        Map<String, Long> topProducts = new HashMap<>();
+        allOrders.stream()
+                .flatMap(order -> order.getOrderItems().stream())
+                .collect(java.util.stream.Collectors.groupingBy(
+                        item -> item.getProduct().getName(),
+                        java.util.stream.Collectors.summingLong(item -> item.getQuantity())
+                ))
+                .entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                .limit(5)
+                .forEach(entry -> topProducts.put(entry.getKey(), entry.getValue()));
+
+        intelligence.put("segments", segments);
+        intelligence.put("behavior", topProducts);
+        intelligence.put("totalCustomers", allUsers.size());
+        intelligence.put("range", range);
+        intelligence.put("period", period);
+
+        return intelligence;
+    }
+
+    // Client Features
+    public Map<String, Object> getClientFeatures() {
+        Map<String, Object> features = new HashMap<>();
+
+        // Simplified - in real app, you'd have loyalty, coupons, notifications entities
+        long activeUsers = userRepository.count();
+
+        features.put("loyalty", Map.of("activeUsers", activeUsers));
+        features.put("coupons", Map.of("active", 0)); // Add your coupon logic
+        features.put("notifications", Map.of("sent", 0)); // Add your notification logic
+
+        return features;
+    }
+
+    // Helper method to convert map to list for chart data
+    private List<Map<String, Object>> convertMapToList(Map<String, ?> map) {
+        return map.entrySet().stream()
+                .map(entry -> {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("date", entry.getKey());
+                    item.put("value", entry.getValue());
+                    return item;
+                })
+                .toList();
+    }
 }

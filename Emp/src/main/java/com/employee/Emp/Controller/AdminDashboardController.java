@@ -44,4 +44,23 @@ public class AdminDashboardController {
 
         return ResponseEntity.ok(dashboardService.getAnalytics(range, period));
     }
+
+    @GetMapping("/real-time")
+    public ResponseEntity<Map<String, Object>> getRealTime(){
+        return ResponseEntity.ok(dashboardService.getRealTimeData());
+    }
+
+    @GetMapping("/customer-intelligence")
+    public ResponseEntity<Map<String,Object>> getCustomerIntelligence(
+            @RequestParam(required = false,defaultValue = "30") String range,
+            @RequestParam(required = false,defaultValue = "month") String period
+    ){
+        return ResponseEntity.ok(dashboardService.getCustomerIntelligence(range, period));
+    }
+
+    @GetMapping("/client-features")
+    public ResponseEntity<Map<String,Object>> getClientFeatures(){
+        return ResponseEntity.ok(dashboardService.getClientFeatures());
+    }
+
 }
