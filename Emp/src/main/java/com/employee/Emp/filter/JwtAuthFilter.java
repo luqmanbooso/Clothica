@@ -40,7 +40,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         if(authHeader !=null && authHeader.startsWith("Bearer ")){
             //Extracts Token from Header
             token = authHeader.substring(7);
-            username = jwTservice.extractUsername(token);
+            try {
+                username = jwTservice.extractUsername(token);
+            } catch (io.jsonwebtoken.ExpiredJwtException ex) {
+                // Token expired; skip authentication and continue
+                username = null;
+            }
         }
 
         //Validates AND Sets Authentication

@@ -15,7 +15,6 @@ import {
   ArrowRightOnRectangleIcon,
   SparklesIcon,
   ClockIcon,
-  CurrencyDollarIcon,
   CalendarIcon,
   BellIcon
 } from '@heroicons/react/24/outline';
@@ -98,7 +97,6 @@ const AdminLayout = ({ children }) => {
     { name: 'Orders', href: '/admin/orders', icon: ShoppingCartIcon },
     { name: 'Users', href: '/admin/users', icon: UsersIcon },
     { name: 'Categories', href: '/admin/categories', icon: TagIcon },
-    { name: 'Finance Management', href: '/admin/finance', icon: CurrencyDollarIcon },
     { name: 'Campaign Hub', href: '/admin/campaign-hub', icon: CalendarIcon },
     { name: 'Settings', href: '/admin/settings', icon: Cog6ToothIcon },
   ];
@@ -266,7 +264,7 @@ const AdminLayout = ({ children }) => {
                       }`
                     }
                   >
-                    <CurrencyDollarIcon className="h-5 w-5 mr-3" />
+                    <SparklesIcon className="h-5 w-5 mr-3" />
                     Monetization
                   </NavLink>
                 </div>

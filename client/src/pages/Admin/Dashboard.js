@@ -64,12 +64,11 @@ const AdminDashboard = () => {
     try {
       setLoading(true);
       
-      const [overviewRes, financeRes, clientFeaturesRes, inventoryRes, analyticsRes, realTimeRes, customerIntelligenceRes] = await Promise.all([
-          api.get('/api/admin/dashboard/overview'),
-          api.get('/api/admin/dashboard/finance'),
-          api.get('/api/admin/dashboard/client-features'),
-          api.get('/api/admin/dashboard/inventory'),
-          api.get(`/api/admin/dashboard/analytics?range=${timeRange}&period=${selectedPeriod}`),
+      const [overviewRes, clientFeaturesRes, inventoryRes, analyticsRes, realTimeRes, customerIntelligenceRes] = await Promise.all([
+        api.get('/api/admin/dashboard/overview'),
+        api.get('/api/admin/dashboard/client-features'),
+        api.get('/api/admin/dashboard/inventory'),
+        api.get(`/api/admin/dashboard/analytics?range=${timeRange}&period=${selectedPeriod}`),
         api.get('/api/admin/dashboard/real-time'),
         api.get(`/api/admin/dashboard/customer-intelligence?range=${timeRange}&period=${selectedPeriod}`)
       ]);
@@ -85,7 +84,7 @@ const AdminDashboard = () => {
 
         setDashboardData({
         overview: validateData(overviewRes.data, 'overview'),
-        finance: validateData(financeRes.data, 'finance'),
+        finance: {},
         clientFeatures: validateData(clientFeaturesRes.data, 'clientFeatures'),
         inventory: validateData(inventoryRes.data, 'inventory'),
         analytics: validateData(analyticsRes.data, 'analytics'),
@@ -133,9 +132,6 @@ const AdminDashboard = () => {
         break;
       case 'inventory':
         navigate('/admin/inventory');
-        break;
-      case 'finance':
-        navigate('/admin/finance');
         break;
       case 'analytics':
         navigate('/admin/analytics');
@@ -338,8 +334,7 @@ const AdminDashboard = () => {
           { name: 'View Orders', icon: ShoppingCartIcon, action: 'viewOrders', color: 'bg-green-500' },
           { name: 'Manage Coupons', icon: TagIcon, action: 'manageCoupons', color: 'bg-purple-500' },
           { name: 'Manage Events', icon: CalendarIcon, action: 'manageEvents', color: 'bg-orange-500' },
-          { name: 'Inventory', icon: CubeIcon, action: 'inventory', color: 'bg-red-500' },
-          { name: 'Finance', icon: BanknotesIcon, action: 'finance', color: 'bg-emerald-500' }
+          { name: 'Inventory', icon: CubeIcon, action: 'inventory', color: 'bg-red-500' }
         ].map((item) => (
           <motion.button
             key={item.name}
@@ -417,7 +412,6 @@ const AdminDashboard = () => {
           <nav className="flex space-x-8 px-6">
             {[
               { id: 'overview', name: 'Overview', icon: ChartBarIcon },
-              { id: 'finance', name: 'Finance & Profit', icon: BanknotesIcon },
               { id: 'clientFeatures', name: 'Client Features', icon: SparklesIcon },
               { id: 'inventory', name: 'Inventory', icon: CubeIcon },
               { id: 'analytics', name: 'Analytics', icon: ChartBarIcon },
@@ -513,98 +507,6 @@ const AdminDashboard = () => {
                 </div>
               </motion.div>
             )}
-
-            {activeTab === 'finance' && (
-              <motion.div
-                key="finance"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="space-y-6"
-              >
-                {/* Financial Overview */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="bg-emerald-50 rounded-lg p-6">
-                    <h3 className="text-lg font-semibold text-emerald-900 mb-2">Net Profit</h3>
-                    <p className="text-3xl font-bold text-emerald-600">
-                      LKR {(dashboardData.finance?.netProfit || 0).toLocaleString()}
-                    </p>
-                    <p className="text-sm text-emerald-700">
-                      {(dashboardData.finance?.profitMargin || 0) > 0.2 ? 'Excellent' : 'Good'} profit margin
-                    </p>
-                  </div>
-                  
-                  <div className="bg-blue-50 rounded-lg p-6">
-                    <h3 className="text-lg font-semibold text-blue-900 mb-2">Gross Revenue</h3>
-                    <p className="text-3xl font-bold text-blue-600">
-                      LKR {(dashboardData.finance?.grossRevenue || 0).toLocaleString()}
-                    </p>
-                    <p className="text-sm text-blue-700">
-                      +{((dashboardData.finance?.monthlyGrowth || 0) * 100).toFixed(1)}% this month
-                    </p>
-                  </div>
-                  
-                  <div className="bg-purple-50 rounded-lg p-6">
-                    <h3 className="text-lg font-semibold text-purple-900 mb-2">Profit per Order</h3>
-                    <p className="text-3xl font-bold text-purple-600">
-                      LKR {(dashboardData.finance?.averageProfitPerOrder || 0).toLocaleString()}
-                    </p>
-                    <p className="text-sm text-purple-700">
-                      Average profit margin per order
-                    </p>
-                  </div>
-                </div>
-
-                {/* Cost Breakdown */}
-                <div className="bg-gray-50 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Cost Breakdown</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {dashboardData.finance?.costBreakdown ? 
-                      Object.entries(dashboardData.finance.costBreakdown).map(([key, value]) => (
-                      <div key={key} className="bg-white rounded-lg p-4">
-                        <h4 className="font-medium text-gray-900 capitalize">
-                          {key.replace(/([A-Z])/g, ' $1').trim()}
-                        </h4>
-                        <p className="text-2xl font-bold text-gray-900">
-                            LKR {(value || 0).toLocaleString()}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                            {dashboardData.finance?.grossRevenue ? 
-                              ((value / dashboardData.finance.grossRevenue) * 100).toFixed(1) : 0
-                            }% of revenue
-                        </p>
-                      </div>
-                      ))
-                      : 
-                      <div className="col-span-4 text-center py-8 text-gray-500">
-                        No cost breakdown data available
-                      </div>
-                    }
-                  </div>
-                </div>
-
-                {/* Revenue by Category */}
-                <div className="bg-gray-50 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue by Category</h3>
-                  {dashboardData.finance?.revenueByCategory && dashboardData.finance.revenueByCategory.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={dashboardData.finance.revenueByCategory}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="category" />
-                      <YAxis />
-                      <Tooltip formatter={(value) => [`LKR ${value.toLocaleString()}`, 'Revenue']} />
-                      <Bar dataKey="revenue" fill="#6C7A59" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                  ) : (
-                    <div className="text-center py-8 text-gray-500">
-                      No category revenue data available
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            )}
-
             {activeTab === 'clientFeatures' && (
               <motion.div
                 key="clientFeatures"

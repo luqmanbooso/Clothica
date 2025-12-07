@@ -49,7 +49,6 @@ import Analytics from './pages/Admin/Analytics';
 import Settings from './pages/Admin/Settings';
 import Events from './pages/Admin/Events';
 import EventsPromotions from './pages/Admin/EventsPromotions';
-import Finance from './pages/Admin/Finance';
 import ClientFeatures from './pages/Admin/ClientFeatures';
 import CampaignHub from './pages/Admin/CampaignHub';
 import ComponentManagement from './pages/Admin/ComponentManagement';
@@ -319,13 +318,6 @@ function App() {
                         </AdminRoute>
                       } />
                       
-                      <Route path="/admin/finance" element={
-                        <AdminRoute>
-                          <AdminLayout>
-                            <Finance />
-                          </AdminLayout>
-                        </AdminRoute>
-                      } />
                       
                       <Route path="/admin/client-features" element={
                         <AdminRoute>

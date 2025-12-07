@@ -42,11 +42,6 @@ const AdminNav = () => {
       ]
     },
     {
-      name: 'Finance & Profit',
-      href: '/admin/finance',
-      icon: BanknotesIcon
-    },
-    {
       name: 'Client Features',
       href: '/admin/client-features',
       icon: SparklesIcon
