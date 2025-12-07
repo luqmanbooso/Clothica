@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { XMarkIcon, StarIcon } from '@heroicons/react/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
 import api from '../utils/api';
@@ -68,7 +68,7 @@ const ReviewModal = ({ item, orderId, onClose, onSuccess }) => {
       const response = await api.post('/api/reviews', reviewData);
       console.log('Review submission response:', response);
       
-      showSuccess('🎉 Review submitted successfully! It will be visible after admin approval.');
+      showSuccess('Review submitted successfully! It will be visible after admin approval.');
       onSuccess();
     } catch (error) {
       console.error('Error submitting review:', error);
@@ -261,3 +261,4 @@ const ReviewModal = ({ item, orderId, onClose, onSuccess }) => {
 };
 
 export default ReviewModal;
+

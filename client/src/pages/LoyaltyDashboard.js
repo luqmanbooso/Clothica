@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   StarIcon, 
@@ -79,7 +79,7 @@ const LoyaltyDashboard = () => {
       
       showToast(
         response.data.spinResult.won 
-          ? `🎉 Congratulations! You won ${response.data.spinResult.discount}% off!` 
+          ? ` Congratulations! You won ${response.data.spinResult.discount}% off!` 
           : 'Better luck next time!',
         response.data.spinResult.won ? 'success' : 'info'
       );
@@ -135,10 +135,10 @@ const LoyaltyDashboard = () => {
   const getBadgeInfo = (badge) => {
     const badges = {
       none: { name: 'No Badge', color: 'gray', icon: '⭐', description: 'Start earning points to get your first badge!' },
-      bronze: { name: 'Bronze', color: 'amber', icon: '🥉', description: 'Great start! You\'re on your way!' },
-      silver: { name: 'Silver', color: 'gray', icon: '🥈', description: 'Impressive! You\'re a loyal customer!' },
-      gold: { name: 'Gold', color: 'yellow', icon: '🥇', description: 'Excellent! You\'re a VIP customer!' },
-      vip: { name: 'VIP', color: 'purple', icon: '👑', description: 'Elite status! You\'re our top customer!' }
+      bronze: { name: 'Bronze', color: 'amber', icon: '', description: 'Great start! You\'re on your way!' },
+      silver: { name: 'Silver', color: 'gray', icon: '', description: 'Impressive! You\'re a loyal customer!' },
+      gold: { name: 'Gold', color: 'yellow', icon: '', description: 'Excellent! You\'re a VIP customer!' },
+      vip: { name: 'VIP', color: 'purple', icon: '', description: 'Elite status! You\'re our top customer!' }
     };
     return badges[badge] || badges.none;
   };
@@ -155,7 +155,7 @@ const LoyaltyDashboard = () => {
           className="text-center mb-8"
         >
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            🎰 Lucky Spin & Loyalty Dashboard
+             Lucky Spin & Loyalty Dashboard
           </h1>
           <p className="text-lg text-gray-600">
             Spin to win amazing discounts and unlock exclusive rewards!
@@ -215,7 +215,7 @@ const LoyaltyDashboard = () => {
               className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl p-6 shadow-lg text-white"
             >
               <div className="text-center">
-                <h2 className="text-2xl font-bold mb-2">🎰 Lucky Spin</h2>
+                <h2 className="text-2xl font-bold mb-2"> Lucky Spin</h2>
                 <p className="text-purple-100 mb-4">
                   {loyaltyData?.availableSpins > 0 
                     ? `You have ${loyaltyData.availableSpins} spin${loyaltyData.availableSpins > 1 ? 's' : ''} remaining!`
@@ -245,7 +245,7 @@ const LoyaltyDashboard = () => {
                   {spinning ? (
                     <ArrowPathIcon className="h-6 w-6 animate-spin mx-auto" />
                   ) : (
-                    '🎰 SPIN NOW!'
+                    ' SPIN NOW!'
                   )}
                 </button>
               </div>
@@ -345,7 +345,7 @@ const LoyaltyDashboard = () => {
                   disabled={!loyaltyData?.loyaltyPoints || loyaltyData.loyaltyPoints < 100}
                   className="w-full px-4 py-2 bg-[#6C7A59] text-white rounded-lg hover:bg-[#5A6B4A] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                 >
-                  💰 Redeem 100 Points
+                   Redeem 100 Points
                 </button>
                 
                 <button
@@ -361,7 +361,7 @@ const LoyaltyDashboard = () => {
                   disabled={!loyaltyData?.loyaltyPoints || loyaltyData.loyaltyPoints < 1000}
                   className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                 >
-                  👑 Upgrade to VIP
+                   Upgrade to VIP
                 </button>
               </div>
             </motion.div>
@@ -427,7 +427,7 @@ const LoyaltyDashboard = () => {
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="text-6xl mb-4">
-                  {spinResult.won ? spinResult.icon : '😔'}
+                  {spinResult.won ? spinResult.icon : ''}
                 </div>
                 
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">
@@ -465,3 +465,6 @@ const LoyaltyDashboard = () => {
 };
 
 export default LoyaltyDashboard;
+
+
+

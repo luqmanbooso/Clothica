@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import { jwtDecode } from 'jwt-decode';
@@ -351,7 +351,7 @@ const Register = () => {
             <div>
               <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
                 Phone Number <span className="text-gray-500">(Optional)</span>
-                {isGoogleSignup && <span className="text-blue-600 ml-2">📱 Required for Google accounts</span>}
+                {isGoogleSignup && <span className="text-blue-600 ml-2">Phone required for Google accounts</span>}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">

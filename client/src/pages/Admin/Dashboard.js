@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   CurrencyDollarIcon, 
@@ -324,7 +324,7 @@ const AdminDashboard = () => {
           <div className="mt-2 text-xs text-blue-700">
             {Object.entries(dashboardData).map(([section, data]) => (
               <span key={section} className="inline-block mr-3">
-                {section}: {data && Object.keys(data).length > 0 ? '✅' : '⚠️'}
+                {section}: {data && Object.keys(data).length > 0 ? '' : ''}
               </span>
             ))}
           </div>
@@ -621,7 +621,7 @@ const AdminDashboard = () => {
 
                 {/* Smart Discounts */}
                 <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-emerald-900 mb-4">🎫 Smart Discounts</h3>
+                  <h3 className="text-lg font-semibold text-emerald-900 mb-4">Smart Discounts</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     <div className="bg-white rounded-lg p-4 text-center">
                       <p className="text-2xl font-bold text-emerald-600">{dashboardData.clientFeatures.smartDiscounts.totalCoupons}</p>
@@ -871,3 +871,5 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard; 
+
+

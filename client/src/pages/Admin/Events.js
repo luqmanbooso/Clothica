@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   PlusIcon,
@@ -290,10 +290,10 @@ const Events = () => {
     try {
       if (editingEvent) {
         await api.put(`/api/events/${editingEvent._id}`, formData);
-        showSuccess('Campaign updated successfully! 🎉');
+        showSuccess('Campaign updated successfully! ');
       } else {
         await api.post('/api/events', formData);
-        showSuccess('Campaign created successfully! 🚀');
+        showSuccess('Campaign created successfully! ');
       }
       setShowModal(false);
       resetForm();
@@ -793,10 +793,10 @@ const Events = () => {
                          onChange={handleInputChange}
                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
                        >
-                         <option value="seasonal">🌱 Seasonal</option>
-                         <option value="holiday">🎉 Holiday</option>
-                         <option value="promotional">📈 Promotional</option>
-                         <option value="custom">⚡ Custom</option>
+                         <option value="seasonal"> Seasonal</option>
+                         <option value="holiday"> Holiday</option>
+                         <option value="promotional"> Promotional</option>
+                         <option value="custom">Custom</option>
                        </select>
                      </div>
                    </div>
@@ -1128,7 +1128,7 @@ const Events = () => {
                       </>
                     ) : (
                       <>
-                        {editingEvent ? '🔄 Update Campaign' : '🚀 Create Campaign'}
+                        {editingEvent ? ' Update Campaign' : ' Create Campaign'}
                       </>
                     )}
                   </button>
@@ -1406,3 +1406,5 @@ const Events = () => {
 };
 
 export default Events;
+
+

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   GiftIcon, 
@@ -259,7 +259,7 @@ const SpinWheel = ({ isOpen, onClose, onReward }) => {
                     </motion.div>
                     
                     <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                      Congratulations! 🎉
+                      Congratulations! 
                     </h3>
                     
                     <p className="text-lg text-gray-700 mb-4">
@@ -304,3 +304,4 @@ const SpinWheel = ({ isOpen, onClose, onReward }) => {
 };
 
 export default SpinWheel;
+

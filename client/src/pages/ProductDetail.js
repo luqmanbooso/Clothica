@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  StarIcon, 
-  ShoppingBagIcon, 
-  HeartIcon, 
-  EyeIcon, 
-  StarIcon as StarIconSolid, 
-  ChevronLeftIcon, 
+import {
+  StarIcon,
+  ShoppingBagIcon,
+  HeartIcon,
+  EyeIcon,
+  StarIcon as StarIconSolid,
+  ChevronLeftIcon,
   ChevronRightIcon,
   ShieldCheckIcon,
   ArrowPathIcon,
@@ -15,7 +13,21 @@ import {
   CheckCircleIcon,
   ShareIcon,
   PlusIcon,
-  MinusIcon
+  MinusIcon,
+  HomeIcon,
+  FaceFrownIcon,
+  FireIcon,
+  BoltIcon,
+  SparklesIcon,
+  BookOpenIcon,
+  WrenchScrewdriverIcon,
+  SwatchIcon,
+  ArrowsPointingOutIcon,
+  HashtagIcon,
+  ChatBubbleLeftRightIcon,
+  ChatBubbleLeftEllipsisIcon,
+  InformationCircleIcon,
+  CheckBadgeIcon
 } from '@heroicons/react/24/outline';
 import { 
   FiShoppingCart, 
@@ -230,7 +242,7 @@ const ProductDetail = () => {
           animate={{ opacity: 1, scale: 1 }}
           className="text-center"
         >
-          <div className="text-8xl mb-6">😞</div>
+          <FaceFrownIcon className="h-20 w-20 mx-auto text-gray-400 mb-2" />
           <h2 className="text-3xl font-black text-[#1E1E1E] mb-4">Product not found</h2>
           <p className="text-[#D4AF37] mb-8 text-lg">The product you're looking for doesn't exist or has been removed.</p>
           <Link 
@@ -279,7 +291,7 @@ const ProductDetail = () => {
                 to="/" 
                 className="text-[#6C7A59] hover:text-[#D4AF37] font-medium transition-all duration-300 hover:scale-105 transform flex items-center gap-1"
               >
-                🏠 Home
+                <HomeIcon className="h-5 w-5" /> Home
               </Link>
             </li>
             <li>
@@ -290,7 +302,7 @@ const ProductDetail = () => {
                 to="/shop" 
                 className="text-[#6C7A59] hover:text-[#D4AF37] font-medium transition-all duration-300 hover:scale-105 transform flex items-center gap-1"
               >
-                🛍️ Shop
+                <ShoppingBagIcon className="h-5 w-5" /> Shop
               </Link>
             </li>
             <li>
@@ -388,7 +400,7 @@ const ProductDetail = () => {
                       animate={{ scale: [1, 1.05, 1] }}
                       transition={{ duration: 2, repeat: Infinity }}
                     >
-                      🔥 {product.discount}% OFF
+                      <FireIcon className="h-5 w-5 inline mr-1" /> {product.discount}% OFF
                     </motion.div>
                   )}
                   {product.stock < 10 && product.stock > 0 && (
@@ -397,17 +409,17 @@ const ProductDetail = () => {
                       animate={{ opacity: [1, 0.7, 1] }}
                       transition={{ duration: 1.5, repeat: Infinity }}
                     >
-                      ⚡ Only {product.stock} Left!
+                      <BoltIcon className="h-5 w-5 inline mr-1" /> Only {product.stock} Left!
                     </motion.div>
                   )}
                   {product.stock === 0 && (
                     <div className="bg-gradient-to-r from-gray-600 to-gray-800 text-white font-bold px-4 py-2 rounded-full text-sm shadow-lg backdrop-blur-sm border border-white/30">
-                      ❌ Out of Stock
+                      <XCircleIcon className="h-5 w-5 inline mr-1" /> Out of Stock
                     </div>
                   )}
                   {product.rating >= 4.5 && (
                     <div className="bg-gradient-to-r from-[#6C7A59] to-[#9CAF88] text-white font-bold px-4 py-2 rounded-full text-sm shadow-lg backdrop-blur-sm border border-white/30">
-                      ⭐ BEST SELLER
+                      <StarIconSolid className="h-5 w-5 inline mr-1" /> BEST SELLER
                     </div>
                   )}
                 </div>
@@ -485,7 +497,7 @@ const ProductDetail = () => {
                     animate={{ scale: [1, 1.05, 1] }}
                     transition={{ duration: 2, repeat: Infinity }}
                   >
-                    ✨ NEW
+                    <SparklesIcon className="h-5 w-5 inline mr-1" /> NEW
                   </motion.span>
                 )}
                 {product.discount > 0 && (
@@ -494,12 +506,12 @@ const ProductDetail = () => {
                     animate={{ scale: [1, 1.05, 1] }}
                     transition={{ duration: 1.5, repeat: Infinity, delay: 0.3 }}
                   >
-                    🔥 -{product.discount}% OFF
+                    <FireIcon className="h-5 w-5 inline mr-1" /> -{product.discount}% OFF
                   </motion.span>
                 )}
                 {product.stock < 10 && product.stock > 0 && (
                   <span className="inline-block px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-700 text-white text-sm font-bold rounded-full shadow-lg">
-                    ⚡ Limited Stock
+                    <BoltIcon className="h-5 w-5 inline mr-1" /> Limited Stock
                   </span>
                 )}
               </div>
@@ -598,7 +610,7 @@ const ProductDetail = () => {
                 {product.stock > 0 && product.stock <= 10 && (
                   <div className="mt-2 bg-gradient-to-r from-orange-100 to-red-100 rounded-2xl p-3 border border-orange-200">
                     <p className="text-orange-800 font-medium text-sm">
-                      ⚡ Hurry! Only {product.stock} items left in stock. Order now to avoid disappointment!
+                      <BoltIcon className="h-5 w-5 inline mr-1" /> Hurry! Only {product.stock} items left in stock. Order now to avoid disappointment!
                     </p>
                   </div>
                 )}
@@ -611,7 +623,7 @@ const ProductDetail = () => {
               variants={itemVariants}
             >
               <h3 className="text-2xl font-black text-[#1E1E1E] mb-4 flex items-center gap-3">
-                📖 Description
+                <BookOpenIcon className="h-6 w-6" /> Description
               </h3>
               <p className="text-[#6C7A59] leading-relaxed text-lg font-medium">
                 {product.description}
@@ -625,7 +637,7 @@ const ProductDetail = () => {
                 variants={itemVariants}
               >
                 <h3 className="text-2xl font-black text-[#1E1E1E] mb-6 flex items-center gap-3">
-                  ✨ Key Features
+                  <SparklesIcon className="h-6 w-6" /> Key Features
                 </h3>
                 <motion.ul 
                   className="space-y-4"
@@ -656,7 +668,7 @@ const ProductDetail = () => {
                 variants={itemVariants}
               >
                 <h3 className="text-2xl font-black text-[#1E1E1E] mb-6 flex items-center gap-3">
-                  🧵 Material & Care
+                  <WrenchScrewdriverIcon className="h-6 w-6" /> Material & Care
                 </h3>
                 <div className="space-y-4">
                   {product.material && (
@@ -684,7 +696,7 @@ const ProductDetail = () => {
                 variants={itemVariants}
               >
                 <h3 className="text-2xl font-black text-[#1E1E1E] mb-6 flex items-center gap-3">
-                  🎨 Choose Color
+                  <SwatchIcon className="h-6 w-6" /> Choose Color
                 </h3>
                 <div className="flex flex-wrap gap-4">
                   {product.colors.map((color, index) => (
@@ -743,7 +755,7 @@ const ProductDetail = () => {
                 variants={itemVariants}
               >
                 <h3 className="text-2xl font-black text-[#1E1E1E] mb-6 flex items-center gap-3">
-                  📐 Choose Size
+                  <ArrowsPointingOutIcon className="h-6 w-6" /> Choose Size
                 </h3>
                 <div className="grid grid-cols-3 gap-4">
                   {product.sizes.map((size, index) => (
@@ -790,7 +802,7 @@ const ProductDetail = () => {
               variants={itemVariants}
             >
               <h3 className="text-2xl font-black text-[#1E1E1E] mb-6 flex items-center gap-3">
-                🔢 Quantity
+                <HashtagIcon className="h-6 w-6" /> Quantity
               </h3>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -928,7 +940,7 @@ const ProductDetail = () => {
               variants={itemVariants}
             >
               <h3 className="text-2xl font-black text-[#1E1E1E] mb-6 flex items-center gap-3">
-                ℹ️ Product Details
+                <InformationCircleIcon className="h-6 w-6" /> Product Details
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {product.sku && (
@@ -990,7 +1002,7 @@ const ProductDetail = () => {
           >
             <div className="flex items-center justify-between mb-8">
               <h2 className="text-3xl font-black text-[#1E1E1E] flex items-center gap-3">
-                💬 Customer Reviews
+                <ChatBubbleLeftRightIcon className="h-6 w-6" /> Customer Reviews
               </h2>
               <motion.button
                 onClick={() => setShowReviews(true)}
@@ -1021,7 +1033,7 @@ const ProductDetail = () => {
                           </span>
                           {review.verified && (
                             <span className="inline-block px-3 py-1 bg-gradient-to-r from-[#6C7A59] to-[#9CAF88] text-white text-xs font-bold rounded-full">
-                              ✓ Verified Purchase
+                              <CheckBadgeIcon className="h-4 w-4 mr-1" /> Verified Purchase
                             </span>
                           )}
                         </div>
@@ -1048,7 +1060,7 @@ const ProductDetail = () => {
                   initial="hidden"
                   animate="visible"
                 >
-                  <div className="text-6xl mb-4">💭</div>
+                  <ChatBubbleLeftEllipsisIcon className="h-16 w-16 text-[#6C7A59] mx-auto mb-4" />
                   <h3 className="text-2xl font-black text-[#1E1E1E] mb-4">No reviews yet</h3>
                   <p className="text-[#6C7A59] text-lg mb-6">Be the first to share your experience with this product!</p>
                   <motion.button
@@ -1071,7 +1083,7 @@ const ProductDetail = () => {
             className="text-3xl font-black text-[#1E1E1E] mb-8 flex items-center gap-3"
             variants={itemVariants}
           >
-            🛍️ You might also like
+            <ShoppingBagIcon className="h-6 w-6" /> You might also like
           </motion.h2>
           <motion.div 
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
@@ -1096,12 +1108,12 @@ const ProductDetail = () => {
                     <div className="absolute top-3 left-3 space-y-2">
                       {product.isNew && (
                         <span className="inline-block px-3 py-1 bg-gradient-to-r from-[#6C7A59] to-[#9CAF88] text-white text-xs font-bold rounded-full shadow-lg">
-                          ✨ NEW
+                          <SparklesIcon className="h-5 w-5 inline mr-1" /> NEW
                         </span>
                       )}
                       {product.discount > 0 && (
                         <span className="inline-block px-3 py-1 bg-gradient-to-r from-[#B35D5D] to-[#E8B4B8] text-white text-xs font-bold rounded-full shadow-lg">
-                          🔥 -{product.discount}%
+                          <FireIcon className="h-4 w-4 inline mr-1" /> -{product.discount}%
                         </span>
                       )}
                     </div>

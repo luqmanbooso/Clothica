@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
@@ -153,13 +153,13 @@ const LoyaltyDashboard = ({ compact = false }) => {
     switch (reward.type) {
       case 'coupon':
         return {
-          icon: '🎫',
+          icon: '',
           color: 'bg-green-500',
           text: `${reward.discount}% OFF Coupon`
         };
       case 'free_shipping':
         return {
-          icon: '🚚',
+          icon: '',
           color: 'bg-blue-500',
           text: 'Free Shipping'
         };
@@ -171,13 +171,13 @@ const LoyaltyDashboard = ({ compact = false }) => {
         };
       case 'product_discount':
         return {
-          icon: '🎁',
+          icon: '',
           color: 'bg-red-500',
           text: `${reward.discount}% Product Discount`
         };
       default:
         return {
-          icon: '🎉',
+          icon: '',
           color: 'bg-purple-500',
           text: reward.name || 'Special Reward'
         };
@@ -428,3 +428,5 @@ const LoyaltyDashboard = ({ compact = false }) => {
 };
 
 export default LoyaltyDashboard;
+
+

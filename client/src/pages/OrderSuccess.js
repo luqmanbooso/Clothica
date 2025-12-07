@@ -7,7 +7,8 @@ import {
   ShoppingBagIcon,
   DocumentArrowDownIcon,
   EyeIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  SparklesIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -183,8 +184,9 @@ const OrderSuccess = () => {
           <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-green-100 mb-6">
             <CheckCircleIcon className="h-12 w-12 text-green-600" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">
-            Order Placed Successfully! 🎉
+          <h1 className="text-3xl font-bold text-gray-900 mb-4 flex items-center justify-center gap-2">
+            <SparklesIcon className="h-7 w-7 text-green-600" />
+            Order Placed Successfully!
           </h1>
           <p className="text-lg text-gray-600">
             Thank you for your purchase! We're excited to deliver your Sri Lankan fashion items.

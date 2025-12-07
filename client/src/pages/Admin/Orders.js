@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+﻿import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   MagnifyingGlassIcon,
   EyeIcon,
@@ -1694,14 +1694,14 @@ const Orders = () => {
                 </div>
 
                 <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
-                  <h3 className="text-lg font-semibold text-blue-900 mb-2">🎯 Next Steps</h3>
+                  <h3 className="text-lg font-semibold text-blue-900 mb-2"> Next Steps</h3>
                   <p className="text-blue-800 mb-4">
                     <strong>Oops! Not enough items in stock.</strong> You need to restock these items before shipping. 
                     Click "Resolve Inventory" to go directly to the product management page where you can update stock levels.
                   </p>
                   <div className="bg-blue-100 p-3 rounded-lg">
                     <p className="text-sm text-blue-700">
-                      💡 <strong>Pro Tip:</strong> The system will pre-filter the products page to show only the items with stock issues, 
+                       <strong>Pro Tip:</strong> The system will pre-filter the products page to show only the items with stock issues, 
                       making it easy to update inventory levels quickly.
                     </p>
                   </div>
@@ -1915,7 +1915,7 @@ const Orders = () => {
                 <div className="bg-gradient-to-r from-red-50 to-pink-50 p-4 rounded-xl border border-red-200">
                   <h3 className="text-lg font-semibold text-red-900 mb-2">Confirmation Required</h3>
                   <p className="text-red-800 mb-4">
-                    <strong>⚠️ This action is irreversible!</strong><br/>
+                    <strong>This action is irreversible!</strong><br/>
                     You are about to process a {refundData.type} refund of <strong>Rs. {(refundData.amount || 0).toLocaleString()}</strong>.
                     {refundData.type === 'full' && ' This will refund the entire order amount.'}
                     {refundData.type === 'partial' && ` This will refund ${refundData.items.length} selected item(s).`}
@@ -2001,7 +2001,7 @@ const Orders = () => {
               <div className="p-6 space-y-6">
                 {/* Order Summary */}
                 <div className="bg-gradient-to-r from-green-50 to-blue-50 p-4 rounded-xl border border-green-200">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">📦 Order Summary</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3"> Order Summary</h3>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                     <div>
                       <span className="font-medium text-gray-700">Customer:</span>
@@ -2020,7 +2020,7 @@ const Orders = () => {
 
                 {/* Shipping Details Form */}
                 <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-xl border border-blue-200">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">🚚 Shipping Information</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4"> Shipping Information</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Tracking Number *</label>
@@ -2094,7 +2094,7 @@ const Orders = () => {
 
                 {/* Confirmation */}
                 <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200">
-                  <h3 className="text-lg font-semibold text-green-900 mb-2">✅ Ready to Ship</h3>
+                  <h3 className="text-lg font-semibold text-green-900 mb-2">Ready to Ship</h3>
                   <p className="text-green-800 mb-4">
                     This will mark the order as <strong>shipped</strong> and send tracking information to the customer.
                     The order will automatically be marked as <strong>completed</strong> after shipping.
@@ -2186,7 +2186,7 @@ const Orders = () => {
               <div className="p-6 space-y-6">
                 {/* Current Status */}
                 <div className="bg-gradient-to-r from-gray-50 to-blue-50 p-4 rounded-xl border border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">📊 Status Change</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3"> Status Change</h3>
                   <div className="flex items-center justify-between">
                     <div className="text-center">
                       <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(selectedOrderForStatusChange.status)}`}>
@@ -2214,7 +2214,7 @@ const Orders = () => {
 
                 {/* Reason Selection */}
                 <div className="bg-gradient-to-r from-orange-50 to-yellow-50 p-4 rounded-xl border border-orange-200">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">📝 Reason for Change</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3"> Reason for Change</h3>
                   <select
                     value={statusChangeData.reason}
                     onChange={(e) => setStatusChangeData(prev => ({ ...prev, reason: e.target.value }))}
@@ -2252,7 +2252,7 @@ const Orders = () => {
 
                 {/* Additional Notes */}
                 <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-200">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">💬 Additional Notes</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3"> Additional Notes</h3>
                   <textarea
                     value={statusChangeData.notes}
                     onChange={(e) => setStatusChangeData(prev => ({ ...prev, notes: e.target.value }))}
@@ -2284,7 +2284,7 @@ const Orders = () => {
                   <h3 className={`text-lg font-semibold mb-2 ${
                     statusChangeData.newStatus === 'cancelled' ? 'text-red-900' : 'text-blue-900'
                   }`}>
-                    {statusChangeData.newStatus === 'cancelled' ? '⚠️ Confirm Cancellation' : '✅ Confirm Status Change'}
+                    {statusChangeData.newStatus === 'cancelled' ? 'Confirm Cancellation' : 'Confirm Status Change'}
                   </h3>
                   <p className={statusChangeData.newStatus === 'cancelled' ? 'text-red-800' : 'text-blue-800'}>
                     {statusChangeData.newStatus === 'cancelled' 
@@ -2343,3 +2343,4 @@ const Orders = () => {
 };
 
 export default Orders; 
+

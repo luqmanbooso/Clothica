@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { TrashIcon, MinusIcon, PlusIcon, ArrowRightIcon, TruckIcon, ShieldCheckIcon, ArrowPathIcon, GiftIcon } from '@heroicons/react/24/outline';
@@ -185,7 +185,7 @@ const Cart = () => {
                   <span className={`text-sm font-bold ${
                     isFreeShippingEligible ? 'text-[#059669]' : 'text-[#6C7A59]'
                   }`}>
-                    {isFreeShippingEligible ? '🎉 Eligible!' : `Rs. ${(10000 - subtotal).toLocaleString()} more needed`}
+                    {isFreeShippingEligible ? 'Eligible!' : `Rs. ${(10000 - subtotal).toLocaleString()} more needed`}
                   </span>
                 </div>
                 
@@ -711,3 +711,4 @@ const Cart = () => {
 };
 
 export default Cart;
+

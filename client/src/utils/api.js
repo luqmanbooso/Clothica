@@ -18,9 +18,9 @@ api.interceptors.request.use(
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log('🔑 API Request with token:', config.url, token.substring(0, 20) + '...');
+      console.log('[api] Request with token:', config.url, token.substring(0, 20) + '...');
     } else {
-      console.log('🔑 API Request without token:', config.url);
+      console.log('[api] Request without token:', config.url);
     }
     return config;
   },
@@ -34,7 +34,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      console.log('🚨 401 Error on:', error.config?.url, 'Current path:', window.location.pathname);
+      console.log('[api] 401 Error on:', error.config?.url, 'Current path:', window.location.pathname);
       
       // Token expired or invalid
       localStorage.removeItem('token');
@@ -43,12 +43,12 @@ api.interceptors.response.use(
       if (window.location.pathname !== '/login' && 
           window.location.pathname !== '/register' &&
           !error.config?.url?.includes('/auth/')) {
-        console.log('🔄 Redirecting to login due to 401 error');
+        console.log('[api] Redirecting to login due to 401 error');
         // Store the current path for post-login redirect
         sessionStorage.setItem('redirectAfterLogin', window.location.pathname);
         window.location.href = '/login';
       } else {
-        console.log('⏭️ Skipping redirect - on auth page or during auth operation');
+        console.log('[api] Skipping redirect - on auth page or during auth operation');
       }
     }
     return Promise.reject(error);

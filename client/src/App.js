@@ -25,6 +25,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Contact from './pages/Contact';
 import About from './pages/About';
+import Terms from './pages/Terms';
 import Profile from './pages/Profile';
 import Orders from './pages/Orders';
 import OrderDetail from './pages/OrderDetail';
@@ -60,8 +61,8 @@ import ClientRoute from './components/Auth/ClientRoute';
 
 function App() {
   // Debug: Log the Google Client ID
-  console.log('🔍 [DEBUG] Google Client ID loaded:', process.env.REACT_APP_GOOGLE_CLIENT_ID);
-  console.log('🔍 [DEBUG] All environment variables:', process.env);
+  console.log('[DEBUG] Google Client ID loaded:', process.env.REACT_APP_GOOGLE_CLIENT_ID);
+  console.log('[DEBUG] All environment variables:', process.env);
   
   return (
     <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID}>
@@ -158,13 +159,21 @@ function App() {
                         </ClientRoute>
                       } />
                       
-                      <Route path="/about" element={
-                        <ClientRoute>
-                          <Header />
-                          <About />
-                          <Footer />
-                        </ClientRoute>
-                      } />
+                  <Route path="/about" element={
+                    <ClientRoute>
+                      <Header />
+                      <About />
+                      <Footer />
+                    </ClientRoute>
+                  } />
+                  
+                  <Route path="/terms" element={
+                    <ClientRoute>
+                      <Header />
+                      <Terms />
+                      <Footer />
+                    </ClientRoute>
+                  } />
                       
                       <Route path="/profile" element={
                         <ClientRoute>

@@ -8,7 +8,9 @@ import {
   ArrowRightIcon, 
   ChevronLeftIcon, 
   ChevronRightIcon,
-  StarIcon as StarIconSolid
+  StarIcon as StarIconSolid,
+  SparklesIcon,
+  TagIcon
 } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
 import WelcomeModal from '../components/WelcomeModal';
@@ -293,7 +295,9 @@ const Home = () => {
             <p className="text-lg text-gray-600">Discover our latest promotions and events</p>
           </div>
           <div className="text-center py-12">
-            <div className="text-6xl mb-4">🎯</div>
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-[#6C7A59] text-white mb-4">
+              <SparklesIcon className="h-8 w-8" />
+            </div>
             <h3 className="text-xl font-medium text-gray-900 mb-2">Campaign Hub Active</h3>
             <p className="text-gray-600 mb-6">All campaigns are now managed through our unified event system</p>
             <Link 
@@ -315,7 +319,9 @@ const Home = () => {
             <p className="text-lg text-gray-600">Limited time deals you don't want to miss!</p>
           </div>
           <div className="text-center py-12">
-            <div className="text-6xl mb-4">🎁</div>
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-[#6C7A59] text-white mb-4">
+              <TagIcon className="h-8 w-8" />
+            </div>
             <h3 className="text-xl font-medium text-gray-900 mb-2">Offers Managed by Events</h3>
             <p className="text-gray-600 mb-6">All special offers are now part of our unified campaign system</p>
             <Link 

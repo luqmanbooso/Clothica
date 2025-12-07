@@ -206,7 +206,7 @@ const Shop = () => {
                   : 'bg-white/95 backdrop-blur-sm border border-[#6C7A59]/20 hover:border-[#6C7A59]/40'
               }`}
             >
-              <div className="text-2xl mb-2">👕</div>
+              <FiGrid className="w-7 h-7 mx-auto mb-2 text-[#6C7A59]" />
               <div className="font-bold">All</div>
             </motion.button>
             
@@ -221,7 +221,7 @@ const Shop = () => {
                     : 'bg-white/95 backdrop-blur-sm border border-[#6C7A59]/20 hover:border-[#6C7A59]/40'
                 }`}
               >
-                <div className="text-2xl mb-2">{category.icon || '🏷️'}</div>
+                <FiTag className="w-7 h-7 mx-auto mb-2 text-[#6C7A59]" />
                 <div className="font-bold">{category.name}</div>
               </motion.button>
             ))}
@@ -428,7 +428,7 @@ const Shop = () => {
           ) : (
             /* Empty State */
             <div className="text-center py-16">
-              <div className="text-6xl mb-4">🛍️</div>
+              <FiSearch className="h-16 w-16 text-[#6C7A59] mx-auto mb-4" />
               <h3 className="text-2xl font-black text-[#1E1E1E] mb-2">No products found</h3>
               <p className="text-[#6C7A59] mb-6">Try adjusting your search or filter criteria</p>
               <button

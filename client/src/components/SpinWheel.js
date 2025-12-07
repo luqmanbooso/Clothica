@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   GiftIcon, 
@@ -31,12 +31,12 @@ const SpinWheel = ({ onClose, onRewardApplied, triggerType = 'post_purchase' }) 
     name: "Lucky Spin Wheel",
     cost: { type: 'points', amount: 50 },
     rewards: [
-      { type: 'coupon', value: 15, probability: 25, name: '15% OFF Coupon', icon: '🎫', color: 'bg-green-500' },
-      { type: 'coupon', value: 20, probability: 15, name: '20% OFF Coupon', icon: '🎫', color: 'bg-blue-500' },
-      { type: 'free_shipping', value: 0, probability: 20, name: 'Free Shipping', icon: '🚚', color: 'bg-purple-500' },
+      { type: 'coupon', value: 15, probability: 25, name: '15% OFF Coupon', icon: '', color: 'bg-green-500' },
+      { type: 'coupon', value: 20, probability: 15, name: '20% OFF Coupon', icon: '', color: 'bg-blue-500' },
+      { type: 'free_shipping', value: 0, probability: 20, name: 'Free Shipping', icon: '', color: 'bg-purple-500' },
       { type: 'points', value: 100, probability: 25, name: '100 Bonus Points', icon: '⭐', color: 'bg-yellow-500' },
       { type: 'points', value: 200, probability: 10, name: '200 Bonus Points', icon: '⭐', color: 'bg-orange-500' },
-      { type: 'product_discount', value: 25, probability: 5, name: '25% Product Discount', icon: '🎁', color: 'bg-red-500' }
+      { type: 'product_discount', value: 25, probability: 5, name: '25% Product Discount', icon: '', color: 'bg-red-500' }
     ],
     cooldown: 1440, // 24 hours in minutes
     lastSpin: null
@@ -206,7 +206,7 @@ const SpinWheel = ({ onClose, onRewardApplied, triggerType = 'post_purchase' }) 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white rounded-2xl p-8 text-center max-w-md">
-          <div className="text-6xl mb-4">🎰</div>
+          <div className="text-6xl mb-4"></div>
           <h2 className="text-2xl font-bold text-gray-800 mb-4">Login to Spin!</h2>
           <p className="text-gray-600 mb-6">Sign in to your account to access the spin wheel and win amazing rewards!</p>
           <button
@@ -263,10 +263,10 @@ const SpinWheel = ({ onClose, onRewardApplied, triggerType = 'post_purchase' }) 
                       transition={{ duration: 3, ease: "easeOut" }}
                       className="text-4xl"
                     >
-                      🎰
+                      
                     </motion.div>
                   ) : (
-                    <div className="text-4xl">🎰</div>
+                    <div className="text-4xl"></div>
                   )}
                 </div>
                 
@@ -399,7 +399,7 @@ const SpinWheel = ({ onClose, onRewardApplied, triggerType = 'post_purchase' }) 
             className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60"
           >
             <div className="bg-white rounded-2xl p-8 text-center max-w-md mx-4">
-              <div className="text-6xl mb-4">🎉</div>
+              <div className="text-6xl mb-4"></div>
               <h2 className="text-2xl font-bold text-gray-800 mb-2">Congratulations!</h2>
               <p className="text-gray-600 mb-6">You won:</p>
               
@@ -437,3 +437,4 @@ const SpinWheel = ({ onClose, onRewardApplied, triggerType = 'post_purchase' }) 
 };
 
 export default SpinWheel;
+

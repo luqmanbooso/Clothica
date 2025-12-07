@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   TrophyIcon,
@@ -70,10 +70,10 @@ const LoyaltyDashboard = () => {
 
   const getTierIcon = (tier) => {
     const icons = {
-      Bronze: '🥉',
-      Silver: '🥈', 
-      Gold: '🥇',
-      Platinum: '💎'
+      Bronze: '',
+      Silver: '', 
+      Gold: '',
+      Platinum: ''
     };
     return icons[tier] || icons.Bronze;
   };
@@ -446,3 +446,5 @@ const LoyaltyDashboard = () => {
 };
 
 export default LoyaltyDashboard;
+
+

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   XMarkIcon,
@@ -341,7 +341,7 @@ const PromotionalBanner = ({ position = 'hero', page = 'home', userTier = 'Bronz
               transition={{ repeat: Infinity, duration: 2 }}
               className="absolute top-4 left-4 bg-red-600 text-white px-3 py-1 rounded-full text-sm font-bold"
             >
-              🔥 ENDING SOON!
+              <FireIcon className="h-4 w-4 inline mr-1" /> ENDING SOON!
             </motion.div>
           )}
         </div>
@@ -351,3 +351,4 @@ const PromotionalBanner = ({ position = 'hero', page = 'home', userTier = 'Bronz
 };
 
 export default PromotionalBanner;
+

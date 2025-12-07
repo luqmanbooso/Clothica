@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { ChevronLeftIcon, ChevronRightIcon, TagIcon } from '@heroicons/react/24/outline';
 import api from '../utils/api';
 import { getSocket } from '../utils/socket';
 
@@ -203,7 +203,8 @@ const Banner = ({
           {currentBanner.eventId && (
             <div className="absolute top-4 left-4">
               <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                🎯 {currentBanner.eventId.name}
+                <TagIcon className="h-4 w-4 mr-1" />
+                {currentBanner.eventId.name}
               </span>
             </div>
           )}
@@ -278,3 +279,4 @@ const Banner = ({
 };
 
 export default Banner;
+

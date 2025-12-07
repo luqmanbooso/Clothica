@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { 
   PlusIcon, MagnifyingGlassIcon, CubeIcon, ExclamationTriangleIcon,
   CheckCircleIcon, StarIcon, PhotoIcon, PencilIcon, TrashIcon,
@@ -443,10 +443,10 @@ const Products = () => {
     try {
       if (editingProduct) {
         await api.put(`/api/admin/products/${editingProduct._id}`, formData);
-        showSuccess('Product updated successfully! 🎉');
+        showSuccess('Product updated successfully! ');
       } else {
         await api.post('/api/admin/products', formData);
-        showSuccess('Product created successfully! 🚀');
+        showSuccess('Product created successfully! ');
       }
       setShowProductModal(false);
       resetForm();
@@ -1868,3 +1868,4 @@ const Products = () => {
 };
 
 export default Products;
+
