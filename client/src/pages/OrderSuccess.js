@@ -7,12 +7,9 @@ import {
   ShoppingBagIcon,
   DocumentArrowDownIcon,
   EyeIcon,
-  ExclamationTriangleIcon,
-  SparklesIcon
+  ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
-import SpinWheel from '../components/SpinWheel';
 import { useAuth } from '../contexts/AuthContext';
-import { useLoyalty } from '../contexts/LoyaltyContext';
 
 const OrderSuccess = () => {
   const location = useLocation();
@@ -22,8 +19,6 @@ const OrderSuccess = () => {
   const [error, setError] = useState(null);
   const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
   const [invoiceGenerated, setInvoiceGenerated] = useState(false);
-  const [showSpinWheel, setShowSpinWheel] = useState(false);
-  const [spinWheelTriggered, setSpinWheelTriggered] = useState(false);
 
   useEffect(() => {
     // Check if we have order data in location state
@@ -60,14 +55,6 @@ const OrderSuccess = () => {
         shippingAddress: location.state.shippingAddress || {}
       });
       setIsLoading(false);
-      
-      // Trigger spin wheel after order success (if not already triggered)
-      if (!spinWheelTriggered) {
-        setTimeout(() => {
-          setShowSpinWheel(true);
-          setSpinWheelTriggered(true);
-        }, 2000); // Show after 2 seconds
-      }
     } else {
       // No order data in state, check sessionStorage for recent orders
       checkSessionStorageForOrder();
@@ -372,33 +359,8 @@ const OrderSuccess = () => {
           </p>
         </div>
 
-        {/* Spin Wheel Trigger */}
-        {!spinWheelTriggered && (
-          <div className="mt-8 text-center">
-            <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-200">
-              <div className="text-4xl mb-3">🎰</div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">Congratulations!</h3>
-              <p className="text-gray-600 mb-4">
-                You've earned a spin on our reward wheel! Take a chance to win amazing rewards.
-              </p>
-              <button
-                onClick={() => setShowSpinWheel(true)}
-                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-semibold hover:from-purple-700 hover:to-pink-700 transition-all duration-200 transform hover:scale-105"
-              >
-                <SparklesIcon className="w-5 h-5 mr-2" />
-                Spin & Win!
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* Spin Wheel Modal */}
-      <SpinWheel 
-        isOpen={showSpinWheel} 
-        onClose={() => setShowSpinWheel(false)}
-        triggerType="post_purchase"
-      />
     </div>
   );
 };

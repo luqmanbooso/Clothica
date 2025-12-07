@@ -20,7 +20,6 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { useWishlist } from '../../contexts/WishlistContext';
-import LoyaltyBadge from '../Loyalty/LoyaltyBadge';
 import NotificationBell from '../NotificationBell';
 import api from '../../utils/api';
 
@@ -363,9 +362,6 @@ const Header = () => {
 
             {/* User Actions */}
             <div className="flex items-center space-x-4">
-              {/* Loyalty Badge */}
-              {!isAdmin && <LoyaltyBadge />}
-              
               {/* Search Icon for Mobile */}
               {!isAdmin && (
                 <button className="lg:hidden text-gray-700 hover:text-[#D4AF37] transition-colors">
@@ -432,10 +428,6 @@ const Header = () => {
                       <Link to="/orders" className="flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-[#F5F1E8] text-gray-700 hover:text-[#6C7A59] transition-colors">
                         <ShoppingBagIcon className="w-5 h-5" />
                         <span>Orders</span>
-                      </Link>
-                      <Link to="/loyalty" className="flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-[#F5F1E8] text-gray-700 hover:text-[#6C7A59] transition-colors">
-                        <StarIcon className="w-5 h-5" />
-                        <span>Loyalty</span>
                       </Link>
                       <Link to="/reviews-issues" className="flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-[#F5F1E8] text-gray-700 hover:text-[#6C7A59] transition-colors">
                         <StarIcon className="w-5 h-5" />

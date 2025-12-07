@@ -25,6 +25,16 @@ const mongoose = require('mongoose');
 
 const router = express.Router();
 
+// Disable deprecated marketing endpoints (promotions/events/banners/loyalty)
+const disabledAdminPaths = [
+  /^\/banners/,
+  /^\/events/,
+  /^\/monetization\/loyalty/
+];
+router.use(disabledAdminPaths, (_req, res) => {
+  return res.status(410).json({ message: 'This endpoint has been removed' });
+});
+
 // Helper function to normalize images for consistent format
 const normalizeImages = (images) => {
   if (!images || !Array.isArray(images)) return [];
@@ -3241,4 +3251,3 @@ router.get('/inventory/out-of-stock', auth, admin, async (req, res) => {
 });
 
 module.exports = router;
-

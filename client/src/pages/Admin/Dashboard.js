@@ -613,63 +613,10 @@ const AdminDashboard = () => {
                 exit={{ opacity: 0, x: -20 }}
                 className="space-y-6"
               >
-                {/* Spin Wheel Analytics */}
-                <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-purple-900 mb-4">🎰 Spin Wheel Performance</h3>
-                  {dashboardData.clientFeatures?.spinWheel ? (
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className="bg-white rounded-lg p-4 text-center">
-                        <p className="text-2xl font-bold text-purple-600">{dashboardData.clientFeatures.spinWheel.totalSpins || 0}</p>
-                      <p className="text-sm text-purple-700">Total Spins</p>
-                    </div>
-                    <div className="bg-white rounded-lg p-4 text-center">
-                        <p className="text-2xl font-bold text-green-600">{dashboardData.clientFeatures.spinWheel.rewardsGiven || 0}</p>
-                      <p className="text-sm text-green-700">Rewards Given</p>
-                    </div>
-                    <div className="bg-white rounded-lg p-4 text-center">
-                        <p className="text-2xl font-bold text-blue-600">{((dashboardData.clientFeatures.spinWheel.userEngagement || 0) * 100).toFixed(1)}%</p>
-                      <p className="text-sm text-blue-700">User Engagement</p>
-                    </div>
-                    <div className="bg-white rounded-lg p-4 text-center">
-                        <p className="text-2xl font-bold text-orange-600">{((dashboardData.clientFeatures.spinWheel.conversionRate || 0) * 100).toFixed(1)}%</p>
-                      <p className="text-sm text-orange-700">Conversion Rate</p>
-                    </div>
-                  </div>
-                  ) : (
-                    <div className="text-center py-8 text-gray-500">
-                      No spin wheel data available
-                    </div>
-                  )}
-                </div>
-
-                {/* Loyalty Program */}
-                <div className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-orange-900 mb-4">⭐ Loyalty Program</h3>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div>
-                      <div className="grid grid-cols-2 gap-4 mb-4">
-                        <div className="bg-white rounded-lg p-4 text-center">
-                          <p className="text-2xl font-bold text-orange-600">{dashboardData.clientFeatures.loyaltyProgram.totalPoints.toLocaleString()}</p>
-                          <p className="text-sm text-orange-700">Total Points</p>
-                        </div>
-                        <div className="bg-white rounded-lg p-4 text-center">
-                          <p className="text-2xl font-bold text-green-600">{dashboardData.clientFeatures.loyaltyProgram.activeUsers}</p>
-                          <p className="text-sm text-green-700">Active Users</p>
-                        </div>
-                      </div>
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-orange-900 mb-3">Level Distribution</h4>
-                      <div className="space-y-2">
-                        {Object.entries(dashboardData.clientFeatures.loyaltyProgram.levelDistribution).map(([level, count]) => (
-                          <div key={level} className="flex items-center justify-between">
-                            <span className="capitalize text-orange-800">{level}</span>
-                            <span className="font-medium text-orange-900">{count}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+                {/* Loyalty features temporarily removed */}
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-yellow-900 mb-2">Loyalty & Spin Wheel</h3>
+                  <p className="text-sm text-yellow-800">These insights are disabled until the backend reinstates loyalty features.</p>
                 </div>
 
                 {/* Smart Discounts */}
@@ -860,30 +807,10 @@ const AdminDashboard = () => {
                   </div>
                 </div>
 
-                {/* Loyalty Program Insights */}
-                <div className="bg-purple-50 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-purple-900 mb-4">Loyalty Program Performance</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {(dashboardData.customerIntelligence.loyaltyInsights || []).map((level, index) => (
-                      <div key={level._id || index} className="bg-white rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-semibold text-purple-900">{level._id || 'Unknown'}</h4>
-                          <span className="text-sm text-purple-600">{level.customerCount} customers</span>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-sm text-gray-600">
-                            Revenue: <span className="font-semibold">Rs. {formatNumber(level.totalRevenue)}</span>
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            Avg. Order: <span className="font-semibold">Rs. {formatNumber(level.averageOrderValue)}</span>
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            Orders: <span className="font-semibold">{level.totalOrders}</span>
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                {/* Loyalty insights removed */}
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-purple-900 mb-2">Loyalty Insights</h3>
+                  <p className="text-sm text-purple-800">This section is disabled until loyalty returns.</p>
                 </div>
 
                 {/* Customer Segmentation */}

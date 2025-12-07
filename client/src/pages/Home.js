@@ -13,8 +13,6 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import WelcomeModal from '../components/WelcomeModal';
 import Banner from '../components/Banner';
-import LoyaltyDashboard from '../components/LoyaltyDashboard';
-import LoyaltyPromoSection from '../components/Homepage/LoyaltyPromoSection';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../utils/api';
 
@@ -382,22 +380,6 @@ const Home = () => {
           </motion.div>
         </motion.div>
       </section>
-
-      {/* Loyalty Dashboard Section (for authenticated users) */}
-      {isAuthenticated && (
-        <div className="py-8 bg-gradient-to-r from-purple-50 to-pink-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">Your Loyalty Dashboard</h2>
-              <p className="text-lg text-gray-600">Track your progress and unlock amazing rewards!</p>
-            </div>
-            <LoyaltyDashboard compact={false} />
-          </div>
-        </div>
-      )}
-
-      {/* Loyalty & Promotions Section */}
-      <LoyaltyPromoSection />
 
       {/* Featured Products Section */}
       <section className="py-20 px-6 bg-white">

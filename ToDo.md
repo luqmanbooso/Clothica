@@ -9,3 +9,5 @@
 - **Promotions**: implement coupons/discounts/unified discounts, banner/events/promotions APIs, and affiliate/loyalty/spin wheel features to match the Node backend.
 - **Reviews/issues**: add product review CRUD with admin moderation and issue/return handling with refund hooks.
 - **Misc services**: email service (welcome/OTP/reset/order confirmation), file upload handling (`/uploads` static), health/status endpoints, and configuration via environment variables (database, JWT secrets, SMTP, Stripe keys, CORS).
+- **Frontend loyalty**: reintroduce loyalty program UI (dashboards, badges, spin wheel, promo sections) once backend support is available; currently removed/hidden.
+- **Campaign Hub**: restore full campaign/event tooling; currently reduced to a simple banner + sitewide discount stub with no backend wiring.
