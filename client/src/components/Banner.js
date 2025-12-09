@@ -4,11 +4,11 @@ import { ChevronLeftIcon, ChevronRightIcon, TagIcon } from '@heroicons/react/24/
 import api from '../utils/api';
 import { getSocket } from '../utils/socket';
 
-const Banner = ({ 
-  position = 'hero', 
-  page = 'home', 
-  eventId = null, 
-  autoPlay = true, 
+const Banner = ({
+  position = 'hero',
+  page = 'home',
+  eventId = null,
+  autoPlay = true,
   interval = 5000,
   showNavigation = true,
   showDots = true,
@@ -32,7 +32,7 @@ const Banner = ({
         userType: 'guest',
         device: 'desktop'
       });
-      
+
       if (eventId) {
         params.append('eventId', eventId);
       }
@@ -77,7 +77,7 @@ const Banner = ({
   // Auto-advance banners
   useEffect(() => {
     if (!autoPlay || banners.length <= 1) return;
-    
+
     const timer = setInterval(() => {
       setCurrentIndex(prev => (prev + 1) % banners.length);
     }, interval);
@@ -99,14 +99,28 @@ const Banner = ({
   }, [banners.length]);
 
   // Performance tracking
-  const trackDisplay = useCallback(async () => {}, []);
+  const trackDisplay = useCallback(async (bannerId) => {
+    try {
+      await api.post(`/api/banners/${bannerId}/display`);
+    } catch (err) {
+      // Silently fail for analytics
+      console.debug('Banner display tracking failed:', err);
+    }
+  }, []);
 
-  const trackClick = useCallback(async () => {}, []);
+  const trackClick = useCallback(async (bannerId) => {
+    try {
+      await api.post(`/api/banners/${bannerId}/click`);
+    } catch (err) {
+      // Silently fail for analytics
+      console.debug('Banner click tracking failed:', err);
+    }
+  }, []);
 
   // Handle banner click
   const handleBannerClick = useCallback(async (banner) => {
     await trackClick(banner._id);
-    
+
     if (banner.cta?.link) {
       if (banner.cta.target === '_blank') {
         window.open(banner.cta.link, '_blank');
@@ -131,7 +145,7 @@ const Banner = ({
       <div className={`w-full ${height} bg-gray-100 rounded-lg flex items-center justify-center`}>
         <div className="text-gray-500 text-center">
           <div className="text-sm">{error}</div>
-          <button 
+          <button
             onClick={fetchBanners}
             className="mt-2 text-blue-600 hover:text-blue-800 text-sm underline"
           >
@@ -170,7 +184,7 @@ const Banner = ({
               e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iI2YzZjRmNiIvPjx0ZXh0IHg9IjE1MCIgeT0iMTUwIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiM2YjcyODAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiPkJhbm5lciBJbWFnZTwvdGV4dD48L3N2Zz4=';
             }}
           />
-          
+
           {/* Banner Content Overlay */}
           <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-transparent to-transparent">
             <div className="flex flex-col justify-center h-full px-8 text-white">
@@ -183,7 +197,7 @@ const Banner = ({
                 </p>
               )}
               {currentBanner.cta && currentBanner.cta.text && (
-                <button 
+                <button
                   onClick={() => handleBannerClick(currentBanner)}
                   className="bg-white text-black px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors w-fit cursor-pointer"
                   style={{
@@ -228,7 +242,7 @@ const Banner = ({
           >
             <ChevronLeftIcon className="h-6 w-6" />
           </button>
-          
+
           <button
             onClick={goToNext}
             className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors backdrop-blur-sm"
@@ -246,11 +260,10 @@ const Banner = ({
             <button
               key={index}
               onClick={() => goToBanner(index)}
-              className={`w-3 h-3 rounded-full transition-colors ${
-                index === currentIndex 
-                  ? 'bg-white shadow-lg' 
+              className={`w-3 h-3 rounded-full transition-colors ${index === currentIndex
+                  ? 'bg-white shadow-lg'
                   : 'bg-white/50 hover:bg-white/75'
-              }`}
+                }`}
               aria-label={`Go to banner ${index + 1}`}
             />
           ))}

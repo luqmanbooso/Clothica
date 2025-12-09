@@ -88,8 +88,15 @@ const unifiedDiscountSchema = new mongoose.Schema({
     totalIssued: { type: Number, default: 0 },
     totalRedeemed: { type: Number, default: 0 },
     totalRevenue: { type: Number, default: 0 },
-    conversionRate: { type: Number, default: 0 }
+    conversionRate: { type: Number, default: 0 },
+    views: { type: Number, default: 0 },
+    clicks: { type: Number, default: 0 },
+    conversions: { type: Number, default: 0 },
+    revenue: { type: Number, default: 0 },
+    usageCount: { type: Number, default: 0 },
+    totalDiscount: { type: Number, default: 0 }
   },
+  effectivenessScore: { type: Number, default: 0 },
   
   // Created by
   createdBy: {
@@ -116,7 +123,7 @@ unifiedDiscountSchema.virtual('isValid').get(function() {
 
 // Pre-save middleware to validate dates
 unifiedDiscountSchema.pre('save', function(next) {
-  if (this.startDate >= this.endDate) {
+  if (this.startDate && this.endDate && this.startDate >= this.endDate) {
     return next(new Error('Start date must be before end date'));
   }
   next();
@@ -144,6 +151,7 @@ unifiedDiscountSchema.methods.redeemDiscount = function(orderAmount, userId) {
   
   this.currentUses += 1;
   this.analytics.totalRedeemed += 1;
+  this.analytics.usageCount += 1;
   
   // Calculate discount amount
   let discountAmount = 0;
@@ -158,7 +166,48 @@ unifiedDiscountSchema.methods.redeemDiscount = function(orderAmount, userId) {
   
   this.analytics.totalRevenue += discountAmount;
   this.analytics.conversionRate = this.analytics.totalRedeemed / this.analytics.totalIssued;
+  this.analytics.totalDiscount += discountAmount;
+  this.effectivenessScore = Number((this.analytics.conversionRate * 100).toFixed(2));
   
+  return this.save();
+};
+
+// Calculate discount for a given order/product context
+unifiedDiscountSchema.methods.calculateDiscount = function(orderAmount = 0, productPrice = 0) {
+  if (!this.isValid) {
+    return 0;
+  }
+  if (orderAmount < (this.minOrderAmount || 0)) {
+    return 0;
+  }
+
+  let baseAmount = this.type === 'buy_one_get_one' ? productPrice : orderAmount;
+  let discountAmount = 0;
+
+  if (this.type === 'percentage') {
+    discountAmount = (baseAmount * this.value) / 100;
+    if (this.maxDiscountAmount > 0) {
+      discountAmount = Math.min(discountAmount, this.maxDiscountAmount);
+    }
+  } else if (this.type === 'fixed') {
+    discountAmount = Math.min(this.value, baseAmount);
+  } else if (this.type === 'free_shipping') {
+    discountAmount = 0; // shipping handled at order pricing
+  } else if (this.type === 'buy_one_get_one') {
+    discountAmount = productPrice; // free second item
+  }
+
+  return Math.max(0, Math.round(discountAmount * 100) / 100);
+};
+
+// Track impressions and clicks
+unifiedDiscountSchema.methods.recordView = function() {
+  this.analytics.views += 1;
+  return this.save();
+};
+
+unifiedDiscountSchema.methods.recordClick = function() {
+  this.analytics.clicks += 1;
   return this.save();
 };
 
@@ -173,8 +222,68 @@ unifiedDiscountSchema.statics.getActiveEventDiscounts = function(eventId) {
   }).sort({ value: -1 });
 };
 
-module.exports = mongoose.model('UnifiedDiscount', unifiedDiscountSchema);
+// Static: get active discounts with optional context/user group
+unifiedDiscountSchema.statics.getActiveDiscounts = function(userGroup = 'all', context = {}) {
+  const now = new Date();
+  const query = {
+    isActive: true,
+    $or: [
+      { startDate: { $lte: now }, endDate: { $gte: now } },
+      { startDate: { $exists: false }, endDate: { $exists: false } }
+    ]
+  };
 
+  if (context.eventId) query.eventId = context.eventId;
+  if (context.inventoryTrigger) query.inventoryTrigger = true;
+  if (userGroup && userGroup !== 'all') query.targetUserGroup = userGroup;
+
+  return this.find(query).sort({ value: -1 });
+};
+
+// Static: inventory-triggered discounts
+unifiedDiscountSchema.statics.getInventoryTriggeredDiscounts = function() {
+  const now = new Date();
+  return this.find({
+    isActive: true,
+    inventoryTrigger: true,
+    $or: [
+      { startDate: { $lte: now }, endDate: { $gte: now } },
+      { startDate: { $exists: false }, endDate: { $exists: false } }
+    ]
+  });
+};
+
+// Static: seasonal discounts
+unifiedDiscountSchema.statics.getSeasonalDiscounts = function() {
+  const now = new Date();
+  return this.find({
+    isActive: true,
+    startDate: { $lte: now },
+    endDate: { $gte: now }
+  }).sort({ endDate: 1 });
+};
+
+// Simple pagination helper used by admin list
+unifiedDiscountSchema.statics.paginate = async function(query = {}, options = {}) {
+  const page = parseInt(options.page || 1, 10);
+  const limit = parseInt(options.limit || 20, 10);
+  const sort = options.sort || { createdAt: -1 };
+
+  const [docs, totalDocs] = await Promise.all([
+    this.find(query).sort(sort).skip((page - 1) * limit).limit(limit),
+    this.countDocuments(query)
+  ]);
+
+  return {
+    docs,
+    totalDocs,
+    totalPages: Math.ceil(totalDocs / limit) || 1,
+    page,
+    limit
+  };
+};
+
+module.exports = mongoose.model('UnifiedDiscount', unifiedDiscountSchema);
 
 
 

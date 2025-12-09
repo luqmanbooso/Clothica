@@ -50,6 +50,19 @@ public class AdminDashboardService {
 
         return overview;
     }
+    public Map<String, Object> getSafeOverview() {
+        try {
+            return getOverview();
+        } catch (Exception e) {
+            return Map.of(
+                    "totalRevenue", 0,
+                    "totalOrders", 0,
+                    "totalCustomers", 0,
+                    "avgOrderValue", 0,
+                    "totalProducts", 0
+            );
+        }
+    }
 
     // Finance Data (Revenue, Expenses, Profit - simplified)
     public Map<String, Object> getFinanceData(){
@@ -87,6 +100,17 @@ public class AdminDashboardService {
         finance.put("profit", profitByDay.values().stream().toList());
 
         return finance;
+    }
+    public Map<String, Object> getSafeFinanceData(){
+        try {
+            return getFinanceData();
+        } catch (Exception e){
+            return Map.of(
+                    "revenue", java.util.Collections.emptyList(),
+                    "expenses", java.util.Collections.emptyList(),
+                    "profit", java.util.Collections.emptyList()
+            );
+        }
     }
 
     // Inventory Overview
@@ -126,6 +150,20 @@ public class AdminDashboardService {
         inventory.put("lowStockCount",lowStockItems.size());
         inventory.put("outOfStockCount",outOfStockItems.size());
         return inventory;
+    }
+    public Map<String, Object> getSafeInventoryOverview(){
+        try {
+            return getInventoryOverview();
+        } catch (Exception e){
+            return Map.of(
+                    "totalProducts", 0,
+                    "totalStockValue", 0,
+                    "lowStockItems", java.util.Collections.emptyList(),
+                    "outOfStockItems", java.util.Collections.emptyList(),
+                    "lowStockCount", 0,
+                    "outOfStockCount", 0
+            );
+        }
     }
 
     // Analytics Data (Sales, Traffic, Conversion - simplified)
@@ -172,6 +210,19 @@ public class AdminDashboardService {
         analytics.put("period", period);
 
         return analytics;
+    }
+    public Map<String, Object> getSafeAnalytics(String range, String period){
+        try {
+            return getAnalytics(range, period);
+        } catch (Exception e){
+            return Map.of(
+                    "sales", java.util.Collections.emptyMap(),
+                    "traffic", java.util.Collections.emptyMap(),
+                    "conversion", 0,
+                    "range", range,
+                    "period", period
+            );
+        }
     }
 
     // Real-time Data
@@ -268,6 +319,19 @@ public class AdminDashboardService {
 
         return intelligence;
     }
+    public Map<String, Object> getSafeCustomerIntelligence(String range, String period){
+        try {
+            return getCustomerIntelligence(range, period);
+        } catch (Exception e){
+            return Map.of(
+                    "segments", java.util.Collections.emptyMap(),
+                    "behavior", java.util.Collections.emptyMap(),
+                    "totalCustomers", 0,
+                    "range", range,
+                    "period", period
+            );
+        }
+    }
 
     // Client Features
     public Map<String, Object> getClientFeatures() {
@@ -281,6 +345,17 @@ public class AdminDashboardService {
         features.put("notifications", Map.of("sent", 0)); // Add your notification logic
 
         return features;
+    }
+    public Map<String, Object> getSafeClientFeatures(){
+        try {
+            return getClientFeatures();
+        } catch (Exception e){
+            return Map.of(
+                    "loyalty", Map.of("activeUsers", 0),
+                    "coupons", Map.of("active", 0),
+                    "notifications", Map.of("sent", 0)
+            );
+        }
     }
 
     // Helper method to convert map to list for chart data

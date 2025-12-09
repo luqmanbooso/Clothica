@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  StarIcon, 
-  ShoppingBagIcon, 
-  HeartIcon, 
-  EyeIcon, 
-  ArrowRightIcon, 
-  ChevronLeftIcon, 
+import {
+  StarIcon,
+  ShoppingBagIcon,
+  HeartIcon,
+  EyeIcon,
+  ArrowRightIcon,
+  ChevronLeftIcon,
   ChevronRightIcon,
   StarIcon as StarIconSolid,
   SparklesIcon,
@@ -205,15 +205,15 @@ const Home = () => {
                 className="w-full h-full object-cover"
               />
               <div className="absolute inset-0 bg-black/40"></div>
-              
+
               <div className="absolute inset-0 flex items-center justify-center">
-                <motion.div 
+                <motion.div
                   className="text-center text-white max-w-4xl mx-auto px-6"
                   initial={{ opacity: 0, y: 50 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.3 }}
                 >
-                  <motion.h1 
+                  <motion.h1
                     className="text-6xl md:text-8xl font-display font-bold mb-4"
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -221,7 +221,7 @@ const Home = () => {
                   >
                     {heroSlides[currentSlide].title}
                   </motion.h1>
-                  <motion.p 
+                  <motion.p
                     className="text-xl md:text-2xl mb-6 text-gray-200"
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -229,7 +229,7 @@ const Home = () => {
                   >
                     {heroSlides[currentSlide].subtitle}
                   </motion.p>
-                  <motion.p 
+                  <motion.p
                     className="text-lg mb-8 text-gray-300 max-w-2xl mx-auto"
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -262,9 +262,8 @@ const Home = () => {
             <button
               key={index}
               onClick={() => setCurrentSlide(index)}
-              className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                currentSlide === index ? 'bg-white scale-125' : 'bg-white/50 hover:bg-white/75'
-              }`}
+              className={`w-3 h-3 rounded-full transition-all duration-300 ${currentSlide === index ? 'bg-white scale-125' : 'bg-white/50 hover:bg-white/75'
+                }`}
             />
           ))}
         </div>
@@ -300,8 +299,8 @@ const Home = () => {
             </div>
             <h3 className="text-xl font-medium text-gray-900 mb-2">Campaign Hub Active</h3>
             <p className="text-gray-600 mb-6">All campaigns are now managed through our unified event system</p>
-            <Link 
-              to="/admin/campaign-hub" 
+            <Link
+              to="/admin/campaign-hub"
               className="inline-flex items-center px-6 py-3 bg-[#6C7A59] text-white rounded-lg hover:bg-[#5A6A4A] transition-colors"
             >
               Manage Campaigns
@@ -324,8 +323,8 @@ const Home = () => {
             </div>
             <h3 className="text-xl font-medium text-gray-900 mb-2">Offers Managed by Events</h3>
             <p className="text-gray-600 mb-6">All special offers are now part of our unified campaign system</p>
-            <Link 
-              to="/admin/campaign-hub" 
+            <Link
+              to="/admin/campaign-hub"
               className="inline-flex items-center px-6 py-3 bg-[#6C7A59] text-white rounded-lg hover:bg-[#5A6A4A] transition-colors"
             >
               View Active Offers
@@ -337,7 +336,7 @@ const Home = () => {
 
       {/* Categories Section */}
       <section className="py-20 px-6">
-        <motion.div 
+        <motion.div
           className="max-w-7xl mx-auto"
           variants={containerVariants}
           initial="hidden"
@@ -352,7 +351,7 @@ const Home = () => {
             </p>
           </motion.div>
 
-          <motion.div 
+          <motion.div
             className="grid grid-cols-1 md:grid-cols-3 gap-8"
             variants={itemVariants}
           >
@@ -387,9 +386,8 @@ const Home = () => {
         </motion.div>
       </section>
 
-      {/* Featured Products Section */}
       <section className="py-20 px-6 bg-white">
-        <motion.div 
+        <motion.div
           className="max-w-7xl mx-auto"
           variants={containerVariants}
           initial="hidden"
@@ -404,7 +402,7 @@ const Home = () => {
             </p>
           </motion.div>
 
-          <motion.div 
+          <motion.div
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8"
             variants={itemVariants}
           >
@@ -428,7 +426,7 @@ const Home = () => {
                         alt={product.name}
                         className="w-full h-80 object-cover group-hover:scale-110 transition-transform duration-700"
                       />
-                      
+
                       {/* Badges */}
                       <div className="absolute top-4 left-4 flex flex-col gap-2">
                         {product.isNew && (
@@ -462,7 +460,7 @@ const Home = () => {
                           {product.name}
                         </h3>
                       </Link>
-                      
+
                       <div className="flex items-center mb-3">
                         {renderStars(product.rating || 0)}
                         <span className="ml-2 text-sm text-[#6C7A59]">
@@ -496,9 +494,19 @@ const Home = () => {
         </motion.div>
       </section>
 
+      {/* Middle Banner Section */}
+      <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <Banner position="middle" height="h-64" />
+      </div>
+
+      {/* Bottom Banner Section */}
+      <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <Banner position="bottom" height="h-64" />
+      </div>
+
       {/* CTA Section */}
       <section className="py-20 px-6 bg-[#1E1E1E]">
-        <motion.div 
+        <motion.div
           className="max-w-4xl mx-auto text-center"
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
@@ -529,7 +537,7 @@ const Home = () => {
       </section>
 
       {/* Welcome Modal */}
-      <WelcomeModal 
+      <WelcomeModal
         isOpen={showWelcomeModal}
         onClose={() => setShowWelcomeModal(false)}
         userName={user?.name}

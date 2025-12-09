@@ -20,19 +20,19 @@ public class AdminDashboardController {
     // 1. Overview Cards (Total Revenue, Orders, Customers, etc.)
     @GetMapping("/overview")
     public ResponseEntity<Map<String, Object>> getOverview() {
-        return ResponseEntity.ok(dashboardService.getOverview());
+        return ResponseEntity.ok(dashboardService.getSafeOverview());
     }
 
     // 2. Finance Chart (Revenue, Expenses, Profit - last 30 days)
     @GetMapping("/finance")
     public ResponseEntity<Map<String, Object>> getFinanceData() {
-        return ResponseEntity.ok(dashboardService.getFinanceData());
+        return ResponseEntity.ok(dashboardService.getSafeFinanceData());
     }
 
     // 3. Inventory Overview + Low Stock Alerts
     @GetMapping("/inventory")
     public ResponseEntity<Map<String, Object>> getInventoryOverview() {
-        return ResponseEntity.ok(dashboardService.getInventoryOverview());
+        return ResponseEntity.ok(dashboardService.getSafeInventoryOverview());
     }
 
     // 4. Analytics (Sales + Traffic + Conversion Rate)
@@ -42,7 +42,7 @@ public class AdminDashboardController {
             @RequestParam(defaultValue = "30") String range,
             @RequestParam(defaultValue = "daily") String period) {
 
-        return ResponseEntity.ok(dashboardService.getAnalytics(range, period));
+        return ResponseEntity.ok(dashboardService.getSafeAnalytics(range, period));
     }
 
     @GetMapping("/real-time")
@@ -55,12 +55,12 @@ public class AdminDashboardController {
             @RequestParam(required = false,defaultValue = "30") String range,
             @RequestParam(required = false,defaultValue = "month") String period
     ){
-        return ResponseEntity.ok(dashboardService.getCustomerIntelligence(range, period));
+        return ResponseEntity.ok(dashboardService.getSafeCustomerIntelligence(range, period));
     }
 
     @GetMapping("/client-features")
     public ResponseEntity<Map<String,Object>> getClientFeatures(){
-        return ResponseEntity.ok(dashboardService.getClientFeatures());
+        return ResponseEntity.ok(dashboardService.getSafeClientFeatures());
     }
 
 }

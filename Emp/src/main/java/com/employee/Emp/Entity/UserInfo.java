@@ -14,26 +14,28 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 
-public class UserInfo{
+public class UserInfo {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
     private String username;
-    @Column(nullable = false,unique = true,length = 191) private String email;
+    @Column(nullable = false, unique = true, length = 191)
+    private String email;
     private String password;
     private String roles;
 
     @Column(name = "phone", length = 10, nullable = true)
     private String phone;
 
-
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private Cart cart;
 
-    @OneToMany(mappedBy = "user",fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private List<Order> orders;
 
     public UserInfo(String username, String email, String password, String roles) {

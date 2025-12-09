@@ -9,20 +9,14 @@ const { admin } = require('../middleware/admin');
 // Get all discounts (admin only)
 router.get('/', auth, admin, async (req, res) => {
   try {
-    const { page = 1, limit = 20, status, type, eventId } = req.query;
+    const { status, type, eventId } = req.query;
     const query = {};
     
     if (status && status !== 'all') query.status = status;
-    if (type && type !== 'all') query.discountType = type;
+    if (type && type !== 'all') query.type = type;
     if (eventId && eventId !== 'all') query.eventId = eventId;
     
-    const options = {
-      page: parseInt(page),
-      limit: parseInt(limit),
-      sort: { createdAt: -1 }
-    };
-    
-    const discounts = await UnifiedDiscount.paginate(query, options);
+    const discounts = await UnifiedDiscount.find(query).sort({ createdAt: -1 });
     res.json(discounts);
   } catch (error) {
     console.error('Error fetching discounts:', error);
@@ -328,7 +322,6 @@ router.get('/analytics/insights', auth, admin, async (req, res) => {
 });
 
 module.exports = router;
-
 
 
 

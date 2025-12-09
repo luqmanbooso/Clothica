@@ -172,13 +172,13 @@ const Banners = () => {
                   <PhotoIcon className="h-12 w-12 text-gray-400" />
                 </div>
               )}
-              
+
               <div className="absolute top-2 left-2">
                 <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(banner)}`}>
                   {getStatusText(banner)}
                 </span>
               </div>
-              
+
               <div className="absolute bottom-2 right-2 flex gap-1">
                 <button
                   onClick={() => handleToggleStatus(banner._id, banner.isActive)}
@@ -198,7 +198,7 @@ const Banners = () => {
             <div className="p-4">
               <h3 className="font-semibold text-gray-900 mb-2">{banner.title || banner.name}</h3>
               {banner.subtitle && <p className="text-sm text-gray-600 mb-2">{banner.subtitle}</p>}
-              
+
               <div className="space-y-1 text-sm text-gray-600">
                 <div>Position: {banner.position}</div>
                 <div>Priority: {banner.priority}</div>
@@ -234,19 +234,19 @@ const Banners = () => {
                     type="text"
                     name="name"
                     value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     required
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Title *</label>
                   <input
                     type="text"
                     name="title"
                     value={formData.title}
-                    onChange={(e) => setFormData({...formData, title: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                     required
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
                   />
@@ -259,7 +259,7 @@ const Banners = () => {
                   <select
                     name="position"
                     value={formData.position}
-                    onChange={(e) => setFormData({...formData, position: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, position: e.target.value })}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
                   >
                     <option value="hero">Hero</option>
@@ -269,26 +269,26 @@ const Banners = () => {
                     <option value="sidebar">Sidebar</option>
                   </select>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
                   <input
                     type="number"
                     name="priority"
                     value={formData.priority}
-                    onChange={(e) => setFormData({...formData, priority: parseInt(e.target.value)})}
+                    onChange={(e) => setFormData({ ...formData, priority: parseInt(e.target.value) })}
                     min="1"
                     max="10"
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Event (Optional)</label>
                   <select
                     name="eventId"
                     value={formData.eventId}
-                    onChange={(e) => setFormData({...formData, eventId: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, eventId: e.target.value })}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
                   >
                     <option value="">No Event</option>
@@ -305,7 +305,7 @@ const Banners = () => {
                   type="url"
                   name="image"
                   value={formData.image}
-                  onChange={(e) => setFormData({...formData, image: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, image: e.target.value })}
                   required
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
                   placeholder="https://..."
@@ -319,18 +319,18 @@ const Banners = () => {
                     type="date"
                     name="startDate"
                     value={formData.startDate}
-                    onChange={(e) => setFormData({...formData, startDate: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">End Date (Optional)</label>
                   <input
                     type="date"
                     name="endDate"
                     value={formData.endDate}
-                    onChange={(e) => setFormData({...formData, endDate: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
                   />
                 </div>
@@ -339,12 +339,12 @@ const Banners = () => {
               <div className="flex items-center justify-end gap-4 border-t border-gray-200 pt-6">
                 <button
                   type="button"
-                  onClick={() => {setShowModal(false); resetForm();}}
+                  onClick={() => { setShowModal(false); resetForm(); }}
                   className="px-6 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
                 >
                   Cancel
                 </button>
-                
+
                 <button
                   type="submit"
                   className="px-8 py-3 text-sm font-medium text-white bg-[#6C7A59] rounded-lg hover:bg-[#5A6A4A]"

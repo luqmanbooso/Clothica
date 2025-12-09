@@ -7,7 +7,6 @@ import {
   UsersIcon,
   TagIcon,
   CalendarIcon,
-  CogIcon,
   BanknotesIcon,
   SparklesIcon,
   FireIcon,
@@ -60,11 +59,6 @@ const AdminNav = () => {
       name: 'Analytics',
       href: '/admin/analytics',
       icon: DocumentChartBarIcon
-    },
-    {
-      name: 'Settings',
-      href: '/admin/settings',
-      icon: CogIcon
     }
   ];
 

@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 import java.util.Arrays;
 import java.util.List;
 
-
 @Service
 @Transactional
 public class OrderService {
@@ -34,13 +33,14 @@ public class OrderService {
     @Autowired
     private ProductRepository productRepository;
 
-    public OrderDTO createOrder(Integer userId) {
+    public OrderDTO createOrder(Integer userId, String couponCode) {
         // 1. Get user and cart
         UserInfo user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         Cart cart = cartRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Cart not found"));
+
         // 2. Validate cart is not empty
         if (cart.getItems().isEmpty()) {
             throw new RuntimeException("Cannot create order with empty cart");
@@ -96,6 +96,13 @@ public class OrderService {
         return convertToDTO(order);
     }
 
+    public List<OrderDTO> getAllOrders() {
+        return orderRepository.findAll()
+                .stream()
+                .map(this::convertToDTO)
+                .toList();
+    }
+
     public List<OrderDTO> getUserOrders(Integer userId) {
         List<Order> orders = orderRepository.findByUserId(userId);
         return orders.stream()
@@ -109,14 +116,27 @@ public class OrderService {
 
         List<String> validStatuses = Arrays.asList("PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED");
 
-        if(!validStatuses.contains(status.toUpperCase())){
-            throw new IllegalArgumentException("Invalid Status. Allowed only "+validStatuses);
+        if (!validStatuses.contains(status.toUpperCase())) {
+            throw new IllegalArgumentException("Invalid Status. Allowed only " + validStatuses);
         }
 
         order.setStatus(status);
         Order updatedOrder = orderRepository.save(order);
 
         return convertToDTO(updatedOrder);
+    }
+
+    public OrderDTO fulfillOrder(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        order.setStatus("SHIPPED");
+        if (order.getPaymentStatus() == null || order.getPaymentStatus().equalsIgnoreCase("PENDING")) {
+            order.setPaymentStatus("PAID");
+        }
+
+        Order updated = orderRepository.save(order);
+        return convertToDTO(updated);
     }
 
     private OrderDTO convertToDTO(Order order) {

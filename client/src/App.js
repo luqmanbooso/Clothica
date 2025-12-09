@@ -46,7 +46,6 @@ import IssuesAdmin from './pages/Admin/Issues';
 import Inventory from './pages/Admin/Inventory';
 
 import Analytics from './pages/Admin/Analytics';
-import Settings from './pages/Admin/Settings';
 import Events from './pages/Admin/Events';
 import EventsPromotions from './pages/Admin/EventsPromotions';
 import ClientFeatures from './pages/Admin/ClientFeatures';
@@ -294,13 +293,6 @@ function App() {
                         </AdminRoute>
                       } />
                       
-                      <Route path="/admin/settings" element={
-                        <AdminRoute>
-                          <AdminLayout>
-                            <Settings />
-                          </AdminLayout>
-                        </AdminRoute>
-                      } />
                       
                       <Route path="/admin/events" element={
                         <AdminRoute>

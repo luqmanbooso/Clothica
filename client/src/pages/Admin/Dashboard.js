@@ -12,14 +12,11 @@ import {
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
   ArrowPathIcon,
-  CalendarIcon,
   ChartBarIcon,
-  CogIcon,
   BellIcon,
   FireIcon,
   StarIcon,
   GiftIcon,
-  TagIcon,
   BanknotesIcon,
   CreditCardIcon,
   TruckIcon,
@@ -28,7 +25,6 @@ import {
   HeartIcon,
   ShoppingBagIcon,
   EyeIcon,
-  PlusIcon
 } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
@@ -111,38 +107,6 @@ const AdminDashboard = () => {
       setLoading(false);
     }
   }, [timeRange, selectedPeriod, showError]);
-
-  // Quick action handlers
-  const handleQuickAction = (action) => {
-    switch (action) {
-      case 'addProduct':
-        navigate('/admin/products');
-        break;
-      case 'viewOrders':
-        navigate('/admin/orders');
-        break;
-      case 'manageCoupons':
-        navigate('/admin/coupons');
-        break;
-      case 'manageBanners':
-        navigate('/admin/banners');
-        break;
-      case 'manageEvents':
-        navigate('/admin/events');
-        break;
-      case 'inventory':
-        navigate('/admin/inventory');
-        break;
-      case 'analytics':
-        navigate('/admin/analytics');
-        break;
-      case 'clientFeatures':
-        navigate('/admin/client-features');
-        break;
-      default:
-        break;
-    }
-  };
 
   // Retry function
   const handleRetry = () => {
@@ -326,28 +290,6 @@ const AdminDashboard = () => {
           </div>
         </div>
       )}
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        {[
-          { name: 'Add Product', icon: PlusIcon, action: 'addProduct', color: 'bg-blue-500' },
-          { name: 'View Orders', icon: ShoppingCartIcon, action: 'viewOrders', color: 'bg-green-500' },
-          { name: 'Manage Coupons', icon: TagIcon, action: 'manageCoupons', color: 'bg-purple-500' },
-          { name: 'Manage Events', icon: CalendarIcon, action: 'manageEvents', color: 'bg-orange-500' },
-          { name: 'Inventory', icon: CubeIcon, action: 'inventory', color: 'bg-red-500' }
-        ].map((item) => (
-          <motion.button
-            key={item.name}
-            onClick={() => handleQuickAction(item.action)}
-            className={`${item.color} text-white p-4 rounded-lg shadow-sm hover:shadow-md transition-all duration-200`}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <item.icon className="h-8 w-8 mx-auto mb-2" />
-            <span className="text-sm font-medium">{item.name}</span>
-          </motion.button>
-        ))}
-      </div>
 
       {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

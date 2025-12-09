@@ -10,10 +10,17 @@ import { useToast } from '../contexts/ToastContext';
 const Cart = () => {
   const { cart, updateQuantity, removeFromCart, clearCart, getCartTotal } = useCart();
   const { addToWishlist, isInWishlist } = useWishlist();
-  const { validateCoupon, calculateDiscount, getWelcomeCoupon, getFreeShippingCoupon } = useCoupons();
+  const {
+    validateCoupon,
+    calculateDiscount,
+    getWelcomeCoupon,
+    getFreeShippingCoupon,
+    appliedCoupon,
+    removeCoupon
+  } = useCoupons(); // Use verify appliedCoupon from context
   const { success, error, warning, info } = useToast();
   const [couponCode, setCouponCode] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  // const [appliedCoupon, setAppliedCoupon] = useState(null); // Removed local state
   const [shippingMethod, setShippingMethod] = useState('standard');
   const [couponLoading, setCouponLoading] = useState(false);
   const [isRemovingItem, setIsRemovingItem] = useState(null);
@@ -120,16 +127,18 @@ const Cart = () => {
 
     setCouponLoading(true);
     try {
-      const result = await validateCoupon(couponCode, subtotal);
-      
+      // Pass cart items for proper backend validation
+      const result = await validateCoupon(couponCode, subtotal, cart);
+
       if (result.valid) {
-        setAppliedCoupon(result.coupon);
+        // setAppliedCoupon(result.coupon); // Context handles this
         setCouponCode('');
-        success(result.message);
+        success(result.message || 'Coupon applied successfully!');
       } else {
-        error(result.message);
+        error(result.message || 'Invalid coupon code');
       }
     } catch (err) {
+      console.error('Coupon validation error:', err);
       error('Failed to validate coupon');
     } finally {
       setCouponLoading(false);
@@ -137,7 +146,7 @@ const Cart = () => {
   };
 
   const handleRemoveCoupon = () => {
-    setAppliedCoupon(null);
+    removeCoupon();
     success('Coupon removed');
   };
 
@@ -176,37 +185,35 @@ const Cart = () => {
             <p className="text-[#6C7A59] text-lg font-medium mb-6">
               {cart?.length || 0} item{(cart?.length || 0) !== 1 ? 's' : ''} in your cart
             </p>
-            
+
             {/* Free Shipping Progress Bar */}
             <div className="max-w-2xl mx-auto mb-6">
               <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-[#6C7A59]/20">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-[#1E1E1E] font-semibold">Free Shipping Progress</span>
-                  <span className={`text-sm font-bold ${
-                    isFreeShippingEligible ? 'text-[#059669]' : 'text-[#6C7A59]'
-                  }`}>
+                  <span className={`text-sm font-bold ${isFreeShippingEligible ? 'text-[#059669]' : 'text-[#6C7A59]'
+                    }`}>
                     {isFreeShippingEligible ? 'Eligible!' : `Rs. ${(10000 - subtotal).toLocaleString()} more needed`}
                   </span>
                 </div>
-                
+
                 <div className="w-full bg-[#6C7A59]/20 rounded-full h-3 mb-2">
-                  <div 
-                    className={`h-3 rounded-full transition-all duration-1000 ${
-                      isFreeShippingEligible 
-                        ? 'bg-gradient-to-r from-[#059669] to-[#9CAF88]' 
-                        : 'bg-gradient-to-r from-[#6C7A59] to-[#9CAF88]'
-                    }`}
+                  <div
+                    className={`h-3 rounded-full transition-all duration-1000 ${isFreeShippingEligible
+                      ? 'bg-gradient-to-r from-[#059669] to-[#9CAF88]'
+                      : 'bg-gradient-to-r from-[#6C7A59] to-[#9CAF88]'
+                      }`}
                     style={{ width: `${cartProgress}%` }}
                   ></div>
                 </div>
-                
+
                 <div className="flex justify-between text-xs text-[#6C7A59]">
                   <span>Rs. 0</span>
                   <span>Rs. 10,000</span>
                 </div>
               </div>
             </div>
-            
+
             {/* Cart Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-2xl mx-auto mb-6">
               <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 border border-[#6C7A59]/20">
@@ -218,9 +225,8 @@ const Cart = () => {
                 <div className="text-sm text-[#6C7A59]">Subtotal</div>
               </div>
               <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 border border-[#6C7A59]/20">
-                <div className={`text-2xl font-bold ${
-                  finalShipping === 0 ? 'text-[#059669]' : 'text-[#6C7A59]'
-                }`}>
+                <div className={`text-2xl font-bold ${finalShipping === 0 ? 'text-[#059669]' : 'text-[#6C7A59]'
+                  }`}>
                   {finalShipping === 0 ? 'FREE' : `Rs. ${finalShipping.toLocaleString()}`}
                 </div>
                 <div className="text-sm text-[#6C7A59]">Shipping</div>
@@ -242,15 +248,14 @@ const Cart = () => {
                     Cart Items
                   </h2>
                 </div>
-                
+
                 <div className="divide-y divide-[#6C7A59]/20">
                   {cart?.map((item, index) => (
-                    <div 
-                      key={index} 
-                      className={`p-6 hover:bg-[#F5F1E8]/50 transition-all duration-500 transform hover:scale-[1.02] ${
-                        isRemovingItem === index ? 'opacity-50 scale-95' : ''
-                      }`}
-                      style={{animationDelay: `${index * 0.1}s`}}
+                    <div
+                      key={index}
+                      className={`p-6 hover:bg-[#F5F1E8]/50 transition-all duration-500 transform hover:scale-[1.02] ${isRemovingItem === index ? 'opacity-50 scale-95' : ''
+                        }`}
+                      style={{ animationDelay: `${index * 0.1}s` }}
                     >
                       <div className="flex items-center space-x-4">
                         {/* Product Image */}
@@ -270,7 +275,7 @@ const Cart = () => {
                             </button>
                           </div>
                         </div>
-                        
+
                         {/* Product Details */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between">
@@ -282,20 +287,18 @@ const Cart = () => {
                                 <span className="bg-[#F5F1E8] px-3 py-1 rounded-full font-medium">Size: {item.selectedSize || 'One Size'}</span>
                                 <span className="bg-[#E6E6FA] px-3 py-1 rounded-full font-medium">Color: {item.selectedColor || 'Default'}</span>
                               </div>
-                              
+
                               {/* Stock Status */}
                               <div className="flex items-center space-x-2 text-xs">
-                                <div className={`w-2 h-2 rounded-full ${
-                                  item.stock > 10 ? 'bg-[#059669]' : item.stock > 0 ? 'bg-[#D4AF37]' : 'bg-[#B35D5D]'
-                                }`}></div>
-                                <span className={`${
-                                  item.stock > 10 ? 'text-[#059669]' : item.stock > 0 ? 'text-[#D4AF37]' : 'text-[#B35D5D]'
-                                } font-medium`}>
+                                <div className={`w-2 h-2 rounded-full ${item.stock > 10 ? 'bg-[#059669]' : item.stock > 0 ? 'bg-[#D4AF37]' : 'bg-[#B35D5D]'
+                                  }`}></div>
+                                <span className={`${item.stock > 10 ? 'text-[#059669]' : item.stock > 0 ? 'text-[#D4AF37]' : 'text-[#B35D5D]'
+                                  } font-medium`}>
                                   {item.stock > 10 ? 'In Stock' : item.stock > 0 ? `Only ${item.stock} left` : 'Out of Stock'}
                                 </span>
                               </div>
                             </div>
-                            
+
                             {/* Price */}
                             <div className="text-right">
                               <div className="flex items-center space-x-2">
@@ -311,7 +314,7 @@ const Cart = () => {
                               <p className="text-sm text-[#6C7A59] mt-1">
                                 Rs. {item.price} each
                               </p>
-                              
+
                               {/* Savings Badge */}
                               {item.originalPrice && (
                                 <div className="mt-2 inline-block bg-[#059669]/20 text-[#059669] text-xs px-2 py-1 rounded-full font-medium">
@@ -320,7 +323,7 @@ const Cart = () => {
                               )}
                             </div>
                           </div>
-                          
+
                           {/* Quantity Controls */}
                           <div className="flex items-center justify-between mt-6">
                             <div className="flex items-center space-x-3">
@@ -331,11 +334,11 @@ const Cart = () => {
                               >
                                 <MinusIcon className="h-4 w-4" />
                               </button>
-                              
+
                               <span className="w-16 text-center font-bold text-lg text-[#1E1E1E] bg-[#F5F1E8] px-4 py-2 rounded-xl">
                                 {item.quantity}
                               </span>
-                              
+
                               <button
                                 onClick={() => handleQuantityChange(index, item.quantity + 1)}
                                 disabled={item.quantity >= 10}
@@ -343,28 +346,27 @@ const Cart = () => {
                               >
                                 <PlusIcon className="h-4 w-4" />
                               </button>
-                              
+
                               <span className="text-sm text-[#6C7A59] font-medium">
                                 Max 10
                               </span>
                             </div>
-                            
+
                             {/* Action Buttons */}
                             <div className="flex items-center space-x-3">
                               <button
                                 onClick={() => handleAddToWishlist(item)}
-                                className={`p-3 rounded-xl transition-all duration-300 ${
-                                  isInWishlist(item._id) 
-                                    ? 'bg-[#D4AF37] text-white shadow-lg' 
-                                    : 'text-[#6C7A59] hover:text-[#D4AF37] hover:bg-[#F5F1E8]'
-                                }`}
+                                className={`p-3 rounded-xl transition-all duration-300 ${isInWishlist(item._id)
+                                  ? 'bg-[#D4AF37] text-white shadow-lg'
+                                  : 'text-[#6C7A59] hover:text-[#D4AF37] hover:bg-[#F5F1E8]'
+                                  }`}
                                 title="Add to Wishlist"
                               >
                                 <svg className="w-5 h-5" fill={isInWishlist(item._id) ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                                 </svg>
                               </button>
-                              
+
                               <button
                                 onClick={() => handleSaveForLater(item, index)}
                                 className="p-3 text-[#6C7A59] hover:text-[#5A6A4A] hover:bg-[#F5F1E8] rounded-xl transition-all duration-300"
@@ -374,7 +376,7 @@ const Cart = () => {
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                                 </svg>
                               </button>
-                              
+
                               <button
                                 onClick={() => handleRemoveItem(index)}
                                 className="p-3 text-[#B35D5D] hover:text-[#A04D4D] hover:bg-[#F5F1E8] rounded-xl transition-all duration-300"
@@ -435,8 +437,8 @@ const Cart = () => {
                           {appliedCoupon.code} applied
                         </span>
                         <p className="text-xs text-[#059669]">
-                          {appliedCoupon.type === 'percentage' 
-                            ? `${appliedCoupon.value}% off` 
+                          {appliedCoupon.type === 'percentage'
+                            ? `${appliedCoupon.value}% off`
                             : `Rs. ${appliedCoupon.value} off`}
                         </p>
                       </div>
@@ -465,7 +467,7 @@ const Cart = () => {
                           {couponLoading ? 'Applying...' : 'Apply'}
                         </button>
                       </div>
-                      
+
                       {/* Welcome Coupon Suggestion */}
                       <div className="bg-gradient-to-r from-[#F5F1E8] to-[#E6E6FA] border border-[#D4AF37]/30 rounded-2xl p-4">
                         <div className="flex items-center space-x-2 mb-3">
@@ -488,11 +490,10 @@ const Cart = () => {
                   <h3 className="text-sm font-semibold text-[#1E1E1E] mb-3">Shipping Method</h3>
                   <div className="space-y-3">
                     {shippingMethods.map((method) => (
-                      <label key={method.id} className={`flex items-center p-4 border-2 rounded-2xl cursor-pointer transition-all duration-300 ${
-                        shippingMethod === method.id 
-                          ? 'border-[#6C7A59] bg-[#F5F1E8] shadow-lg' 
-                          : 'border-[#6C7A59]/30 hover:border-[#6C7A59]/50 hover:bg-[#F5F1E8]/50'
-                      }`}>
+                      <label key={method.id} className={`flex items-center p-4 border-2 rounded-2xl cursor-pointer transition-all duration-300 ${shippingMethod === method.id
+                        ? 'border-[#6C7A59] bg-[#F5F1E8] shadow-lg'
+                        : 'border-[#6C7A59]/30 hover:border-[#6C7A59]/50 hover:bg-[#F5F1E8]/50'
+                        }`}>
                         <input
                           type="radio"
                           name="shipping"
@@ -506,9 +507,8 @@ const Cart = () => {
                             <span className="text-sm font-semibold text-[#1E1E1E]">
                               {method.name}
                             </span>
-                            <span className={`text-sm font-bold ${
-                              method.price === 0 ? 'text-[#059669]' : 'text-[#1E1E1E]'
-                            }`}>
+                            <span className={`text-sm font-bold ${method.price === 0 ? 'text-[#059669]' : 'text-[#1E1E1E]'
+                              }`}>
                               {method.price === 0 ? 'Free' : `Rs. ${method.price}`}
                             </span>
                           </div>
@@ -518,14 +518,14 @@ const Cart = () => {
                     ))}
                   </div>
                 </div>
-              
+
                 {/* Enhanced Price Breakdown */}
                 <div className="space-y-4 mb-6 p-6 bg-gradient-to-r from-[#F5F1E8] to-[#E6E6FA] rounded-2xl border border-[#6C7A59]/20">
                   <div className="flex justify-between text-sm items-center">
                     <span className="text-[#6C7A59] font-medium">Subtotal</span>
                     <span className="font-semibold text-[#1E1E1E]">Rs. {subtotal.toLocaleString()}</span>
                   </div>
-                  
+
                   <div className="flex justify-between text-sm items-center">
                     <span className="text-[#6C7A59] font-medium">Shipping</span>
                     <div className="flex items-center space-x-2">
@@ -536,14 +536,13 @@ const Cart = () => {
                           </svg>
                         </div>
                       )}
-                      <span className={`font-semibold ${
-                        finalShipping === 0 ? 'text-[#059669]' : 'text-[#1E1E1E]'
-                      }`}>
+                      <span className={`font-semibold ${finalShipping === 0 ? 'text-[#059669]' : 'text-[#1E1E1E]'
+                        }`}>
                         {finalShipping === 0 ? 'Free' : `Rs. ${finalShipping.toLocaleString()}`}
                       </span>
                     </div>
                   </div>
-                  
+
                   {appliedCoupon && (
                     <div className="flex justify-between text-sm items-center">
                       <span className="text-[#059669] font-medium">Discount</span>
@@ -557,13 +556,13 @@ const Cart = () => {
                       </div>
                     </div>
                   )}
-                  
+
                   {/* Estimated Tax */}
                   <div className="flex justify-between text-sm items-center">
                     <span className="text-[#6C7A59] font-medium">Estimated Tax</span>
                     <span className="font-semibold text-[#1E1E1E]">Rs. {(total * 0.15).toFixed(2)}</span>
                   </div>
-                  
+
                   <div className="border-t border-[#6C7A59]/30 pt-4">
                     <div className="flex justify-between items-center">
                       <span className="text-lg font-bold text-[#1E1E1E]">Total</span>
@@ -571,7 +570,7 @@ const Cart = () => {
                     </div>
                     <p className="text-xs text-[#6C7A59] mt-2 text-center">Including estimated tax</p>
                   </div>
-                  
+
                   {/* Savings Summary */}
                   {appliedCoupon && (
                     <div className="mt-4 p-3 bg-[#059669]/10 rounded-xl border border-[#059669]/20">
@@ -601,7 +600,7 @@ const Cart = () => {
                       <ArrowRightIcon className="ml-2 h-6 w-6" />
                     </div>
                   </Link>
-                  
+
                   {/* Quick Actions */}
                   <div className="grid grid-cols-2 gap-3">
                     <button className="px-4 py-3 bg-[#F5F1E8] text-[#6C7A59] rounded-xl hover:bg-[#E6E6FA] transition-all duration-300 font-medium border border-[#6C7A59]/20">
@@ -612,7 +611,7 @@ const Cart = () => {
                         <span>Save Cart</span>
                       </div>
                     </button>
-                    
+
                     <button className="px-4 py-3 bg-[#F5F1E8] text-[#6C7A59] rounded-xl hover:bg-[#E6E6FA] transition-all duration-300 font-medium border border-[#6C7A59]/20">
                       <div className="flex items-center justify-center space-x-2">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -623,7 +622,7 @@ const Cart = () => {
                     </button>
                   </div>
                 </div>
-                
+
                 {/* Trust Indicators */}
                 <div className="mt-6 space-y-4 p-4 bg-white/50 rounded-2xl border border-[#6C7A59]/20">
                   <div className="flex items-center text-sm text-[#6C7A59]">
@@ -663,7 +662,7 @@ const Cart = () => {
                     Saved for Later ({savedItems.length})
                   </h2>
                 </div>
-                
+
                 <div className="divide-y divide-[#D4AF37]/20">
                   {savedItems.map((savedItem, index) => (
                     <div key={savedItem.originalIndex} className="p-6 hover:bg-[#F5F1E8]/30 transition-all duration-300">
@@ -673,7 +672,7 @@ const Cart = () => {
                           alt={savedItem.name}
                           className="w-20 h-20 object-cover rounded-2xl shadow-md"
                         />
-                        
+
                         <div className="flex-1">
                           <h3 className="text-lg font-semibold text-[#1E1E1E] mb-2">{savedItem.name}</h3>
                           <div className="flex items-center space-x-4 text-sm text-[#6C7A59] mb-3">
@@ -682,7 +681,7 @@ const Cart = () => {
                           </div>
                           <p className="text-lg font-bold text-[#6C7A59]">Rs. {savedItem.price}</p>
                         </div>
-                        
+
                         <div className="flex items-center space-x-3">
                           <button
                             onClick={() => handleMoveToCart(savedItem)}

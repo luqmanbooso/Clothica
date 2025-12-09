@@ -20,6 +20,192 @@ import { useToast } from '../../contexts/ToastContext';
 import { getProductImageUrl } from '../../utils/imageHelpers';
 import { AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import jsPDF from 'jspdf';
+
+const parseDate = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  return isNaN(date.getTime()) ? null : date;
+};
+
+const formatDateSafe = (value) => {
+  const date = parseDate(value);
+  return date ? date.toLocaleDateString() : 'N/A';
+};
+
+const formatDateDisplay = (value, options) => {
+  const date = parseDate(value);
+  return date ? date.toLocaleDateString('en-US', options) : 'N/A';
+};
+
+const formatOrderNumber = (order) => {
+  if (!order) return 'ORD-000000';
+  if (order.orderNumber) return order.orderNumber;
+  const rawId = order._id || order.id || '';
+  const idStr = rawId ? String(rawId) : '';
+  return `ORD-${idStr.slice(-6) || '000000'}`;
+};
+
+const normalizeOrderData = (order) => {
+  if (!order) return null;
+
+  const normalizedId = order._id || order.id || order.orderId || order.orderNumber;
+  const rawStatus = (order.status || order.paymentStatus || '').toString();
+  const statusLower = rawStatus.toLowerCase();
+  const statusMap = {
+    paid: 'completed',
+    complete: 'completed',
+    completed: 'completed',
+    delivered: 'completed',
+    shipped: 'shipped',
+    processing: 'processing',
+    pending: 'pending',
+    cancelled: 'cancelled',
+    refunded: 'refunded',
+    partially_refunded: 'partially_refunded'
+  };
+  const normalizedStatus = statusMap[statusLower] || statusLower || 'pending';
+
+  const createdAt = order.createdAt || order.orderDate || order.date || order.created_at;
+  const total = Number(order.total ?? order.totalAmount ?? order.grandTotal ?? 0);
+
+  const itemsRaw = order.items || order.orderItems || [];
+  const normalizedItems = Array.isArray(itemsRaw)
+    ? itemsRaw.map((item) => {
+        const price = Number(item.price ?? item.itemTotal ?? item.total ?? 0);
+        const quantity = Number(item.quantity ?? item.qty ?? 1);
+        return {
+          ...item,
+          name: item.name || item.productName || item.product?.name || 'Product',
+          price,
+          quantity,
+          total: Number(item.itemTotal ?? item.total ?? price * quantity),
+          product:
+            item.product ||
+            (item.productId
+              ? { _id: item.productId, id: item.productId, name: item.productName || item.name }
+              : item.product)
+        };
+      })
+    : [];
+
+  const user = order.user || {
+    name: order.userName || order.customer || order.customerName || 'Unknown',
+    email: order.userEmail || order.email || 'No email',
+    phone: order.userPhone || order.phone || 'No phone'
+  };
+
+  return {
+    ...order,
+    _id: normalizedId,
+    id: normalizedId,
+    orderNumber: order.orderNumber || order.orderNo || (normalizedId ? `ORD-${String(normalizedId).slice(-6)}` : undefined),
+    createdAt,
+    date: createdAt,
+    status: normalizedStatus,
+    paymentStatus: order.paymentStatus || order.payment_status,
+    paymentMethod: order.paymentMethod || order.paymentStatus || order.payment_status || 'Not specified',
+    total,
+    items: normalizedItems,
+    user
+  };
+};
+
+const buildInvoiceDataFromOrder = (order) => {
+  if (!order) return null;
+
+  const items = (order.items || []).map((item) => {
+    const price = Number(item.price || item.itemTotal || item.total || 0);
+    const quantity = Number(item.quantity || 1);
+    return {
+      name: item.name || item.productName || item.product?.name || 'Product',
+      quantity,
+      price,
+      total: Number(item.total || item.itemTotal || price * quantity)
+    };
+  });
+
+  const subtotal = items.reduce((sum, item) => sum + (item.total || 0), 0);
+  const shipping = Number(order.shippingCost || 0);
+  const tax = Number(order.tax || 0);
+  const total = Number(order.total || order.totalAmount || subtotal + shipping + tax);
+
+  return {
+    orderNumber: order.orderNumber || order._id || order.id,
+    date: order.createdAt || order.orderDate || order.date,
+    status: order.status,
+    customer: {
+      name: order.user?.name || order.userName || order.customer || 'Customer',
+      email: order.user?.email || order.email || 'No email',
+      phone: order.user?.phone || order.phone || 'No phone'
+    },
+    items,
+    totals: {
+      subtotal,
+      tax,
+      shipping,
+      total
+    }
+  };
+};
+
+const generatePdfFromInvoiceData = (invoiceData, fileName = 'invoice.pdf') => {
+  if (!invoiceData) return;
+
+  const doc = new jsPDF();
+  const currency = (value) => `Rs. ${Number(value || 0).toLocaleString()}`;
+  let y = 14;
+
+  doc.setFontSize(16);
+  doc.text(`Invoice #${invoiceData.orderNumber || 'N/A'}`, 14, y);
+  doc.setFontSize(10);
+  y += 8;
+  doc.text(`Date: ${formatDateSafe(invoiceData.date)}`, 14, y);
+  y += 6;
+  doc.text(`Status: ${(invoiceData.status || 'N/A').toString().toUpperCase()}`, 14, y);
+  y += 10;
+
+  doc.setFontSize(12);
+  doc.text('Bill To', 14, y);
+  y += 6;
+  doc.setFontSize(10);
+  doc.text(invoiceData.customer?.name || 'Customer', 14, y);
+  y += 5;
+  doc.text(invoiceData.customer?.email || 'No email', 14, y);
+  y += 5;
+  doc.text(invoiceData.customer?.phone || 'No phone', 14, y);
+  y += 10;
+
+  doc.setFontSize(12);
+  doc.text('Items', 14, y);
+  y += 6;
+  doc.setFontSize(10);
+
+  (invoiceData.items || []).forEach((item) => {
+    doc.text(`${item.name || 'Item'} x${item.quantity || 1}`, 14, y);
+    doc.text(currency(item.total), 190, y, { align: 'right' });
+    y += 5;
+    if (y > 280) {
+      doc.addPage();
+      y = 14;
+    }
+  });
+
+  y += 6;
+  doc.setFontSize(12);
+  doc.text('Totals', 14, y);
+  y += 6;
+  doc.setFontSize(10);
+  doc.text(`Subtotal: ${currency(invoiceData.totals?.subtotal)}`, 14, y);
+  y += 5;
+  doc.text(`Shipping: ${currency(invoiceData.totals?.shipping)}`, 14, y);
+  y += 5;
+  doc.text(`Tax: ${currency(invoiceData.totals?.tax)}`, 14, y);
+  y += 5;
+  doc.text(`Total: ${currency(invoiceData.totals?.total)}`, 14, y);
+
+  doc.save(fileName);
+};
 
 const Orders = () => {
   const [orders, setOrders] = useState([]);
@@ -94,7 +280,8 @@ const Orders = () => {
     try {
       setLoading(true);
       const response = await api.get('/api/admin/orders');
-      setOrders(response.data || []);
+      const rawOrders = Array.isArray(response.data) ? response.data : response.data?.orders || [];
+      setOrders(rawOrders.map(normalizeOrderData));
     } catch (error) {
       console.error('Error fetching orders:', error);
       showError('Failed to load orders');
@@ -104,28 +291,59 @@ const Orders = () => {
     }
   }, [showError]);
 
-  const generateInvoice = async (orderId) => {
+  const generateInvoice = async (orderInput) => {
+    const targetOrder = typeof orderInput === 'object'
+      ? orderInput
+      : orders.find(o => String(o._id || o.id) === String(orderInput)) || orderDetails || selectedOrder;
+    const orderId = typeof orderInput === 'object' ? (orderInput._id || orderInput.id) : orderInput;
+
     try {
       setGeneratingInvoice(true);
       const response = await api.get(`/api/admin/orders/${orderId}/invoice`, {
         responseType: 'blob'
       });
       
-      // Create blob and download - now properly handles PDF from backend
-      const blob = new Blob([response.data], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `invoice-${orderId}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      const contentType = response.headers?.['content-type'] || '';
+      
+      if (contentType.includes('application/pdf')) {
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `invoice-${orderId}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      } else {
+        const textData = typeof response.data === 'string' 
+          ? response.data 
+          : (response.data?.text ? await response.data.text() : '');
+        
+        let invoicePayload = null;
+        try {
+          invoicePayload = textData ? JSON.parse(textData) : null;
+        } catch (parseError) {
+          console.warn('Unable to parse invoice JSON, falling back to order data');
+        }
+        
+        const invoiceData = invoicePayload?.data || invoicePayload || buildInvoiceDataFromOrder(targetOrder);
+        if (!invoiceData) {
+          throw new Error('No invoice data available');
+        }
+        generatePdfFromInvoiceData(invoiceData, `invoice-${orderId}.pdf`);
+      }
       
       showSuccess('Invoice generated successfully');
     } catch (error) {
       console.error('Error generating invoice:', error);
-      showError('Failed to generate invoice');
+      const fallbackInvoice = buildInvoiceDataFromOrder(targetOrder);
+      if (fallbackInvoice) {
+        generatePdfFromInvoiceData(fallbackInvoice, `invoice-${orderId}.pdf`);
+        showSuccess('Generated invoice from order data');
+      } else {
+        showError('Failed to generate invoice');
+      }
     } finally {
       setGeneratingInvoice(false);
     }
@@ -152,7 +370,7 @@ const Orders = () => {
       }
       
       // If inventory is sufficient, show shipping details modal
-      const order = orders.find(o => o._id === orderId || o.id === orderId);
+      const order = orders.find(o => String(o._id || o.id) === String(orderId));
       setSelectedOrderForShipping(order);
       setShippingData({
         trackingNumber: '',
@@ -195,7 +413,7 @@ const Orders = () => {
       
       // Update local state
       setOrders(prev => prev.map(order => 
-        order._id === selectedOrderForShipping._id 
+        String(order._id || order.id) === String(selectedOrderForShipping._id || selectedOrderForShipping.id) 
           ? { ...order, status: 'shipped', shippedAt: new Date().toISOString() }
           : order
       ));
@@ -238,7 +456,7 @@ const Orders = () => {
       
       // Update local state
       setOrders(prev => prev.map(order => 
-        order._id === selectedOrderForRefund._id 
+        String(order._id || order.id) === String(selectedOrderForRefund._id || selectedOrderForRefund.id) 
           ? { ...order, status: response.data.order.status, refundAmount: response.data.order.totalRefunded }
           : order
       ));
@@ -265,7 +483,7 @@ const Orders = () => {
   
   // Enhanced order status update with detailed modal
   const initiateStatusChange = (orderId, newStatus) => {
-    const order = orders.find(o => o._id === orderId || o.id === orderId);
+    const order = orders.find(o => String(o._id || o.id) === String(orderId));
     setSelectedOrderForStatusChange(order);
     setStatusChangeData({
       newStatus: newStatus,
@@ -280,19 +498,29 @@ const Orders = () => {
     try {
       setProcessingAction(true);
       
-      await api.put(`/api/orders/${selectedOrderForStatusChange._id}/status`, {
+      const targetId = selectedOrderForStatusChange._id || selectedOrderForStatusChange.id;
+      const payload = {
         status: statusChangeData.newStatus,
         reason: statusChangeData.reason,
         notes: statusChangeData.notes,
         notifyCustomer: statusChangeData.notifyCustomer,
         updatedAt: new Date().toISOString()
-      });
+      };
+
+      try {
+        await api.put(`/api/orders/${targetId}/status`, payload);
+      } catch (primaryError) {
+        // Spring Boot fallback expects status as query param and no body
+        await api.put(`/api/orders/${targetId}/status`, null, {
+          params: { status: statusChangeData.newStatus.toUpperCase() }
+        });
+      }
       
       showSuccess(`Order status updated to ${statusChangeData.newStatus} successfully!`);
       
       // Update local state
       setOrders(prev => prev.map(order => 
-        order._id === selectedOrderForStatusChange._id 
+        String(order._id || order.id) === String(selectedOrderForStatusChange._id || selectedOrderForStatusChange.id) 
           ? { ...order, status: statusChangeData.newStatus, lastUpdated: new Date().toISOString() }
           : order
       ));
@@ -337,7 +565,7 @@ const Orders = () => {
       
       // Update local state
       setOrders(prev => prev.map(order => 
-        order._id === selectedOrderForFulfillment._id 
+        String(order._id || order.id) === String(selectedOrderForFulfillment._id || selectedOrderForFulfillment.id) 
           ? { ...order, status: 'shipped', lastUpdated: new Date().toISOString() }
           : order
       ));
@@ -361,7 +589,7 @@ const Orders = () => {
   const fetchOrderDetails = async (orderId) => {
     try {
       const response = await api.get(`/api/admin/orders/${orderId}`);
-      setOrderDetails(response.data);
+      setOrderDetails(normalizeOrderData(response.data));
       setShowOrderDetailsModal(true);
     } catch (error) {
       console.error('Error fetching order details:', error);
@@ -382,12 +610,15 @@ const Orders = () => {
       const matchesSearch = !searchTerm || 
         (order.user?.name || order.customer || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (order.user?.email || order.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (order.orderNumber || order._id || '').toLowerCase().includes(searchTerm.toLowerCase());
+        String(order.orderNumber || order._id || order.id || '').toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesStatus = selectedStatus === 'all' || order.status === selectedStatus;
       
-      const matchesDateRange = (!dateRange.start || new Date(order.createdAt || order.date) >= new Date(dateRange.start)) &&
-                              (!dateRange.end || new Date(order.createdAt || order.date) <= new Date(dateRange.end));
+      const orderDate = parseDate(order.createdAt || order.date);
+      const startDate = dateRange.start ? parseDate(dateRange.start) : null;
+      const endDate = dateRange.end ? parseDate(dateRange.end) : null;
+      const matchesDateRange = (!startDate || (orderDate && orderDate >= startDate)) &&
+                              (!endDate || (orderDate && orderDate <= endDate));
       
       const matchesPriceRange = (!priceRange.min || (order.total || 0) >= parseFloat(priceRange.min)) &&
                                (!priceRange.max || (order.total || 0) <= parseFloat(priceRange.max));
@@ -395,14 +626,16 @@ const Orders = () => {
       const matchesCustomer = !customerFilter || 
         (order.user?.name || order.customer || '').toLowerCase().includes(customerFilter.toLowerCase());
       
-      const matchesPaymentMethod = paymentMethodFilter === 'all' || order.paymentMethod === paymentMethodFilter;
+      const matchesPaymentMethod = paymentMethodFilter === 'all' || (order.paymentMethod || '').toLowerCase() === paymentMethodFilter.toLowerCase();
       
       return matchesSearch && matchesStatus && matchesDateRange && matchesPriceRange && 
              matchesCustomer && matchesPaymentMethod;
     }).sort((a, b) => {
       switch (sortBy) {
         case 'date':
-          return new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date);
+          const dateA = parseDate(a.createdAt || a.date);
+          const dateB = parseDate(b.createdAt || b.date);
+          return (dateB ? dateB.getTime() : 0) - (dateA ? dateA.getTime() : 0);
         case 'total':
           return (b.total || 0) - (a.total || 0);
         case 'status':
@@ -803,7 +1036,7 @@ const Orders = () => {
                     </div>
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900">
-                        #{order.orderNumber || `ORD-${order._id?.slice(-6) || '000000'}`}
+                        #{formatOrderNumber(order)}
                       </h3>
                       <p className="text-gray-600">{order.user?.name || order.customer || 'Unknown Customer'}</p>
                       <p className="text-sm text-gray-500">{order.user?.email || order.email || 'No email'}</p>
@@ -835,7 +1068,7 @@ const Orders = () => {
                   </div>
                   <div className="text-center">
                     <div className="text-sm font-medium text-gray-900">
-                      {new Date(order.createdAt || order.date).toLocaleDateString('en-US', {
+                      {formatDateDisplay(order.createdAt || order.date, {
                         month: 'short',
                         day: 'numeric',
                         year: 'numeric'
@@ -844,15 +1077,14 @@ const Orders = () => {
                     <div className="text-xs text-gray-600">Order Date</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-sm font-medium text-gray-900">{order.paymentMethod || 'Credit Card'}</div>
+                    <div className="text-sm font-medium text-gray-900">{order.paymentMethod || order.paymentStatus || 'Not specified'}</div>
                     <div className="text-xs text-gray-600">Payment</div>
                   </div>
                   <div className="text-center">
                     <div className="text-sm font-medium text-gray-900">
                       {order.shippedAt ? 
-                        new Date(order.shippedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 
-                        'Not shipped'
-                      }
+                        formatDateDisplay(order.shippedAt, { month: 'short', day: 'numeric' }) :
+                        'Not shipped'}
                     </div>
                     <div className="text-xs text-gray-600">Ship Date</div>
                   </div>
@@ -1198,8 +1430,8 @@ const Orders = () => {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900 mb-2">Order Information</h3>
-                      <p className="text-sm text-gray-600">Order ID: #{selectedOrder.orderNumber || `ORD-${selectedOrder._id?.slice(-6) || '000000'}`}</p>
-                      <p className="text-sm text-gray-600">Date: {new Date(selectedOrder.createdAt || selectedOrder.date).toLocaleDateString()}</p>
+                      <p className="text-sm text-gray-600">Order ID: #{formatOrderNumber(selectedOrder)}</p>
+                      <p className="text-sm text-gray-600">Date: {formatDateSafe(selectedOrder.createdAt || selectedOrder.date)}</p>
                       <p className="text-sm text-gray-600">Status: <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedOrder.status)}`}>
                         {selectedOrder.status?.charAt(0).toUpperCase() + selectedOrder.status?.slice(1) || 'Unknown'}
                       </span></p>
@@ -1214,7 +1446,7 @@ const Orders = () => {
                     
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900 mb-2">Payment Information</h3>
-                      <p className="text-sm text-gray-600">Method: {selectedOrder.paymentMethod || 'Not specified'}</p>
+                      <p className="text-sm text-gray-600">Method: {selectedOrder.paymentMethod || selectedOrder.paymentStatus || 'Not specified'}</p>
                       <p className="text-sm text-gray-600">Total: <span className="font-bold text-lg text-[#6C7A59]">Rs. {(selectedOrder.total || 0).toLocaleString()}</span></p>
                       <p className="text-sm text-gray-600">Items: {selectedOrder.items?.length || 0}</p>
                     </div>
@@ -1271,7 +1503,7 @@ const Orders = () => {
                 <div className="flex items-center justify-between pt-6 border-t border-gray-200">
                   <div className="flex items-center space-x-3">
                     <button
-                      onClick={() => generateInvoice(selectedOrder._id || selectedOrder.id)}
+                      onClick={() => generateInvoice(selectedOrder)}
                       disabled={generatingInvoice}
                       className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
@@ -1328,7 +1560,7 @@ const Orders = () => {
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-gray-900">
-                  Order Details - #{orderDetails.orderNumber || orderDetails._id}
+                  Order Details - #{formatOrderNumber(orderDetails)}
                 </h2>
                 <button
                   onClick={() => {
@@ -1344,14 +1576,14 @@ const Orders = () => {
 
             <div className="p-6 space-y-6">
               {/* Order Summary */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Order Summary</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  <div>
-                    <span className="font-medium text-gray-700">Order Date:</span>
-                    <p className="text-gray-900">{new Date(orderDetails.createdAt).toLocaleDateString()}</p>
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Order Summary</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium text-gray-700">Order Date:</span>
+                    <p className="text-gray-900">{formatDateSafe(orderDetails.createdAt)}</p>
                   </div>
-                  <div>
+                    <div>
                     <span className="font-medium text-gray-700">Status:</span>
                     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(orderDetails.status)}`}>
                       {orderDetails.status?.charAt(0).toUpperCase() + orderDetails.status?.slice(1)}
@@ -1363,7 +1595,7 @@ const Orders = () => {
                   </div>
                   <div>
                     <span className="font-medium text-gray-700">Payment Method:</span>
-                    <p className="text-gray-900">{orderDetails.paymentMethod || 'Not specified'}</p>
+                    <p className="text-gray-900">{orderDetails.paymentMethod || orderDetails.paymentStatus || 'Not specified'}</p>
                   </div>
                 </div>
               </div>
@@ -1455,7 +1687,7 @@ const Orders = () => {
               <div className="flex items-center justify-between pt-6 border-t border-gray-200">
                 <div className="flex items-center space-x-3">
                   <button
-                    onClick={() => generateInvoice(orderDetails._id)}
+                    onClick={() => generateInvoice(orderDetails)}
                     disabled={generatingInvoice}
                     className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
@@ -1547,7 +1779,7 @@ const Orders = () => {
                   </div>
                   <div>
                     <span className="font-medium text-gray-700">Order Date:</span>
-                    <p className="text-gray-900">{new Date(selectedOrderForFulfillment.createdAt).toLocaleDateString()}</p>
+                    <p className="text-gray-900">{formatDateSafe(selectedOrderForFulfillment.createdAt)}</p>
                   </div>
                 </div>
               </div>
@@ -1746,15 +1978,15 @@ const Orders = () => {
             >
               <div className="p-6 border-b border-gray-200">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-                      <ArrowPathIcon className="h-6 w-6 text-orange-600" />
+                    <div className="flex items-center space-x-3">
+                      <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+                        <ArrowPathIcon className="h-6 w-6 text-orange-600" />
+                      </div>
+                      <div>
+                        <h2 className="text-2xl font-bold text-gray-900">Process Refund</h2>
+                        <p className="text-gray-600">Order #{formatOrderNumber(selectedOrderForRefund)}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h2 className="text-2xl font-bold text-gray-900">Process Refund</h2>
-                      <p className="text-gray-600">Order #{selectedOrderForRefund.orderNumber || `ORD-${selectedOrderForRefund._id?.slice(-6) || '000000'}`}</p>
-                    </div>
-                  </div>
                   <button
                     onClick={() => {
                       setShowRefundModal(false);
@@ -1982,7 +2214,7 @@ const Orders = () => {
                     </div>
                     <div>
                       <h2 className="text-2xl font-bold text-gray-900">Ship Order</h2>
-                      <p className="text-gray-600">Order #{selectedOrderForShipping.orderNumber || `ORD-${selectedOrderForShipping._id?.slice(-6) || '000000'}`}</p>
+                      <p className="text-gray-600">Order #{formatOrderNumber(selectedOrderForShipping)}</p>
                     </div>
                   </div>
                   <button
@@ -2167,7 +2399,7 @@ const Orders = () => {
                     </div>
                     <div>
                       <h2 className="text-2xl font-bold text-gray-900">Change Order Status</h2>
-                      <p className="text-gray-600">Order #{selectedOrderForStatusChange.orderNumber || `ORD-${selectedOrderForStatusChange._id?.slice(-6) || '000000'}`}</p>
+                      <p className="text-gray-600">Order #{formatOrderNumber(selectedOrderForStatusChange)}</p>
                     </div>
                   </div>
                   <button

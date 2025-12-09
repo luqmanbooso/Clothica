@@ -11,7 +11,6 @@ import {
   TicketIcon,
   PhotoIcon,
   ChartBarIcon,
-  Cog6ToothIcon,
   ArrowRightOnRectangleIcon,
   SparklesIcon,
   ClockIcon,
@@ -25,7 +24,6 @@ const AdminLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showNotifications, setShowNotifications] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -62,14 +60,11 @@ const AdminLayout = ({ children }) => {
       if (showNotifications && !event.target.closest('.notifications-dropdown')) {
         setShowNotifications(false);
       }
-      if (showSettings && !event.target.closest('.settings-dropdown')) {
-        setShowSettings(false);
-      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showNotifications, showSettings]);
+  }, [showNotifications]);
 
   const getGreeting = () => {
     const hour = currentTime.getHours();
@@ -98,7 +93,6 @@ const AdminLayout = ({ children }) => {
     { name: 'Users', href: '/admin/users', icon: UsersIcon },
     { name: 'Categories', href: '/admin/categories', icon: TagIcon },
     { name: 'Campaign Hub', href: '/admin/campaign-hub', icon: CalendarIcon },
-    { name: 'Settings', href: '/admin/settings', icon: Cog6ToothIcon },
   ];
 
   const isActive = (path) => location.pathname === path;
@@ -272,19 +266,7 @@ const AdminLayout = ({ children }) => {
 
               {/* User Section */}
               <div className="border-t border-gray-700 p-4">
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className="w-10 h-10 bg-gradient-to-br from-[#6C7A59] to-[#D6BFAF] rounded-full flex items-center justify-center">
-                    <span className="text-white font-semibold">
-                      {user?.firstName?.charAt(0) || 'A'}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="text-white font-medium">
-                      {user?.firstName} {user?.lastName}
-                    </p>
-                    <p className="text-gray-400 text-sm">Administrator</p>
-                  </div>
-                </div>
+                {/* User badge removed per request */}
                 <button
                   onClick={handleLogout}
                   className="w-full flex items-center space-x-3 px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl transition-all duration-200"
@@ -331,19 +313,7 @@ const AdminLayout = ({ children }) => {
 
           {/* User Section */}
           <div className="border-t border-gray-700 p-4">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-[#6C7A59] to-[#D6BFAF] rounded-full flex items-center justify-center">
-                <span className="text-white font-semibold">
-                  {user?.firstName?.charAt(0) || 'A'}
-                </span>
-              </div>
-              <div>
-                <p className="text-white font-medium">
-                  {user?.firstName} {user?.lastName}
-                </p>
-                <p className="text-gray-400 text-sm">Administrator</p>
-              </div>
-            </div>
+            {/* User badge removed per request */}
             <button
               onClick={handleLogout}
               className="w-full flex items-center space-x-3 px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl transition-all duration-200"
@@ -439,42 +409,6 @@ const AdminLayout = ({ children }) => {
                 )}
               </div>
 
-              {/* Settings */}
-              <div className="relative settings-dropdown">
-                <button
-                  onClick={() => setShowSettings(!showSettings)}
-                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <Cog6ToothIcon className="h-5 w-5" />
-                </button>
-                
-                {showSettings && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                    <div className="py-1">
-                      <Link
-                        to="/admin/settings"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        onClick={() => setShowSettings(false)}
-                      >
-                        Site Settings
-                      </Link>
-                      <Link
-                        to="/admin/profile"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        onClick={() => setShowSettings(false)}
-                      >
-                        Profile Settings
-                      </Link>
-                      <button
-                        onClick={handleLogout}
-                        className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
-                      >
-                        Logout
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
           </div>
         </div>

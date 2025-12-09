@@ -15,8 +15,10 @@ public class OrderDTO {
     private String orderNumber;
     private Integer userId;
     private String userName;
-    private List<OrderItemDTO>  orderItems;
+    private List<OrderItemDTO> orderItems;
     private Double totalAmount;
+    private Double discountAmount;
+    private String appliedCouponCode;
     private String status;
     private String paymentStatus;
     private LocalDateTime orderDate;

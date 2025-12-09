@@ -31,6 +31,10 @@ public class Order {
 
     private Double totalAmount;
 
+    private Double discountAmount = 0.0;
+
+    private String appliedCouponCode;
+
     private String status = "PENDING"; // PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELLED
 
     private String paymentStatus = "PENDING"; // PENDING, PAID, FAILED

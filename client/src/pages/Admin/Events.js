@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
+import {
   PlusIcon,
   PencilIcon,
   TrashIcon,
@@ -121,7 +121,7 @@ const Events = () => {
   const fetchBanners = useCallback(async () => {
     try {
       const response = await api.get('/api/admin/banners');
-      setBanners(response.data);
+      setBanners(response.data.banners || []);
     } catch (error) {
       console.error('Error fetching banners:', error);
     }
@@ -279,13 +279,13 @@ const Events = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Validate form
     if (!validateForm()) {
       showError('Please fix the validation errors');
       return;
     }
-    
+
     setIsSubmitting(true);
     try {
       if (editingEvent) {
@@ -308,7 +308,7 @@ const Events = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    
+
     if (!formData.name.trim()) newErrors.name = 'Campaign name is required';
     if (!formData.description.trim()) newErrors.description = 'Description is required';
     if (!formData.startDate) newErrors.startDate = 'Start date is required';
@@ -324,7 +324,7 @@ const Events = () => {
     if (formData.targetConversionRate < 0 || formData.targetConversionRate > 100) {
       newErrors.targetConversionRate = 'Conversion rate must be between 0-100%';
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -338,17 +338,17 @@ const Events = () => {
       startDate: event.startDate ? new Date(event.startDate).toISOString().split('T')[0] : '',
       endDate: event.endDate ? new Date(event.endDate).toISOString().split('T')[0] : '',
       priority: event.priority,
-             campaign: event.campaign || {
-         banners: [],
-         discounts: [],
-         products: {
-           categories: [],
-           tags: [],
-           autoHighlight: true,
-           seasonalPricing: false,
-           inventoryOptimization: true
-         }
-       },
+      campaign: event.campaign || {
+        banners: [],
+        discounts: [],
+        products: {
+          categories: [],
+          tags: [],
+          autoHighlight: true,
+          seasonalPricing: false,
+          inventoryOptimization: true
+        }
+      },
       inventory: event.inventory || {
         enableRestockAlerts: true,
         lowStockThreshold: 10,
@@ -580,7 +580,7 @@ const Events = () => {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
             />
           </div>
-          
+
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
@@ -592,7 +592,7 @@ const Events = () => {
             <option value="promotional">Promotional</option>
             <option value="custom">Custom</option>
           </select>
-          
+
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
@@ -632,16 +632,16 @@ const Events = () => {
                       <p className="text-sm text-gray-600">{event.type}</p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-2">
                     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(event.status)}`}>
                       {event.status}
                     </span>
                   </div>
                 </div>
-                
+
                 <p className="text-gray-700 text-sm mb-4">{event.description}</p>
-                
+
                 <div className="flex items-center gap-4 text-sm text-gray-600">
                   <div className="flex items-center gap-1">
                     <CalendarIcon className="h-4 w-4" />
@@ -662,10 +662,10 @@ const Events = () => {
                     <div className="text-2xl font-bold text-[#6C7A59]">{event.campaign?.banners?.length || 0}</div>
                     <div className="text-xs text-gray-600">Banners</div>
                   </div>
-                                     <div className="text-center">
-                     <div className="text-2xl font-bold text-[#6C7A59]">{event.campaign?.discounts?.length || 0}</div>
-                     <div className="text-xs text-gray-600">Discounts</div>
-                   </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-[#6C7A59]">{event.campaign?.discounts?.length || 0}</div>
+                    <div className="text-xs text-gray-600">Discounts</div>
+                  </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-[#6C7A59]">{event.campaign?.products?.categories?.length || 0}</div>
                     <div className="text-xs text-gray-600">Categories</div>
@@ -681,7 +681,7 @@ const Events = () => {
                     <PencilIcon className="h-4 w-4 mr-1" />
                     Edit
                   </button>
-                  
+
                   {event.status === 'active' ? (
                     <button
                       onClick={() => handleDeactivate(event._id)}
@@ -697,7 +697,7 @@ const Events = () => {
                       <PlayIcon className="h-4 w-4" />
                     </button>
                   )}
-                  
+
                   <button
                     onClick={() => handleDelete(event._id)}
                     className="px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 rounded-lg transition-colors"
@@ -721,11 +721,11 @@ const Events = () => {
           >
             Previous
           </button>
-          
+
           <span className="px-3 py-2 text-sm text-gray-700">
             Page {currentPage} of {totalPages}
           </span>
-          
+
           <button
             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
             disabled={currentPage === totalPages}
@@ -758,175 +758,170 @@ const Events = () => {
               </div>
 
               <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                 {/* Basic Information */}
-                 <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-xl border border-blue-200">
-                   <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                     <CalendarIcon className="h-5 w-5 mr-2 text-blue-600" />
-                     Campaign Basics
-                   </h3>
-                   
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                     <div>
-                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                         Campaign Name <span className="text-red-500">*</span>
-                       </label>
-                       <input
-                         type="text"
-                         name="name"
-                         value={formData.name}
-                         onChange={handleInputChange}
-                         className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent transition-all ${
-                           errors.name ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                         }`}
-                         placeholder="Enter campaign name..."
-                       />
-                       {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
-                     </div>
-                     
-                     <div>
-                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                         Campaign Type <span className="text-red-500">*</span>
-                       </label>
-                       <select
-                         name="type"
-                         value={formData.type}
-                         onChange={handleInputChange}
-                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
-                       >
-                         <option value="seasonal"> Seasonal</option>
-                         <option value="holiday"> Holiday</option>
-                         <option value="promotional"> Promotional</option>
-                         <option value="custom">Custom</option>
-                       </select>
-                     </div>
-                   </div>
-                   
-                   <div className="mt-6">
-                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                       Description <span className="text-red-500">*</span>
-                     </label>
-                     <textarea
-                       name="description"
-                       value={formData.description}
-                       onChange={handleInputChange}
-                       rows={3}
-                       className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent transition-all ${
-                         errors.description ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                       }`}
-                       placeholder="Describe your campaign goals and strategy..."
-                     />
-                     {errors.description && <p className="text-red-500 text-xs mt-1">{errors.description}</p>}
-                   </div>
-                   
-                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-                     <div>
-                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                         Start Date <span className="text-red-500">*</span>
-                       </label>
-                       <input
-                         type="date"
-                         name="startDate"
-                         value={formData.startDate}
-                         onChange={handleInputChange}
-                         className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent transition-all ${
-                           errors.startDate ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                         }`}
-                       />
-                       {errors.startDate && <p className="text-red-500 text-xs mt-1">{errors.startDate}</p>}
-                     </div>
-                     
-                     <div>
-                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                         End Date <span className="text-red-500">*</span>
-                       </label>
-                       <input
-                         type="date"
-                         name="endDate"
-                         value={formData.endDate}
-                         onChange={handleInputChange}
-                         className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent transition-all ${
-                           errors.endDate ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                         }`}
-                       />
-                       {errors.endDate && <p className="text-red-500 text-xs mt-1">{errors.endDate}</p>}
-                     </div>
-                     
-                     <div>
-                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                         Priority Level <span className="text-red-500">*</span>
-                       </label>
-                       <input
-                         type="number"
-                         name="priority"
-                         value={formData.priority}
-                         onChange={handleInputChange}
-                         min="1"
-                         max="10"
-                         className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent transition-all ${
-                           errors.priority ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                         }`}
-                       />
-                       {errors.priority && <p className="text-red-500 text-xs mt-1">{errors.priority}</p>}
-                       <p className="mt-1 text-xs text-gray-500">1 = Low, 10 = High</p>
-                     </div>
-                   </div>
-                 </div>
+                {/* Basic Information */}
+                <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-xl border border-blue-200">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <CalendarIcon className="h-5 w-5 mr-2 text-blue-600" />
+                    Campaign Basics
+                  </h3>
 
-                 {/* Campaign Goals & Metrics */}
-                 <div className="bg-gradient-to-r from-green-50 to-blue-50 p-6 rounded-xl border border-green-200">
-                   <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                     <ChartBarIcon className="h-5 w-5 mr-2 text-green-600" />
-                     Campaign Goals & Metrics
-                   </h3>
-                   
-                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                     <div>
-                       <label className="block text-sm font-medium text-gray-700 mb-2">Budget ($)</label>
-                       <input
-                         type="number"
-                         name="budget"
-                         value={formData.budget}
-                         onChange={handleInputChange}
-                         min="0"
-                         step="0.01"
-                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
-                         placeholder="0.00"
-                       />
-                     </div>
-                     <div>
-                       <label className="block text-sm font-medium text-gray-700 mb-2">Expected ROI (%)</label>
-                       <input
-                         type="number"
-                         name="expectedROI"
-                         value={formData.expectedROI}
-                         onChange={handleInputChange}
-                         min="0"
-                         step="0.1"
-                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
-                         placeholder="0.0"
-                       />
-                     </div>
-                     <div>
-                       <label className="block text-sm font-medium text-gray-700 mb-2">Target Conversion (%)</label>
-                       <input
-                         type="number"
-                         name="targetConversionRate"
-                         value={formData.targetConversionRate}
-                         onChange={handleInputChange}
-                         min="0"
-                         max="100"
-                         step="0.1"
-                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
-                         placeholder="0.0"
-                       />
-                     </div>
-                   </div>
-                 </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Campaign Name <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="name"
+                        value={formData.name}
+                        onChange={handleInputChange}
+                        className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent transition-all ${errors.name ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                          }`}
+                        placeholder="Enter campaign name..."
+                      />
+                      {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Campaign Type <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        name="type"
+                        value={formData.type}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                      >
+                        <option value="seasonal"> Seasonal</option>
+                        <option value="holiday"> Holiday</option>
+                        <option value="promotional"> Promotional</option>
+                        <option value="custom">Custom</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="mt-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Description <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      name="description"
+                      value={formData.description}
+                      onChange={handleInputChange}
+                      rows={3}
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent transition-all ${errors.description ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                        }`}
+                      placeholder="Describe your campaign goals and strategy..."
+                    />
+                    {errors.description && <p className="text-red-500 text-xs mt-1">{errors.description}</p>}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Start Date <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        name="startDate"
+                        value={formData.startDate}
+                        onChange={handleInputChange}
+                        className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent transition-all ${errors.startDate ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                          }`}
+                      />
+                      {errors.startDate && <p className="text-red-500 text-xs mt-1">{errors.startDate}</p>}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        End Date <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        name="endDate"
+                        value={formData.endDate}
+                        onChange={handleInputChange}
+                        className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent transition-all ${errors.endDate ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                          }`}
+                      />
+                      {errors.endDate && <p className="text-red-500 text-xs mt-1">{errors.endDate}</p>}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Priority Level <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        name="priority"
+                        value={formData.priority}
+                        onChange={handleInputChange}
+                        min="1"
+                        max="10"
+                        className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent transition-all ${errors.priority ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                          }`}
+                      />
+                      {errors.priority && <p className="text-red-500 text-xs mt-1">{errors.priority}</p>}
+                      <p className="mt-1 text-xs text-gray-500">1 = Low, 10 = High</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Campaign Goals & Metrics */}
+                <div className="bg-gradient-to-r from-green-50 to-blue-50 p-6 rounded-xl border border-green-200">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <ChartBarIcon className="h-5 w-5 mr-2 text-green-600" />
+                    Campaign Goals & Metrics
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Budget ($)</label>
+                      <input
+                        type="number"
+                        name="budget"
+                        value={formData.budget}
+                        onChange={handleInputChange}
+                        min="0"
+                        step="0.01"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Expected ROI (%)</label>
+                      <input
+                        type="number"
+                        name="expectedROI"
+                        value={formData.expectedROI}
+                        onChange={handleInputChange}
+                        min="0"
+                        step="0.1"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                        placeholder="0.0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Target Conversion (%)</label>
+                      <input
+                        type="number"
+                        name="targetConversionRate"
+                        value={formData.targetConversionRate}
+                        onChange={handleInputChange}
+                        min="0"
+                        max="100"
+                        step="0.1"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
+                        placeholder="0.0"
+                      />
+                    </div>
+                  </div>
+                </div>
 
                 {/* Campaign Configuration */}
                 <div className="border-t border-gray-200 pt-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Campaign Configuration</h3>
-                  
+
                   {/* Banners */}
                   <div className="mb-6">
                     <div className="flex items-center justify-between mb-3">
@@ -950,7 +945,7 @@ const Events = () => {
                         ))}
                       </select>
                     </div>
-                    
+
                     <div className="space-y-2">
                       {formData.campaign.banners.map((banner, index) => {
                         const bannerData = banners.find(b => b._id === banner.bannerId);
@@ -994,7 +989,7 @@ const Events = () => {
                         ))}
                       </select>
                     </div>
-                    
+
                     <div className="space-y-2">
                       {formData.campaign.discounts.map((discount, index) => {
                         const discountData = discounts.find(d => d._id === discount.discountId);
@@ -1111,15 +1106,14 @@ const Events = () => {
                   >
                     Cancel
                   </button>
-                  
+
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className={`px-8 py-3 text-sm font-medium text-white rounded-lg transition-all duration-200 flex items-center ${
-                      isSubmitting 
-                        ? 'bg-gray-400 cursor-not-allowed' 
+                    className={`px-8 py-3 text-sm font-medium text-white rounded-lg transition-all duration-200 flex items-center ${isSubmitting
+                        ? 'bg-gray-400 cursor-not-allowed'
                         : 'bg-gradient-to-r from-[#6C7A59] to-[#5A6A4A] hover:from-[#5A6A4A] hover:to-[#4A5A3A] hover:shadow-lg transform hover:scale-105'
-                    }`}
+                      }`}
                   >
                     {isSubmitting ? (
                       <>
@@ -1165,7 +1159,7 @@ const Events = () => {
                     <input
                       type="text"
                       value={bannerForm.name}
-                      onChange={(e) => setBannerForm({...bannerForm, name: e.target.value})}
+                      onChange={(e) => setBannerForm({ ...bannerForm, name: e.target.value })}
                       required
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
                     />
@@ -1175,7 +1169,7 @@ const Events = () => {
                     <input
                       type="text"
                       value={bannerForm.title}
-                      onChange={(e) => setBannerForm({...bannerForm, title: e.target.value})}
+                      onChange={(e) => setBannerForm({ ...bannerForm, title: e.target.value })}
                       required
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
                     />
@@ -1186,7 +1180,7 @@ const Events = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
                   <textarea
                     value={bannerForm.description}
-                    onChange={(e) => setBannerForm({...bannerForm, description: e.target.value})}
+                    onChange={(e) => setBannerForm({ ...bannerForm, description: e.target.value })}
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
                   />
@@ -1198,7 +1192,7 @@ const Events = () => {
                     <input
                       type="url"
                       value={bannerForm.image}
-                      onChange={(e) => setBannerForm({...bannerForm, image: e.target.value})}
+                      onChange={(e) => setBannerForm({ ...bannerForm, image: e.target.value })}
                       required
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
                     />
@@ -1207,7 +1201,7 @@ const Events = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">Action Type</label>
                     <select
                       value={bannerForm.actionType}
-                      onChange={(e) => setBannerForm({...bannerForm, actionType: e.target.value})}
+                      onChange={(e) => setBannerForm({ ...bannerForm, actionType: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
                     >
                       <option value="link">Link</option>
@@ -1222,7 +1216,7 @@ const Events = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">Target Audience</label>
                     <select
                       value={bannerForm.targetAudience}
-                      onChange={(e) => setBannerForm({...bannerForm, targetAudience: e.target.value})}
+                      onChange={(e) => setBannerForm({ ...bannerForm, targetAudience: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
                     >
                       <option value="all">All Users</option>
@@ -1235,7 +1229,7 @@ const Events = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">Show On Pages</label>
                     <select
                       value={bannerForm.showOnPages}
-                      onChange={(e) => setBannerForm({...bannerForm, showOnPages: e.target.value})}
+                      onChange={(e) => setBannerForm({ ...bannerForm, showOnPages: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
                     >
                       <option value="home">Home</option>
@@ -1293,7 +1287,7 @@ const Events = () => {
                     <input
                       type="text"
                       value={discountForm.name}
-                      onChange={(e) => setDiscountForm({...discountForm, name: e.target.value})}
+                      onChange={(e) => setDiscountForm({ ...discountForm, name: e.target.value })}
                       required
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
                     />
@@ -1303,7 +1297,7 @@ const Events = () => {
                     <input
                       type="text"
                       value={discountForm.code}
-                      onChange={(e) => setDiscountForm({...discountForm, code: e.target.value.toUpperCase()})}
+                      onChange={(e) => setDiscountForm({ ...discountForm, code: e.target.value.toUpperCase() })}
                       required
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
                     />
@@ -1314,7 +1308,7 @@ const Events = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
                   <textarea
                     value={discountForm.description}
-                    onChange={(e) => setDiscountForm({...discountForm, description: e.target.value})}
+                    onChange={(e) => setDiscountForm({ ...discountForm, description: e.target.value })}
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
                   />
@@ -1325,7 +1319,7 @@ const Events = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">Discount Type</label>
                     <select
                       value={discountForm.discountType}
-                      onChange={(e) => setDiscountForm({...discountForm, discountType: e.target.value})}
+                      onChange={(e) => setDiscountForm({ ...discountForm, discountType: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
                     >
                       <option value="percentage">Percentage</option>
@@ -1338,7 +1332,7 @@ const Events = () => {
                     <input
                       type="number"
                       value={discountForm.discountValue}
-                      onChange={(e) => setDiscountForm({...discountForm, discountValue: parseFloat(e.target.value)})}
+                      onChange={(e) => setDiscountForm({ ...discountForm, discountValue: parseFloat(e.target.value) })}
                       required
                       min="0"
                       step="0.01"
@@ -1350,7 +1344,7 @@ const Events = () => {
                     <input
                       type="number"
                       value={discountForm.minOrderAmount}
-                      onChange={(e) => setDiscountForm({...discountForm, minOrderAmount: parseFloat(e.target.value)})}
+                      onChange={(e) => setDiscountForm({ ...discountForm, minOrderAmount: parseFloat(e.target.value) })}
                       min="0"
                       step="0.01"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
@@ -1364,7 +1358,7 @@ const Events = () => {
                     <input
                       type="date"
                       value={discountForm.startDate}
-                      onChange={(e) => setDiscountForm({...discountForm, startDate: e.target.value})}
+                      onChange={(e) => setDiscountForm({ ...discountForm, startDate: e.target.value })}
                       required
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
                     />
@@ -1374,7 +1368,7 @@ const Events = () => {
                     <input
                       type="date"
                       value={discountForm.endDate}
-                      onChange={(e) => setDiscountForm({...discountForm, endDate: e.target.value})}
+                      onChange={(e) => setDiscountForm({ ...discountForm, endDate: e.target.value })}
                       required
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6C7A59] focus:border-transparent"
                     />

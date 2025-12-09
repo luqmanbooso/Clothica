@@ -22,6 +22,11 @@ public class ProductController {
       return productService.getAllProduct();
     }
 
+    @GetMapping("/categories")
+    public java.util.Map<String, Long> getCategories(){
+        return productService.getCategoryCounts();
+    }
+
     @GetMapping("/{id}")
     public ProductDTO getProductById(@PathVariable("id") Long Id){
         return productService.getProductById(Id);

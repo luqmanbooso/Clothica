@@ -75,6 +75,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/affiliate', affiliateRoutes);
 app.use('/api/special-offers', specialOffersRoutes);
 app.use('/api/unified-discounts', unifiedDiscountsRoutes);
+app.use('/api/admin/unified-discounts', unifiedDiscountsRoutes);
 app.use('/api/smart-inventory', smartInventoryRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/payments', paymentRoutes);

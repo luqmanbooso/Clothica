@@ -18,8 +18,10 @@ public class OrderController {
 
     // Create order from cart
     @PostMapping("/create/{userId}")
-    public ResponseEntity<OrderDTO> createOrder(@PathVariable Integer userId) {
-        OrderDTO order = orderService.createOrder(userId);
+    public ResponseEntity<OrderDTO> createOrder(
+            @PathVariable Integer userId,
+            @RequestParam(required = false) String couponCode) {
+        OrderDTO order = orderService.createOrder(userId, couponCode);
         return new ResponseEntity<>(order, HttpStatus.CREATED);
     }
 

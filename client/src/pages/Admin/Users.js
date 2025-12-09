@@ -57,7 +57,7 @@ const AdminUsers = () => {
         api.get('/api/admin/users', { params }),
         api.get('/api/admin/users/analytics')
       ]);
-      
+
       // Handle users response
       if (usersResponse.data && usersResponse.data.users && Array.isArray(usersResponse.data.users)) {
         setUsers(usersResponse.data.users);
@@ -69,7 +69,7 @@ const AdminUsers = () => {
         setTotalPages(1);
         setTotalUsers(0);
       }
-      
+
       // Handle analytics response
       if (analyticsResponse.data) {
         setUserAnalytics(analyticsResponse.data);
@@ -136,8 +136,8 @@ const AdminUsers = () => {
   };
 
   const toggleUserSelection = (userId) => {
-    setSelectedUsers(prev => 
-      prev.includes(userId) 
+    setSelectedUsers(prev =>
+      prev.includes(userId)
         ? prev.filter(id => id !== userId)
         : [...prev, userId]
     );
@@ -147,7 +147,7 @@ const AdminUsers = () => {
     if (selectedUsers.length === users.length) {
       setSelectedUsers([]);
     } else {
-      setSelectedUsers(users.map(user => user._id));
+      setSelectedUsers(users.map(user => user.id));
     }
   };
 
@@ -242,7 +242,7 @@ const AdminUsers = () => {
       </div>
 
       {/* User Analytics */}
-      <motion.div 
+      <motion.div
         className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6"
         variants={itemVariants}
       >
@@ -305,7 +305,7 @@ const AdminUsers = () => {
 
       {/* Bulk Actions */}
       {selectedUsers.length > 0 && (
-        <motion.div 
+        <motion.div
           className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-6"
           variants={itemVariants}
         >
@@ -374,7 +374,7 @@ const AdminUsers = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {Array.isArray(users) && users.length > 0 ? (
                 users.map((user) => (
-                  <tr key={user._id} className="hover:bg-gray-50">
+                  <tr key={user.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="h-10 w-10 flex-shrink-0">
@@ -383,21 +383,21 @@ const AdminUsers = () => {
                               <img
                                 className="h-10 w-10 rounded-full object-cover"
                                 src={user.avatar}
-                                alt={user.name}
+                                alt={user.username || 'User'}
                               />
                             ) : (
                               <span className="text-sm font-medium text-gray-700">
-                                {user.name.charAt(0).toUpperCase()}
+                                {(user.username || user.email || 'U').charAt(0).toUpperCase()}
                               </span>
                             )}
                           </div>
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">
-                            {user.name}
+                            {user.username || user.email}
                           </div>
                           <div className="text-sm text-gray-500">
-                            ID: {user._id.slice(-8).toUpperCase()}
+                            ID: {String(user.id).slice(-8).toUpperCase()}
                           </div>
                         </div>
                       </div>
@@ -409,20 +409,18 @@ const AdminUsers = () => {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        user.role === 'admin' 
-                          ? 'bg-purple-100 text-purple-800' 
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${user.roles && user.roles.includes('ADMIN')
+                          ? 'bg-purple-100 text-purple-800'
                           : 'bg-blue-100 text-blue-800'
-                      }`}>
-                        {user.role === 'admin' ? 'Admin' : 'Customer'}
+                        }`}>
+                        {user.roles && user.roles.includes('ADMIN') ? 'Admin' : 'Customer'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        user.isActive 
-                          ? 'text-green-600 bg-green-100' 
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${user.isActive
+                          ? 'text-green-600 bg-green-100'
                           : 'text-red-600 bg-red-100'
-                      }`}>
+                        }`}>
                         {user.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </td>
@@ -442,7 +440,7 @@ const AdminUsers = () => {
                           <FiEye className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => toggleUserStatus(user._id, user.isActive)}
+                          onClick={() => toggleUserStatus(user.id, user.isActive)}
                           className={user.isActive ? "text-red-600 hover:text-red-900" : "text-green-600 hover:text-green-900"}
                           title={user.isActive ? "Deactivate User" : "Activate User"}
                         >
@@ -535,7 +533,7 @@ const AdminUsers = () => {
                   <FiXCircle className="h-6 w-6" />
                 </button>
               </div>
-              
+
               <UserDetails user={selectedUser} />
             </div>
           </div>
@@ -551,9 +549,9 @@ const UserDetails = ({ user }) => {
     return status ? 'text-green-600 bg-green-100' : 'text-red-600 bg-red-100';
   };
 
-  const getRoleColor = (role) => {
-    return role === 'admin' 
-      ? 'bg-purple-100 text-purple-800' 
+  const getRoleColor = (roles) => {
+    return roles && roles.includes('ADMIN')
+      ? 'bg-purple-100 text-purple-800'
       : 'bg-blue-100 text-blue-800';
   };
 
@@ -569,33 +567,33 @@ const UserDetails = ({ user }) => {
                 <img
                   className="h-12 w-12 rounded-full object-cover"
                   src={user.avatar}
-                  alt={user.name}
+                  alt={user.username || 'User'}
                 />
               ) : (
                 <span className="text-lg font-medium text-gray-700">
-                  {user.name.charAt(0).toUpperCase()}
+                  {(user.username || user.email || 'U').charAt(0).toUpperCase()}
                 </span>
               )}
             </div>
             <div>
-              <p className="font-medium text-gray-900">{user.name}</p>
-              <p className="text-sm text-gray-600">ID: {user._id.slice(-8).toUpperCase()}</p>
+              <p className="font-medium text-gray-900">{user.username || user.email}</p>
+              <p className="text-sm text-gray-600">ID: {String(user.id).slice(-8).toUpperCase()}</p>
             </div>
           </div>
         </div>
-        
+
         <div className="bg-gray-50 p-4 rounded-lg">
           <h4 className="font-medium text-gray-900 mb-2">Account Status</h4>
           <div className="space-y-2">
             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(user.isActive)}`}>
               {user.isActive ? 'Active' : 'Inactive'}
             </span>
-            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleColor(user.role)}`}>
-              {user.role === 'admin' ? 'Admin' : 'Customer'}
+            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleColor(user.roles)}`}>
+              {user.roles && user.roles.includes('ADMIN') ? 'Admin' : 'Customer'}
             </span>
           </div>
         </div>
-        
+
         <div className="bg-gray-50 p-4 rounded-lg">
           <h4 className="font-medium text-gray-900 mb-2">Member Since</h4>
           <p className="text-sm text-gray-600">
@@ -618,7 +616,7 @@ const UserDetails = ({ user }) => {
               <p className="text-sm text-gray-600">{user.email}</p>
             </div>
           </div>
-          
+
           {user.phone && (
             <div className="flex items-center space-x-3">
               <FiPhone className="h-4 w-4 text-gray-400" />
@@ -684,9 +682,9 @@ const UserDetails = ({ user }) => {
           </div>
           <div className="text-center">
             <p className="text-2xl font-bold text-gray-900">
-              {format(new Date(user.updatedAt), 'MMM dd')}
+              {user.createdAt ? format(new Date(user.createdAt), 'MMM dd') : 'N/A'}
             </p>
-            <p className="text-xs text-gray-600">Last Updated</p>
+            <p className="text-xs text-gray-600">Joined</p>
           </div>
         </div>
       </div>
