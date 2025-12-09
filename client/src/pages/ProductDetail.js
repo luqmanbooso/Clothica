@@ -27,16 +27,17 @@ import {
   ChatBubbleLeftRightIcon,
   ChatBubbleLeftEllipsisIcon,
   InformationCircleIcon,
-  CheckBadgeIcon
+  CheckBadgeIcon,
+  XCircleIcon
 } from '@heroicons/react/24/outline';
-import { 
-  FiShoppingCart, 
-  FiHeart, 
-  FiShare2, 
-  FiStar, 
-  FiUsers, 
-  FiTruck, 
-  FiShield, 
+import {
+  FiShoppingCart,
+  FiHeart,
+  FiShare2,
+  FiStar,
+  FiUsers,
+  FiTruck,
+  FiShield,
   FiRefreshCw,
   FiCheck,
   FiX,
@@ -45,6 +46,8 @@ import {
   FiEye,
   FiZoomIn
 } from 'react-icons/fi';
+import { useParams, Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import { useWishlist } from '../contexts/WishlistContext';
@@ -163,16 +166,16 @@ const ProductDetail = () => {
       setValidationErrors(errors);
       return;
     }
-    
+
     // Clear validation errors
     setValidationErrors({});
-    
+
     const result = await addToCart(product, quantity, selectedSize, selectedColor);
-    
+
     if (result.success) {
       setSuccessMessage(result.message || 'Added to cart successfully!');
       setShowSuccess(true);
-      
+
       setTimeout(() => {
         setShowSuccess(false);
         setSuccessMessage('');
@@ -190,7 +193,7 @@ const ProductDetail = () => {
       addToWishlist(product);
       setSuccessMessage('Added to wishlist!');
     }
-    
+
     setShowSuccess(true);
     setTimeout(() => {
       setShowSuccess(false);
@@ -245,8 +248,8 @@ const ProductDetail = () => {
           <FaceFrownIcon className="h-20 w-20 mx-auto text-gray-400 mb-2" />
           <h2 className="text-3xl font-black text-[#1E1E1E] mb-4">Product not found</h2>
           <p className="text-[#D4AF37] mb-8 text-lg">The product you're looking for doesn't exist or has been removed.</p>
-          <Link 
-            to="/shop" 
+          <Link
+            to="/shop"
             className="bg-gradient-to-r from-[#6C7A59] to-[#9CAF88] text-white font-bold py-4 px-8 rounded-2xl hover:from-[#9CAF88] hover:to-[#6C7A59] transition-all duration-300 transform hover:scale-105"
           >
             Continue Shopping
@@ -257,7 +260,7 @@ const ProductDetail = () => {
   }
 
   return (
-    <motion.div 
+    <motion.div
       className="min-h-screen bg-gradient-to-br from-[#F5F1E8] via-[#E6E6FA] to-[#F0F8FF]"
       variants={containerVariants}
       initial="hidden"
@@ -280,15 +283,15 @@ const ProductDetail = () => {
         </AnimatePresence>
 
         {/* Enhanced Breadcrumb */}
-        <motion.nav 
-          className="flex mb-8" 
+        <motion.nav
+          className="flex mb-8"
           aria-label="Breadcrumb"
           variants={itemVariants}
         >
           <ol className="flex items-center space-x-3 bg-white/90 backdrop-blur-sm px-6 py-3 rounded-2xl border border-[#6C7A59]/20 shadow-lg">
             <li>
-              <Link 
-                to="/" 
+              <Link
+                to="/"
                 className="text-[#6C7A59] hover:text-[#D4AF37] font-medium transition-all duration-300 hover:scale-105 transform flex items-center gap-1"
               >
                 <HomeIcon className="h-5 w-5" /> Home
@@ -298,8 +301,8 @@ const ProductDetail = () => {
               <ChevronRightIcon className="h-5 w-5 text-[#D4AF37]" />
             </li>
             <li>
-              <Link 
-                to="/shop" 
+              <Link
+                to="/shop"
                 className="text-[#6C7A59] hover:text-[#D4AF37] font-medium transition-all duration-300 hover:scale-105 transform flex items-center gap-1"
               >
                 <ShoppingBagIcon className="h-5 w-5" /> Shop
@@ -315,13 +318,13 @@ const ProductDetail = () => {
         </motion.nav>
 
         {/* Product Page Banner */}
-        <motion.div 
+        <motion.div
           className="mb-8"
           variants={itemVariants}
         >
-          <Banner 
-            position="top" 
-            page="product" 
+          <Banner
+            position="top"
+            page="product"
             autoPlay={true}
             interval={4000}
             showNavigation={true}
@@ -330,17 +333,17 @@ const ProductDetail = () => {
           />
         </motion.div>
 
-        <motion.div 
+        <motion.div
           className="grid grid-cols-1 lg:grid-cols-3 gap-16"
           variants={containerVariants}
         >
           {/* Enhanced Product Images */}
-          <motion.div 
+          <motion.div
             className="space-y-6"
             variants={itemVariants}
           >
             {/* Main Image with Enhanced Styling */}
-            <motion.div 
+            <motion.div
               className="relative group"
               whileHover={{ scale: 1.02 }}
               transition={{ duration: 0.3 }}
@@ -351,12 +354,12 @@ const ProductDetail = () => {
                   alt={product.name}
                   className="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-700"
                 />
-                
+
                 {/* Image Overlay Effects */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                
+
                 {/* Quick Actions Overlay */}
-                <motion.div 
+                <motion.div
                   className="absolute top-4 right-4 flex flex-col gap-2"
                   initial={{ opacity: 0, x: 20 }}
                   whileHover={{ opacity: 1, x: 0 }}
@@ -366,15 +369,14 @@ const ProductDetail = () => {
                     onClick={handleWishlist}
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
-                    className={`p-3 rounded-full shadow-lg transition-all duration-300 backdrop-blur-sm ${
-                      isInWishlist(product._id) 
-                        ? 'bg-[#E8B4B8] text-white border-2 border-white/30' 
+                    className={`p-3 rounded-full shadow-lg transition-all duration-300 backdrop-blur-sm ${isInWishlist(product._id)
+                        ? 'bg-[#E8B4B8] text-white border-2 border-white/30'
                         : 'bg-white/90 text-[#6C7A59] hover:bg-[#D4AF37] hover:text-white border-2 border-[#6C7A59]/20'
-                    }`}
+                      }`}
                   >
                     <FiHeart className="h-6 w-6" />
                   </motion.button>
-                  
+
                   <motion.button
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
@@ -382,7 +384,7 @@ const ProductDetail = () => {
                   >
                     <FiShare2 className="h-6 w-6" />
                   </motion.button>
-                  
+
                   <motion.button
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
@@ -391,11 +393,11 @@ const ProductDetail = () => {
                     <FiZoomIn className="h-6 w-6" />
                   </motion.button>
                 </motion.div>
-                
+
                 {/* Product Badges */}
                 <div className="absolute top-4 left-4 space-y-2">
                   {product.discount > 0 && (
-                    <motion.div 
+                    <motion.div
                       className="bg-gradient-to-r from-[#D4AF37] to-[#E8B4B8] text-black font-bold px-4 py-2 rounded-full text-sm shadow-lg backdrop-blur-sm border border-white/30"
                       animate={{ scale: [1, 1.05, 1] }}
                       transition={{ duration: 2, repeat: Infinity }}
@@ -404,7 +406,7 @@ const ProductDetail = () => {
                     </motion.div>
                   )}
                   {product.stock < 10 && product.stock > 0 && (
-                    <motion.div 
+                    <motion.div
                       className="bg-gradient-to-r from-[#B35D5D] to-[#E8B4B8] text-white font-bold px-4 py-2 rounded-full text-sm shadow-lg backdrop-blur-sm border border-white/30"
                       animate={{ opacity: [1, 0.7, 1] }}
                       transition={{ duration: 1.5, repeat: Infinity }}
@@ -423,7 +425,7 @@ const ProductDetail = () => {
                     </div>
                   )}
                 </div>
-              
+
                 {/* Navigation Arrows */}
                 {product.images && product.images.length > 1 && (
                   <>
@@ -446,10 +448,10 @@ const ProductDetail = () => {
                   </>
                 )}
               </div>
-              
+
               {/* Enhanced Thumbnail Images */}
               {product.images && product.images.length > 1 && (
-                <motion.div 
+                <motion.div
                   className="grid grid-cols-4 gap-3"
                   variants={containerVariants}
                   initial="hidden"
@@ -462,11 +464,10 @@ const ProductDetail = () => {
                       whileHover={{ scale: 1.05, y: -2 }}
                       whileTap={{ scale: 0.95 }}
                       variants={itemVariants}
-                      className={`aspect-square bg-gradient-to-br from-[#F5F1E8] to-[#E6E6FA] rounded-2xl overflow-hidden border-4 transition-all duration-300 ${
-                        selectedImage === index 
-                          ? 'border-[#D4AF37] shadow-xl scale-105 ring-4 ring-[#D4AF37]/20' 
+                      className={`aspect-square bg-gradient-to-br from-[#F5F1E8] to-[#E6E6FA] rounded-2xl overflow-hidden border-4 transition-all duration-300 ${selectedImage === index
+                          ? 'border-[#D4AF37] shadow-xl scale-105 ring-4 ring-[#D4AF37]/20'
                           : 'border-white/70 hover:border-[#D4AF37]/50 shadow-lg'
-                      }`}
+                        }`}
                     >
                       <img
                         src={image}
@@ -481,7 +482,7 @@ const ProductDetail = () => {
           </motion.div>
 
           {/* Enhanced Product Info */}
-          <motion.div 
+          <motion.div
             className="space-y-8"
             variants={itemVariants}
           >
@@ -492,7 +493,7 @@ const ProductDetail = () => {
             >
               <div className="flex items-center gap-3 mb-4">
                 {product.isNew && (
-                  <motion.span 
+                  <motion.span
                     className="inline-block px-4 py-2 bg-gradient-to-r from-[#6C7A59] to-[#9CAF88] text-white text-sm font-bold rounded-full shadow-lg"
                     animate={{ scale: [1, 1.05, 1] }}
                     transition={{ duration: 2, repeat: Infinity }}
@@ -501,7 +502,7 @@ const ProductDetail = () => {
                   </motion.span>
                 )}
                 {product.discount > 0 && (
-                  <motion.span 
+                  <motion.span
                     className="inline-block px-4 py-2 bg-gradient-to-r from-[#B35D5D] to-[#E8B4B8] text-white text-sm font-bold rounded-full shadow-lg"
                     animate={{ scale: [1, 1.05, 1] }}
                     transition={{ duration: 1.5, repeat: Infinity, delay: 0.3 }}
@@ -515,11 +516,11 @@ const ProductDetail = () => {
                   </span>
                 )}
               </div>
-              
+
               <h1 className="text-4xl font-black text-[#1E1E1E] mb-4 bg-gradient-to-r from-[#1E1E1E] to-[#6C7A59] bg-clip-text text-transparent leading-tight">
                 {product.name}
               </h1>
-              
+
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2">
@@ -532,7 +533,7 @@ const ProductDetail = () => {
                     ({product.numReviews || product.reviews?.length || 0} reviews)
                   </span>
                 </div>
-                
+
                 <motion.button
                   onClick={() => setShowReviews(true)}
                   whileHover={{ scale: 1.05 }}
@@ -543,7 +544,7 @@ const ProductDetail = () => {
                   Write a review
                 </motion.button>
               </div>
-              
+
               {/* Sales Information */}
               {salesData && (salesData.quantity > 0 || salesData.orders > 0) && (
                 <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
@@ -571,7 +572,7 @@ const ProductDetail = () => {
                   </div>
                 </div>
               )}
-              
+
               <div className="flex items-center gap-4 mb-6">
                 {product.discount > 0 ? (
                   <>
@@ -639,15 +640,15 @@ const ProductDetail = () => {
                 <h3 className="text-2xl font-black text-[#1E1E1E] mb-6 flex items-center gap-3">
                   <SparklesIcon className="h-6 w-6" /> Key Features
                 </h3>
-                <motion.ul 
+                <motion.ul
                   className="space-y-4"
                   variants={containerVariants}
                   initial="hidden"
                   animate="visible"
                 >
                   {product.features.map((feature, index) => (
-                    <motion.li 
-                      key={index} 
+                    <motion.li
+                      key={index}
                       className="flex items-center text-[#6C7A59] font-medium text-lg"
                       variants={itemVariants}
                       whileHover={{ x: 5, scale: 1.02 }}
@@ -705,11 +706,10 @@ const ProductDetail = () => {
                       onClick={() => setSelectedColor(color.name || color)}
                       whileHover={{ scale: 1.1, y: -2 }}
                       whileTap={{ scale: 0.95 }}
-                      className={`relative w-12 h-12 rounded-2xl border-4 transition-all duration-300 shadow-lg ${
-                        selectedColor === (color.name || color)
+                      className={`relative w-12 h-12 rounded-2xl border-4 transition-all duration-300 shadow-lg ${selectedColor === (color.name || color)
                           ? 'border-[#D4AF37] scale-110 ring-4 ring-[#D4AF37]/20'
                           : 'border-white hover:border-[#6C7A59]/50'
-                      }`}
+                        }`}
                       style={{ backgroundColor: color.hex || color }}
                       title={color.name || color}
                     >
@@ -727,7 +727,7 @@ const ProductDetail = () => {
                   ))}
                 </div>
                 {selectedColor && (
-                  <motion.p 
+                  <motion.p
                     className="mt-4 text-[#6C7A59] font-bold"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -736,7 +736,7 @@ const ProductDetail = () => {
                   </motion.p>
                 )}
                 {validationErrors.color && (
-                  <motion.p 
+                  <motion.p
                     className="mt-4 text-red-500 font-bold flex items-center gap-2"
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -764,18 +764,17 @@ const ProductDetail = () => {
                       onClick={() => setSelectedSize(size.name || size)}
                       whileHover={{ scale: 1.05, y: -2 }}
                       whileTap={{ scale: 0.95 }}
-                      className={`py-4 px-6 border-3 rounded-2xl font-bold text-lg transition-all duration-300 shadow-lg ${
-                        selectedSize === (size.name || size)
+                      className={`py-4 px-6 border-3 rounded-2xl font-bold text-lg transition-all duration-300 shadow-lg ${selectedSize === (size.name || size)
                           ? 'border-[#D4AF37] bg-gradient-to-r from-[#D4AF37] to-[#E8B4B8] text-white shadow-xl'
                           : 'border-[#6C7A59]/30 text-[#6C7A59] hover:border-[#6C7A59] hover:bg-[#6C7A59]/10'
-                      }`}
+                        }`}
                     >
                       {size.name || size}
                     </motion.button>
                   ))}
                 </div>
                 {selectedSize && (
-                  <motion.p 
+                  <motion.p
                     className="mt-4 text-[#6C7A59] font-bold"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -784,7 +783,7 @@ const ProductDetail = () => {
                   </motion.p>
                 )}
                 {validationErrors.size && (
-                  <motion.p 
+                  <motion.p
                     className="mt-4 text-red-500 font-bold flex items-center gap-2"
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -815,7 +814,7 @@ const ProductDetail = () => {
                   >
                     <FiMinus className="h-6 w-6" />
                   </motion.button>
-                  
+
                   <div className="bg-gradient-to-r from-[#F5F1E8] to-[#E6E6FA] rounded-2xl px-6 py-3 border-2 border-[#6C7A59]/30">
                     <span className="text-2xl font-black text-[#6C7A59]">{quantity}</span>
                   </div>
@@ -830,7 +829,7 @@ const ProductDetail = () => {
                     <FiPlus className="h-6 w-6" />
                   </motion.button>
                 </div>
-                
+
                 <div className="text-right">
                   <p className="text-[#6C7A59] font-bold text-lg">
                     {product.stock || 0} available
@@ -845,7 +844,7 @@ const ProductDetail = () => {
             </motion.div>
 
             {/* Enhanced Action Buttons */}
-            <motion.div 
+            <motion.div
               className="space-y-4"
               variants={itemVariants}
             >
@@ -854,11 +853,10 @@ const ProductDetail = () => {
                 whileHover={{ scale: 1.02, y: -2 }}
                 whileTap={{ scale: 0.98 }}
                 disabled={product.stock === 0}
-                className={`w-full flex items-center justify-center px-8 py-5 font-black text-xl rounded-3xl transition-all duration-300 shadow-xl ${
-                  product.stock === 0
+                className={`w-full flex items-center justify-center px-8 py-5 font-black text-xl rounded-3xl transition-all duration-300 shadow-xl ${product.stock === 0
                     ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
                     : 'bg-gradient-to-r from-[#6C7A59] to-[#9CAF88] text-white hover:from-[#9CAF88] hover:to-[#6C7A59] hover:shadow-2xl'
-                }`}
+                  }`}
               >
                 <FiShoppingCart className="h-6 w-6 mr-3" />
                 {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
@@ -872,22 +870,21 @@ const ProductDetail = () => {
                   </motion.div>
                 )}
               </motion.button>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <motion.button
                   onClick={handleWishlist}
                   whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
-                  className={`flex items-center justify-center px-6 py-4 border-3 font-bold text-lg rounded-3xl transition-all duration-300 shadow-lg ${
-                    isInWishlist(product._id)
+                  className={`flex items-center justify-center px-6 py-4 border-3 font-bold text-lg rounded-3xl transition-all duration-300 shadow-lg ${isInWishlist(product._id)
                       ? 'border-[#E8B4B8] bg-gradient-to-r from-[#E8B4B8] to-[#F5C6CB] text-white hover:shadow-xl'
                       : 'border-[#6C7A59] text-[#6C7A59] hover:bg-[#6C7A59] hover:text-white hover:shadow-xl'
-                  }`}
+                    }`}
                 >
                   <FiHeart className="h-5 w-5 mr-2" />
                   {isInWishlist(product._id) ? 'Wishlisted' : 'Wishlist'}
                 </motion.button>
-                
+
                 <motion.button
                   whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
@@ -897,15 +894,15 @@ const ProductDetail = () => {
                   Share
                 </motion.button>
               </div>
-              
+
               {/* Trust Indicators */}
-              <motion.div 
+              <motion.div
                 className="grid grid-cols-3 gap-4 mt-6"
                 variants={containerVariants}
                 initial="hidden"
                 animate="visible"
               >
-                <motion.div 
+                <motion.div
                   className="text-center p-4 bg-white/95 backdrop-blur-sm rounded-2xl border border-[#6C7A59]/20 shadow-lg"
                   variants={itemVariants}
                   whileHover={{ scale: 1.05, y: -2 }}
@@ -913,8 +910,8 @@ const ProductDetail = () => {
                   <FiShield className="h-8 w-8 text-[#6C7A59] mx-auto mb-2" />
                   <p className="text-sm font-bold text-[#6C7A59]">Secure Payment</p>
                 </motion.div>
-                
-                <motion.div 
+
+                <motion.div
                   className="text-center p-4 bg-white/95 backdrop-blur-sm rounded-2xl border border-[#6C7A59]/20 shadow-lg"
                   variants={itemVariants}
                   whileHover={{ scale: 1.05, y: -2 }}
@@ -922,8 +919,8 @@ const ProductDetail = () => {
                   <FiTruck className="h-8 w-8 text-[#6C7A59] mx-auto mb-2" />
                   <p className="text-sm font-bold text-[#6C7A59]">Fast Delivery</p>
                 </motion.div>
-                
-                <motion.div 
+
+                <motion.div
                   className="text-center p-4 bg-white/95 backdrop-blur-sm rounded-2xl border border-[#6C7A59]/20 shadow-lg"
                   variants={itemVariants}
                   whileHover={{ scale: 1.05, y: -2 }}
@@ -976,13 +973,13 @@ const ProductDetail = () => {
           </motion.div>
 
           {/* Sidebar Banner */}
-          <motion.div 
+          <motion.div
             className="lg:col-span-1"
             variants={itemVariants}
           >
-            <Banner 
-              position="sidebar" 
-              page="product" 
+            <Banner
+              position="sidebar"
+              page="product"
               autoPlay={false}
               showNavigation={false}
               showDots={false}
@@ -992,11 +989,11 @@ const ProductDetail = () => {
         </motion.div>
 
         {/* Enhanced Reviews Section */}
-        <motion.section 
+        <motion.section
           className="mt-16"
           variants={itemVariants}
         >
-          <motion.div 
+          <motion.div
             className="bg-white/95 backdrop-blur-sm rounded-3xl p-8 shadow-xl border border-[#6C7A59]/20"
             variants={itemVariants}
           >
@@ -1017,8 +1014,8 @@ const ProductDetail = () => {
             <div className="grid gap-6">
               {product.reviews && product.reviews.length > 0 ? (
                 product.reviews.map((review, index) => (
-                  <motion.div 
-                    key={review._id} 
+                  <motion.div
+                    key={review._id}
                     className="bg-gradient-to-r from-[#F5F1E8] to-[#E6E6FA] rounded-2xl p-6 border border-[#6C7A59]/20 shadow-lg"
                     variants={itemVariants}
                     initial="hidden"
@@ -1054,7 +1051,7 @@ const ProductDetail = () => {
                   </motion.div>
                 ))
               ) : (
-                <motion.div 
+                <motion.div
                   className="text-center py-12 bg-gradient-to-r from-[#F5F1E8] to-[#E6E6FA] rounded-3xl border-2 border-dashed border-[#6C7A59]/30"
                   variants={itemVariants}
                   initial="hidden"
@@ -1079,13 +1076,13 @@ const ProductDetail = () => {
 
         {/* Enhanced Related Products */}
         <motion.section className="mt-16">
-          <motion.h2 
+          <motion.h2
             className="text-3xl font-black text-[#1E1E1E] mb-8 flex items-center gap-3"
             variants={itemVariants}
           >
             <ShoppingBagIcon className="h-6 w-6" /> You might also like
           </motion.h2>
-          <motion.div 
+          <motion.div
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
             variants={containerVariants}
             initial="hidden"
@@ -1145,13 +1142,13 @@ const ProductDetail = () => {
         </motion.section>
 
         {/* Sticky Bottom Banner */}
-        <motion.div 
+        <motion.div
           className="fixed bottom-0 left-0 right-0 z-40"
           variants={itemVariants}
         >
-          <Banner 
-            position="sticky" 
-            page="product" 
+          <Banner
+            position="sticky"
+            page="product"
             autoPlay={true}
             interval={8000}
             showNavigation={true}
