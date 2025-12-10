@@ -73,17 +73,6 @@ const ProductDetail = () => {
   const [salesData, setSalesData] = useState(null);
   const [loadError, setLoadError] = useState(null);
 
-  useEffect(() => {
-    loadProduct();
-    loadSalesData();
-  }, [id, loadSalesData]);
-
-  useEffect(() => {
-    if (product) {
-      loadRelatedProducts();
-    }
-  }, [product, id, loadRelatedProducts]);
-
   const loadProduct = useCallback(async () => {
     setLoading(true);
     try {
@@ -138,6 +127,17 @@ const ProductDetail = () => {
   const loadSalesData = useCallback(async () => {
     setSalesData({ quantity: 0, total: 0, orders: 0 });
   }, []);
+
+  useEffect(() => {
+    loadProduct();
+    loadSalesData();
+  }, [id, loadSalesData]);
+
+  useEffect(() => {
+    if (product) {
+      loadRelatedProducts();
+    }
+  }, [product, id, loadRelatedProducts]);
 
   const renderStars = (rating) => {
     const stars = [];
