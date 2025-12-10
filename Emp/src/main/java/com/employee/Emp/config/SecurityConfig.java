@@ -50,8 +50,12 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource(){
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList(
-                "https://clothica-6w9n2p05o-luqmans-projects-41b76e34.vercel.app/"
+        configuration.setAllowedOriginPatterns(Arrays.asList(
+                "https://clothica-6w9n2p05o-luqmans-projects-41b76e34.vercel.app",
+                "https://spring-backend-clothica.onrender.com",
+                "https://clothica.vercel.app/",
+                "http://localhost:3000",
+                "http://localhost:5173"
         ));
         configuration.setAllowedMethods(Arrays.asList("GET","POST","PUT","DELETE","OPTIONS","PATCH","HEAD"));
         configuration.setAllowedHeaders(Arrays.asList(
