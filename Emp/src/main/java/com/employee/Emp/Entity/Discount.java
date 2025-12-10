@@ -4,19 +4,21 @@ import com.employee.Emp.Enum.DiscountTarget;
 import com.employee.Emp.Enum.DiscountValueType;
 import com.employee.Emp.filter.DiscountCalculationResult;
 import com.employee.Emp.filter.OrderContext;
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.DBRef;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
-@Entity
-@Inheritance(strategy = InheritanceType.JOINED)
-@DiscriminatorColumn(name = "discount_type")
-public abstract class Discount {
+@Document(collection = "discounts")
+public abstract class Discount implements SequenceEntity {
+    public static final String SEQUENCE_NAME = "discounts_sequence";
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private String name;
@@ -24,10 +26,8 @@ public abstract class Discount {
     private String code;
     private String description;
 
-    @Enumerated(EnumType.STRING)
     private DiscountTarget target; // PRODUCT, CATEGORY, CART, SHIPPING
 
-    @Enumerated(EnumType.STRING)
     private DiscountValueType valueType;
 
     private BigDecimal discountValue; // e.g., 20 for 20%, or 10.00 for $10 off
@@ -42,16 +42,19 @@ public abstract class Discount {
     private BigDecimal minimumCartValue;
     private BigDecimal maximumDiscountAmount;
 
+    @Field("is_active")
     private Boolean isActive = true;
-    private Boolean isStackable = false; // can combine with other discounts
-    private Boolean isExclusive = false; // override other discount
+    @Field("is_stackable")
+    private Boolean isStackable = false;
+    @Field("is_exclusive")
+    private Boolean isExclusive = false;
 
-    @ManyToMany
-    @JoinTable(name = "discount_excluded_products")
+    @DBRef
+    @Field("excluded_products")
     private Set<Product> excludedProducts = new HashSet<>();
 
-    @ManyToMany
-    @JoinTable(name = "discount_excluded_categories")
+    @DBRef
+    @Field("excluded_categories")
     private Set<Category> excludedCategories = new HashSet<>();
 
     // Abstract method for calculating discount
@@ -114,4 +117,9 @@ public abstract class Discount {
 
     public Set<Category> getExcludedCategories() { return excludedCategories; }
     public void setExcludedCategories(Set<Category> excludedCategories) { this.excludedCategories = excludedCategories; }
+
+    @Override
+    public String getSequenceName() {
+        return SEQUENCE_NAME;
+    }
 }

@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Configuration;
 public class CloudinaryConfig {
 
     @Bean
-    public Cloudinary cloudinary(@Value("${CLOUDINARY_URL}") String cloudinaryUrl) {
+    public Cloudinary cloudinary(@Value("${cloudinary.url}") String cloudinaryUrl) {
         // CLOUDINARY_URL is in the form cloudinary://api_key:api_secret@cloud_name
         return new Cloudinary(cloudinaryUrl);
     }

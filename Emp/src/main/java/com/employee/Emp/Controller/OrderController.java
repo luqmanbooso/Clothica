@@ -19,7 +19,7 @@ public class OrderController {
     // Create order from cart
     @PostMapping("/create/{userId}")
     public ResponseEntity<OrderDTO> createOrder(
-            @PathVariable Integer userId,
+            @PathVariable Long userId,
             @RequestParam(required = false) String couponCode) {
         OrderDTO order = orderService.createOrder(userId, couponCode);
         return new ResponseEntity<>(order, HttpStatus.CREATED);
@@ -41,7 +41,7 @@ public class OrderController {
 
     // Get all orders for a user
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<OrderDTO>> getUserOrders(@PathVariable Integer userId) {
+    public ResponseEntity<List<OrderDTO>> getUserOrders(@PathVariable Long userId) {
         List<OrderDTO> orders = orderService.getUserOrders(userId);
         return ResponseEntity.ok(orders);
     }

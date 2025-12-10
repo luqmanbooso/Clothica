@@ -1,46 +1,48 @@
 package com.employee.Emp.Entity;
 
-import com.fasterxml.jackson.annotation.JsonManagedReference;
-import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Transient;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-@Entity
-@Table(name = "carts")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Cart {
+@Document(collection = "carts")
+public class Cart implements SequenceEntity {
+    public static final String SEQUENCE_NAME = "carts_sequence";
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    @com.fasterxml.jackson.annotation.JsonIgnore
-    private UserInfo user;
+    @Field("user_id")
+    private Long userId;
 
-    @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference
-    private List<CartItem> items = new ArrayList<>();
-
+    @Field("total_amount")
     private double totalAmount = 0.0;
+
+    @Field("created_at")
     private LocalDateTime createdAt;
 
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-    }
+    @Transient
+    private List<CartItem> items = new ArrayList<>();
 
     public void calculateTotal() {
         totalAmount = items.stream()
+                .filter(item -> item.getProduct() != null)
                 .mapToDouble(item -> item.getQuantity() * item.getProduct().getPrice())
                 .sum();
+    }
+
+    @Override
+    public String getSequenceName() {
+        return SEQUENCE_NAME;
     }
 }

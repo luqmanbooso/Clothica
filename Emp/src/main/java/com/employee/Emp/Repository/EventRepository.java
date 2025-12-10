@@ -1,24 +1,19 @@
 package com.employee.Emp.Repository;
 
 import com.employee.Emp.Entity.Event;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
+import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.mongodb.repository.Query;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Repository
-public interface EventRepository extends JpaRepository<Event, Long> {
+public interface EventRepository extends MongoRepository<Event, Long> {
 
     List<Event> findByIsActiveTrueOrderByStartDateDesc();
 
-    @Query("SELECT e FROM Event e WHERE e.isActive = true " +
-            "AND (e.startDate IS NULL OR e.startDate <= :now) " +
-            "AND (e.endDate IS NULL OR e.endDate >= :now) " +
-            "ORDER BY e.startDate DESC")
-    List<Event> findActiveEvents(@Param("now") LocalDateTime now);
+    @Query(value = "{ 'is_active': true, '$and': [ { '$or': [ { 'start_date': null }, { 'start_date': { $lte: ?0 } } ] }, { '$or': [ { 'end_date': null }, { 'end_date': { $gte: ?0 } } ] } ] }",
+           sort = "{ 'start_date': -1 }")
+    List<Event> findActiveEvents(LocalDateTime now);
 
     List<Event> findByType(String type);
 

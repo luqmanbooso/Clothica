@@ -3,13 +3,9 @@ package com.employee.Emp.Entity;
 import com.employee.Emp.Enum.DiscountValueType;
 import com.employee.Emp.filter.DiscountCalculationResult;
 import com.employee.Emp.filter.OrderContext;
-import jakarta.persistence.DiscriminatorValue;
-import jakarta.persistence.Entity;
 
 import java.math.BigDecimal;
 
-@Entity
-@DiscriminatorValue("BULK_DISCOUNT")
 public class BulkDiscount extends Discount {
     private Integer minimumQuantity;
     private Long productId; // For product-specific bulk discounts

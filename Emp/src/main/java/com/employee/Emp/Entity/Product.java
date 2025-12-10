@@ -1,18 +1,25 @@
 package com.employee.Emp.Entity;
 
-import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
-@Entity
-@Table(name="products")
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Product {
+@Document(collection = "products")
+public class Product implements SequenceEntity {
+    public static final String SEQUENCE_NAME = "products_sequence";
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private String name;
@@ -20,19 +27,22 @@ public class Product {
     private double price;
     private int stock;
 
-    // Optional storefront metadata
-    private String image;            // primary image URL
+    private String image;
     private String category;
     private String subcategory;
     private String brand;
-    private Integer discount;        // percentage off, 0-100
-    private Double rating;           // average rating
+    private Integer discount;
+    private Double rating;
     private Boolean isNew;
-    @Column(name = "created_at", nullable = false)
-    private java.time.LocalDateTime createdAt;
 
-    @ElementCollection
-    @CollectionTable(name = "product_images", joinColumns = @JoinColumn(name = "product_id"))
-    @Column(name = "image_url")
-    private java.util.List<String> images;
+    @CreatedDate
+    @Field("created_at")
+    private LocalDateTime createdAt;
+
+    private List<String> images = new ArrayList<>();
+
+    @Override
+    public String getSequenceName() {
+        return SEQUENCE_NAME;
+    }
 }

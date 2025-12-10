@@ -4,20 +4,20 @@ import java.util.List;
 
 public class ApplyDiscountRequest {
     private Long customerId;
-    private Integer userId; // For cart lookup
+    private Long userId; // For cart lookup
     private List<String> couponCodes; // Multiple coupons if stackable
     private boolean autoApply; // Whether to auto-apply available discounts
 
     // Constructors
     public ApplyDiscountRequest() {}
 
-    public ApplyDiscountRequest(Long customerId, Integer userId) {
+    public ApplyDiscountRequest(Long customerId, Long userId) {
         this.customerId = customerId;
         this.userId = userId;
         this.autoApply = true;
     }
 
-    public ApplyDiscountRequest(Long customerId, Integer userId, List<String> couponCodes, boolean autoApply) {
+    public ApplyDiscountRequest(Long customerId, Long userId, List<String> couponCodes, boolean autoApply) {
         this.customerId = customerId;
         this.userId = userId;
         this.couponCodes = couponCodes;
@@ -28,8 +28,8 @@ public class ApplyDiscountRequest {
     public Long getCustomerId() { return customerId; }
     public void setCustomerId(Long customerId) { this.customerId = customerId; }
 
-    public Integer getUserId() { return userId; }
-    public void setUserId(Integer userId) { this.userId = userId; }
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
 
     public List<String> getCouponCodes() { return couponCodes; }
     public void setCouponCodes(List<String> couponCodes) { this.couponCodes = couponCodes; }

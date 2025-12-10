@@ -1,30 +1,37 @@
 package com.employee.Emp.Entity;
 
-import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Transient;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
-@Entity
-@Table(name = "order_items")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class OrderItem {
+@Document(collection = "order_items")
+public class OrderItem implements SequenceEntity {
+    public static final String SEQUENCE_NAME = "order_items_sequence";
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "order_id", nullable = false)
-    private Order order;
+    @Field("order_id")
+    private Long orderId;
 
-    @ManyToOne
-    @JoinColumn(name = "product_id", nullable = false)
-    private Product product;
+    @Field("product_id")
+    private Long productId;
 
     private Integer quantity;
+    private Double price;
 
-    private Double price; // Price at the time of order
+    @Transient
+    private Product product;
+
+    @Override
+    public String getSequenceName() {
+        return SEQUENCE_NAME;
+    }
 }

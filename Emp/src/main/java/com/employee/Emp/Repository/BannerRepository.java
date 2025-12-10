@@ -1,16 +1,13 @@
 package com.employee.Emp.Repository;
 
 import com.employee.Emp.Entity.Banner;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
+import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.mongodb.repository.Query;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Repository
-public interface BannerRepository extends JpaRepository<Banner, Long> {
+public interface BannerRepository extends MongoRepository<Banner, Long> {
 
     List<Banner> findByIsActiveTrueOrderByPriorityDesc();
 
@@ -18,29 +15,17 @@ public interface BannerRepository extends JpaRepository<Banner, Long> {
 
     List<Banner> findByPositionAndIsActiveTrue(String position);
 
-    @Query("SELECT b FROM Banner b WHERE b.isActive = true " +
-            "AND (b.startDate IS NULL OR b.startDate <= :now) " +
-            "AND (b.endDate IS NULL OR b.endDate >= :now) " +
-            "ORDER BY b.priority DESC")
-    List<Banner> findActiveBanners(@Param("now") LocalDateTime now);
+    @Query(value = "{ 'is_active': true, '$and': [ { '$or': [ { 'start_date': null }, { 'start_date': { $lte: ?0 } } ] }, { '$or': [ { 'end_date': null }, { 'end_date': { $gte: ?0 } } ] } ] }",
+           sort = "{ 'priority': -1 }")
+    List<Banner> findActiveBanners(LocalDateTime now);
 
-    @Query("SELECT b FROM Banner b WHERE b.isActive = true " +
-            "AND b.position = :position " +
-            "AND (b.startDate IS NULL OR b.startDate <= :now) " +
-            "AND (b.endDate IS NULL OR b.endDate >= :now) " +
-            "ORDER BY b.priority DESC")
-    List<Banner> findActiveBannersByPosition(
-            @Param("position") String position,
-            @Param("now") LocalDateTime now);
+    @Query(value = "{ 'is_active': true, 'position': ?0, '$and': [ { '$or': [ { 'start_date': null }, { 'start_date': { $lte: ?1 } } ] }, { '$or': [ { 'end_date': null }, { 'end_date': { $gte: ?1 } } ] } ] }",
+           sort = "{ 'priority': -1 }")
+    List<Banner> findActiveBannersByPosition(String position, LocalDateTime now);
 
-    @Query("SELECT b FROM Banner b WHERE b.isActive = true " +
-            "AND b.event.id = :eventId " +
-            "AND (b.startDate IS NULL OR b.startDate <= :now) " +
-            "AND (b.endDate IS NULL OR b.endDate >= :now) " +
-            "ORDER BY b.priority DESC")
-    List<Banner> findActiveBannersByEvent(
-            @Param("eventId") Long eventId,
-            @Param("now") LocalDateTime now);
+    @Query(value = "{ 'is_active': true, 'event_id': ?0, '$and': [ { '$or': [ { 'start_date': null }, { 'start_date': { $lte: ?1 } } ] }, { '$or': [ { 'end_date': null }, { 'end_date': { $gte: ?1 } } ] } ] }",
+           sort = "{ 'priority': -1 }")
+    List<Banner> findActiveBannersByEvent(Long eventId, LocalDateTime now);
 
     List<Banner> findAllByOrderByPriorityDesc();
 }

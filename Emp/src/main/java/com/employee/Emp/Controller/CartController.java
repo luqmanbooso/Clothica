@@ -20,7 +20,7 @@ public class CartController {
 //    If not, creates a new cart: createCartForUser(userId)
 //    Returns empty cart or existing cart with items
     @GetMapping("/user/{userId}")
-    public ResponseEntity<CartDTO> getCart(@PathVariable Integer userId){
+    public ResponseEntity<CartDTO> getCart(@PathVariable Long userId){
         CartDTO cart = cartService.getCartByUserId(userId);
         return ResponseEntity.ok(cart);
     }
@@ -28,7 +28,7 @@ public class CartController {
     // Add item to cart
     @PostMapping("/user/{userId}/add/{productId}")
     public ResponseEntity<CartDTO> addToCart(
-            @PathVariable Integer userId,
+            @PathVariable Long userId,
             @PathVariable Long productId,
             @RequestParam(defaultValue = "1") Integer quantity) {
 
@@ -39,7 +39,7 @@ public class CartController {
     // Update cart item quantity
     @PutMapping("/user/{userId}/update/{productId}")
     public ResponseEntity<CartDTO> updateCartItem(
-            @PathVariable Integer userId,
+            @PathVariable Long userId,
             @PathVariable Long productId,
             @RequestParam Integer quantity) {
 
@@ -50,7 +50,7 @@ public class CartController {
     // Remove item from cart
     @DeleteMapping("/user/{userId}/remove/{productId}")
     public ResponseEntity<CartDTO> removeFromCart(
-            @PathVariable Integer userId,
+            @PathVariable Long userId,
             @PathVariable Long productId) {
 
         CartDTO cart = cartService.removeFromCart(userId, productId);
@@ -59,7 +59,7 @@ public class CartController {
 
     // Clear entire cart
     @DeleteMapping("/user/{userId}/clear")
-    public ResponseEntity<Void> clearCart(@PathVariable Integer userId) {
+    public ResponseEntity<Void> clearCart(@PathVariable Long userId) {
         cartService.clearCart(userId);
         return ResponseEntity.noContent().build();
     }

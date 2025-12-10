@@ -108,7 +108,7 @@ public class AdminUsersController {
      */
     @GetMapping("/{id}")
     public ResponseEntity<Map<String, Object>> getUserById(@PathVariable Integer id) {
-        return userRepository.findById(id)
+        return userRepository.findById(Long.valueOf(id))
                 .map(user -> ResponseEntity.ok(toUserDTO(user)))
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -119,14 +119,14 @@ public class AdminUsersController {
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, Object>> deleteUser(@PathVariable Integer id) {
-        if (!userRepository.existsById(id)) {
+        if (!userRepository.existsById(Long.valueOf(id))) {
             Map<String, Object> response = new HashMap<>();
             response.put("success", false);
             response.put("message", "User not found");
             return ResponseEntity.notFound().build();
         }
 
-        userRepository.deleteById(id);
+        userRepository.deleteById(Long.valueOf(id));
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
@@ -143,7 +143,7 @@ public class AdminUsersController {
             @PathVariable Integer id,
             @RequestBody Map<String, String> request) {
 
-        return userRepository.findById(id)
+        return userRepository.findById(Long.valueOf(id))
                 .map(user -> {
                     String newRole = request.get("role");
                     if (newRole != null) {

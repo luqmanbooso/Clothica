@@ -1,8 +1,10 @@
 package com.employee.Emp.Repository;
 
 import com.employee.Emp.Entity.OrderItem;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.mongodb.repository.MongoRepository;
 
-public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
+import java.util.List;
 
+public interface OrderItemRepository extends MongoRepository<OrderItem, Long> {
+    List<OrderItem> findByOrderId(Long orderId);
 }

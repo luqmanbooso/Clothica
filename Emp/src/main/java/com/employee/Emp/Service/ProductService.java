@@ -4,7 +4,7 @@ import com.employee.Emp.DTO.ProductDTO;
 import com.employee.Emp.DTO.CategoryDTO;
 import com.employee.Emp.Entity.Product;
 import com.employee.Emp.Repository.ProductRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.TypeToken;
 import org.springframework.beans.factory.annotation.Autowired;

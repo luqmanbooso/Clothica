@@ -9,10 +9,10 @@ import com.employee.Emp.Repository.UserRepository;
 import com.employee.Emp.filter.DiscountCalculationResult;
 import com.employee.Emp.filter.DiscountItem;
 import com.employee.Emp.filter.OrderContext;
-import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -52,7 +52,7 @@ public class DiscountService {
                     new DiscountValidationResponse(false, "Coupon is not active"));
         }
 
-        Optional<UserInfo> customerOpt = userRepository.findById(request.getCustomerId().intValue());
+        Optional<UserInfo> customerOpt = userRepository.findById(request.getCustomerId());
 
         if (!customerOpt.isPresent()) {
             return ResponseEntity.badRequest().body(
@@ -90,7 +90,7 @@ public class DiscountService {
 
     public ResponseEntity<OrderSummary> applyDiscountsToCart(ApplyDiscountRequest request) {
         // Validate customer
-        Optional<UserInfo> customerOpt = userRepository.findById(request.getCustomerId().intValue());
+        Optional<UserInfo> customerOpt = userRepository.findById(request.getCustomerId());
         if (!customerOpt.isPresent()) {
             return ResponseEntity.badRequest().build();
         }
@@ -116,7 +116,7 @@ public class DiscountService {
     }
 
     public ResponseEntity<List<Discount>> getAvailableDiscounts(Long customerId) {
-        Optional<UserInfo> customerOpt = userRepository.findById(customerId.intValue());
+        Optional<UserInfo> customerOpt = userRepository.findById(customerId);
         if (!customerOpt.isPresent()) {
             return ResponseEntity.badRequest().build();
         }
@@ -127,7 +127,7 @@ public class DiscountService {
     }
 
     private OrderContext createOrderContext(ApplyDiscountRequest request) {
-        Optional<UserInfo> customerOpt = userRepository.findById(request.getCustomerId().intValue());
+        Optional<UserInfo> customerOpt = userRepository.findById(request.getCustomerId());
         CartDTO cartDto = cartService.getCartByUserId(request.getUserId());
 
         // Null check for cart

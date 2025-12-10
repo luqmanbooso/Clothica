@@ -1,57 +1,64 @@
 package com.employee.Emp.Entity;
 
-import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "events")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Event {
+@Document(collection = "events")
+public class Event implements SequenceEntity {
+    public static final String SEQUENCE_NAME = "events_sequence";
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Field("name")
     private String name;
 
     private String description;
 
-    @Column(name = "start_date")
+    @Field("start_date")
     private LocalDateTime startDate;
 
-    @Column(name = "end_date")
+    @Field("end_date")
     private LocalDateTime endDate;
 
-    @Column(name = "is_active")
+    @Field("is_active")
     private Boolean isActive = true;
 
-    private String type; // sale, promotion, holiday, etc.
+    private String type;
 
-    @Column(name = "discount_percentage")
+    @Field("discount_percentage")
     private Double discountPercentage;
 
-    @Column(name = "created_at", updatable = false)
+    @CreatedDate
+    @Field("created_at")
     private LocalDateTime createdAt;
 
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
+    @Override
+    public String getSequenceName() {
+        return SEQUENCE_NAME;
     }
 
     public boolean isCurrentlyActive() {
-        if (!isActive)
+        if (Boolean.FALSE.equals(isActive)) {
             return false;
+        }
         LocalDateTime now = LocalDateTime.now();
-        if (startDate != null && now.isBefore(startDate))
+        if (startDate != null && now.isBefore(startDate)) {
             return false;
-        if (endDate != null && now.isAfter(endDate))
+        }
+        if (endDate != null && now.isAfter(endDate)) {
             return false;
+        }
         return true;
     }
 }

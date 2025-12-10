@@ -1,35 +1,44 @@
 package com.employee.Emp.Entity;
 
-import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
-@Entity
-@Table(name = "categories")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Category {
+@Document(collection = "categories")
+public class Category implements SequenceEntity {
+    public static final String SEQUENCE_NAME = "categories_sequence";
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @Field("name")
     private String name;
 
-    @Column(length = 512)
+    @Field("description")
     private String description;
 
-    @Column(name = "is_active")
+    @Field("is_active")
     private Boolean isActive = true;
+
+    @Field("sort_order")
     private Integer sortOrder;
 
-    @Column(name = "parent_id")
-    private Long parentId; // optional parent category
+    @Field("parent_id")
+    private Long parentId;
 
-    // Optional image URL
+    @Field("image")
     private String image;
+
+    @Override
+    public String getSequenceName() {
+        return SEQUENCE_NAME;
+    }
 }

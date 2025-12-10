@@ -2,14 +2,20 @@ package com.employee.Emp.Service;
 
 import com.employee.Emp.DTO.OrderDTO;
 import com.employee.Emp.DTO.OrderItemDTO;
-import com.employee.Emp.Entity.*;
+import com.employee.Emp.Entity.Cart;
+import com.employee.Emp.Entity.CartItem;
+import com.employee.Emp.Entity.Order;
+import com.employee.Emp.Entity.OrderItem;
+import com.employee.Emp.Entity.Product;
+import com.employee.Emp.Entity.UserInfo;
 import com.employee.Emp.Repository.*;
-import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Arrays;
-import java.util.List;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -33,54 +39,56 @@ public class OrderService {
     @Autowired
     private ProductRepository productRepository;
 
-    public OrderDTO createOrder(Integer userId, String couponCode) {
-        // 1. Get user and cart
+    @Autowired
+    private CartItemRepository cartItemRepository;
+
+    public OrderDTO createOrder(Long userId, String couponCode) {
         UserInfo user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         Cart cart = cartRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Cart not found"));
 
-        // 2. Validate cart is not empty
-        if (cart.getItems().isEmpty()) {
+        List<CartItem> items = loadCartItems(cart);
+        cart.calculateTotal();
+        if (items.isEmpty()) {
             throw new RuntimeException("Cannot create order with empty cart");
         }
 
-        // 3. Check stock for all items
-        for (CartItem cartItem : cart.getItems()) {
+        for (CartItem cartItem : items) {
             Product product = cartItem.getProduct();
+            if (product == null) {
+                throw new RuntimeException("Product information missing for cart item");
+            }
             if (product.getStock() < cartItem.getQuantity()) {
                 throw new RuntimeException("Not enough stock for product: " + product.getName());
             }
         }
 
-        // 4. Create order entity
         Order order = new Order();
-        order.setUser(user);
+        order.setUserId(userId);
         order.setTotalAmount(cart.getTotalAmount());
-
+        order.setOrderDate(LocalDateTime.now());
+        if (order.getOrderNumber() == null) {
+            order.setOrderNumber("ORD" + System.currentTimeMillis());
+        }
         Order savedOrder = orderRepository.save(order);
 
-        // 5. Convert cart items to order items
-        for (CartItem cartItem : cart.getItems()) {
+        for (CartItem cartItem : items) {
             Product product = cartItem.getProduct();
-
-            // Create order item
             OrderItem orderItem = new OrderItem();
-            orderItem.setOrder(savedOrder);
+            orderItem.setOrderId(savedOrder.getId());
+            orderItem.setProductId(product.getId());
             orderItem.setProduct(product);
             orderItem.setQuantity(cartItem.getQuantity());
             orderItem.setPrice(product.getPrice());
             orderItemRepository.save(orderItem);
 
-            // Update product stock
             product.setStock(product.getStock() - cartItem.getQuantity());
             productRepository.save(product);
         }
 
-        // 6. Clear the cart after order creation
         cartService.clearCart(userId);
-
         return convertToDTO(savedOrder);
     }
 
@@ -97,13 +105,12 @@ public class OrderService {
     }
 
     public List<OrderDTO> getAllOrders() {
-        return orderRepository.findAll()
-                .stream()
+        return orderRepository.findAll().stream()
                 .map(this::convertToDTO)
                 .toList();
     }
 
-    public List<OrderDTO> getUserOrders(Integer userId) {
+    public List<OrderDTO> getUserOrders(Long userId) {
         List<Order> orders = orderRepository.findByUserId(userId);
         return orders.stream()
                 .map(this::convertToDTO)
@@ -122,7 +129,6 @@ public class OrderService {
 
         order.setStatus(status);
         Order updatedOrder = orderRepository.save(order);
-
         return convertToDTO(updatedOrder);
     }
 
@@ -143,19 +149,31 @@ public class OrderService {
         OrderDTO orderDTO = new OrderDTO();
         orderDTO.setId(order.getId());
         orderDTO.setOrderNumber(order.getOrderNumber());
-        orderDTO.setUserId(order.getUser().getId());
-        orderDTO.setUserName(order.getUser().getUsername());
+        orderDTO.setUserId(order.getUserId());
+        UserInfo user = userRepository.findById(order.getUserId()).orElse(null);
+        orderDTO.setUserName(user != null ? user.getUsername() : null);
         orderDTO.setTotalAmount(order.getTotalAmount());
+        orderDTO.setDiscountAmount(order.getDiscountAmount());
+        orderDTO.setAppliedCouponCode(order.getAppliedCouponCode());
         orderDTO.setStatus(order.getStatus());
         orderDTO.setPaymentStatus(order.getPaymentStatus());
         orderDTO.setOrderDate(order.getOrderDate());
 
-        List<OrderItemDTO> itemDTOs = order.getOrderItems().stream()
+        List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
+        hydrateOrderItems(items);
+        order.setOrderItems(items);
+
+        List<OrderItemDTO> itemDTOs = items.stream()
                 .map(item -> {
                     OrderItemDTO dto = new OrderItemDTO();
                     dto.setId(item.getId());
-                    dto.setProductId(item.getProduct().getId());
-                    dto.setProductName(item.getProduct().getName());
+                    Product product = item.getProduct();
+                    if (product != null) {
+                        dto.setProductId(product.getId());
+                        dto.setProductName(product.getName());
+                    } else {
+                        dto.setProductId(item.getProductId());
+                    }
                     dto.setQuantity(item.getQuantity());
                     dto.setPrice(item.getPrice());
                     dto.setItemTotal(item.getQuantity() * item.getPrice());
@@ -164,7 +182,42 @@ public class OrderService {
                 .toList();
 
         orderDTO.setOrderItems(itemDTOs);
-
         return orderDTO;
+    }
+
+    private List<CartItem> loadCartItems(Cart cart) {
+        List<CartItem> items = cartItemRepository.findByCartId(cart.getId());
+        if (items == null) {
+            items = new ArrayList<>();
+        }
+        hydrateCartItems(items);
+        cart.setItems(items);
+        return items;
+    }
+
+    private void hydrateCartItems(List<CartItem> items) {
+        if (items.isEmpty()) {
+            return;
+        }
+        List<Long> productIds = items.stream()
+                .map(CartItem::getProductId)
+                .toList();
+        List<Product> products = productRepository.findAllById(productIds);
+        Map<Long, Product> productById = products.stream()
+                .collect(Collectors.toMap(Product::getId, p -> p));
+        items.forEach(item -> item.setProduct(productById.get(item.getProductId())));
+    }
+
+    private void hydrateOrderItems(List<OrderItem> items) {
+        if (items.isEmpty()) {
+            return;
+        }
+        List<Long> productIds = items.stream()
+                .map(OrderItem::getProductId)
+                .toList();
+        List<Product> products = productRepository.findAllById(productIds);
+        Map<Long, Product> productById = products.stream()
+                .collect(Collectors.toMap(Product::getId, p -> p));
+        items.forEach(item -> item.setProduct(productById.get(item.getProductId())));
     }
 }

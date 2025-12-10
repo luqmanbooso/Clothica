@@ -1,13 +1,13 @@
 package com.employee.Emp.Repository;
 
-import com.employee.Emp.Entity.Cart;
 import com.employee.Emp.Entity.CartItem;
-import com.employee.Emp.Entity.Product;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.mongodb.repository.MongoRepository;
 
+import java.util.List;
 import java.util.Optional;
 
-public interface CartItemRepository extends JpaRepository<CartItem,Long> {
-    Optional<CartItem> findByCartAndProduct(Cart cart, Product product);
+public interface CartItemRepository extends MongoRepository<CartItem, Long> {
+    Optional<CartItem> findByCartIdAndProductId(Long cartId, Long productId);
+    List<CartItem> findByCartId(Long cartId);
     void deleteByCartId(Long cartId);
 }

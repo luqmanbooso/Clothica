@@ -3,7 +3,7 @@ package com.employee.Emp.Service;
 public class CouponValidationRequest {
     private String couponCode;
     private Long customerId;
-    private Integer userId; // For cart lookup
+    private Long userId; // For cart lookup
 
     // Constructors
     public CouponValidationRequest() {}
@@ -13,7 +13,7 @@ public class CouponValidationRequest {
         this.customerId = customerId;
     }
 
-    public CouponValidationRequest(String couponCode, Long customerId, Integer userId) {
+    public CouponValidationRequest(String couponCode, Long customerId, Long userId) {
         this.couponCode = couponCode;
         this.customerId = customerId;
         this.userId = userId;
@@ -26,6 +26,6 @@ public class CouponValidationRequest {
     public Long getCustomerId() { return customerId; }
     public void setCustomerId(Long customerId) { this.customerId = customerId; }
 
-    public Integer getUserId() { return userId; }
-    public void setUserId(Integer userId) { this.userId = userId; }
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
 }

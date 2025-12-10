@@ -1,98 +1,91 @@
 package com.employee.Emp.Entity;
 
-import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.annotation.Transient;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "banners")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Banner {
+@Document(collection = "banners")
+public class Banner implements SequenceEntity {
+    public static final String SEQUENCE_NAME = "banners_sequence";
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
     private String name;
-
     private String title;
     private String subtitle;
-
-    @Column(length = 1000)
     private String image;
-
-    @Column(nullable = false)
-    private String position; // hero, top, middle, bottom, sidebar
-
+    private String position;
     private Integer priority = 1;
 
-    @Column(name = "is_active")
+    @Field("is_active")
     private Boolean isActive = true;
 
-    @Column(name = "start_date")
+    @Field("start_date")
     private LocalDateTime startDate;
 
-    @Column(name = "end_date")
+    @Field("end_date")
     private LocalDateTime endDate;
 
-    // CTA (Call-to-Action) fields
-    @Column(name = "cta_text")
+    @Field("cta_text")
     private String ctaText;
 
-    @Column(name = "cta_link")
+    @Field("cta_link")
     private String ctaLink;
 
-    @Column(name = "cta_target")
+    @Field("cta_target")
     private String ctaTarget = "_self";
 
-    // Analytics
-    @Column(name = "display_count")
+    @Field("display_count")
     private Integer displayCount = 0;
 
-    @Column(name = "click_count")
+    @Field("click_count")
     private Integer clickCount = 0;
 
-    @Column(name = "conversion_count")
+    @Field("conversion_count")
     private Integer conversionCount = 0;
 
-    // Event association (optional)
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "event_id")
+    @Field("event_id")
+    private Long eventId;
+
+    @Transient
     private Event event;
 
-    @Column(name = "created_at", updatable = false)
+    @CreatedDate
+    @Field("created_at")
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @LastModifiedDate
+    @Field("updated_at")
     private LocalDateTime updatedAt;
 
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-        if (startDate == null) {
-            startDate = LocalDateTime.now();
-        }
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+    @Override
+    public String getSequenceName() {
+        return SEQUENCE_NAME;
     }
 
     public boolean isCurrentlyActive() {
-        if (!isActive)
+        if (Boolean.FALSE.equals(isActive)) {
             return false;
+        }
         LocalDateTime now = LocalDateTime.now();
-        if (startDate != null && now.isBefore(startDate))
+        if (startDate != null && now.isBefore(startDate)) {
             return false;
-        if (endDate != null && now.isAfter(endDate))
+        }
+        if (endDate != null && now.isAfter(endDate)) {
             return false;
+        }
         return true;
     }
 }

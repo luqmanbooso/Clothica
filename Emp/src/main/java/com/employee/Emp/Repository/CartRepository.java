@@ -1,13 +1,10 @@
 package com.employee.Emp.Repository;
 
-
 import com.employee.Emp.Entity.Cart;
-import com.employee.Emp.Entity.UserInfo;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.mongodb.repository.MongoRepository;
 
 import java.util.Optional;
 
-public interface CartRepository extends JpaRepository<Cart,Long> {
-    Optional<Cart> findByUser(UserInfo user);
-    Optional<Cart> findByUserId(int userId);
+public interface CartRepository extends MongoRepository<Cart, Long> {
+    Optional<Cart> findByUserId(Long userId);
 }

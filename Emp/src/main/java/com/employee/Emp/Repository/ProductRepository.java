@@ -1,16 +1,22 @@
 package com.employee.Emp.Repository;
 
 import com.employee.Emp.Entity.Product;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.mongodb.repository.Aggregation;
+import org.springframework.data.mongodb.repository.MongoRepository;
 
-public interface ProductRepository extends JpaRepository<Product,Long> {
+import java.util.List;
+
+public interface ProductRepository extends MongoRepository<Product, Long> {
 
     interface CategoryCount {
         String getCategory();
         long getCount();
     }
 
-    @Query("select p.category as category, count(p) as count from Product p where p.category is not null group by p.category")
-    java.util.List<CategoryCount> findCategoryCounts();
+    @Aggregation(pipeline = {
+            "{ $match: { category: { $ne: null } } }",
+            "{ $group: { _id: '$category', count: { $sum: 1 } } }",
+            "{ $project: { category: '$_id', count: 1, _id: 0 } }"
+    })
+    List<CategoryCount> findCategoryCounts();
 }

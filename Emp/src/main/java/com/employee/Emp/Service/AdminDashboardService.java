@@ -1,13 +1,14 @@
 package com.employee.Emp.Service;
 
 import com.employee.Emp.Entity.Order;
+import com.employee.Emp.Entity.OrderItem;
 import com.employee.Emp.Entity.Product;
 import com.employee.Emp.Entity.UserInfo;
+import com.employee.Emp.Repository.OrderItemRepository;
 import com.employee.Emp.Repository.OrderRepository;
 import com.employee.Emp.Repository.ProductRepository;
 import com.employee.Emp.Repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cglib.core.Local;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -26,6 +27,9 @@ public class AdminDashboardService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private OrderItemRepository orderItemRepository;
 
     public Map<String, Object> getOverview() {
         Map<String, Object> overview = new HashMap<>();
@@ -235,7 +239,7 @@ public class AdminDashboardService {
 
         //Active users (users who placed orders today)
         Set<String> activeUsers = todayOrders.stream()
-                .map(order -> order.getUser().getUsername())
+                .map(order -> getUserName(order.getUserId()))
                 .collect(Collectors.toSet());
 
         // Live orders (pending/processing orders)
@@ -246,7 +250,7 @@ public class AdminDashboardService {
                     Map<String, Object> orderInfo = new HashMap<>();
                     orderInfo.put("id", order.getId());
                     orderInfo.put("orderNumber", order.getOrderNumber());
-                    orderInfo.put("customer", order.getUser().getUsername());
+                    orderInfo.put("customer", getUserName(order.getUserId()));
                     orderInfo.put("amount", order.getTotalAmount());
                     orderInfo.put("status", order.getStatus());
                     orderInfo.put("time", order.getOrderDate());
@@ -282,7 +286,7 @@ public class AdminDashboardService {
         segments.put("Repeat Customers", allUsers.stream()
                 .filter(user -> {
                     long userOrderCount = allOrders.stream()
-                            .filter(order -> order.getUser().getId()==user.getId())
+                            .filter(order -> Objects.equals(order.getUserId(), user.getId()))
                             .count();
                     return userOrderCount > 1;
                 })
@@ -291,7 +295,7 @@ public class AdminDashboardService {
         segments.put("VIP Customers", allUsers.stream()
                 .filter(user -> {
                     double totalSpent = allOrders.stream()
-                            .filter(order -> order.getUser().getId()==user.getId())
+                            .filter(order -> Objects.equals(order.getUserId(), user.getId()))
                             .mapToDouble(Order::getTotalAmount)
                             .sum();
                     return totalSpent > 1000; // VIP if spent over 1000
@@ -300,11 +304,20 @@ public class AdminDashboardService {
 
         // Customer behavior (most purchased products)
         Map<String, Long> topProducts = new HashMap<>();
-        allOrders.stream()
-                .flatMap(order -> order.getOrderItems().stream())
-                .collect(java.util.stream.Collectors.groupingBy(
-                        item -> item.getProduct().getName(),
-                        java.util.stream.Collectors.summingLong(item -> item.getQuantity())
+        List<OrderItem> allItems = orderItemRepository.findAll();
+        Set<Long> productIds = allItems.stream()
+                .map(OrderItem::getProductId)
+                .collect(Collectors.toSet());
+        Map<Long, Product> productMap = productRepository.findAllById(productIds)
+                .stream()
+                .collect(Collectors.toMap(Product::getId, p -> p));
+
+        allItems.stream()
+                .collect(Collectors.groupingBy(
+                        item -> Optional.ofNullable(productMap.get(item.getProductId()))
+                                .map(Product::getName)
+                                .orElse("Unknown"),
+                        Collectors.summingLong(OrderItem::getQuantity)
                 ))
                 .entrySet().stream()
                 .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
@@ -368,5 +381,14 @@ public class AdminDashboardService {
                     return item;
                 })
                 .toList();
+    }
+
+    private String getUserName(Long userId) {
+        if (userId == null) {
+            return "Guest";
+        }
+        return userRepository.findById(userId)
+                .map(UserInfo::getUsername)
+                .orElse("Guest");
     }
 }

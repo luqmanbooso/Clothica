@@ -1,52 +1,40 @@
 package com.employee.Emp.Entity;
 
-import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
+import org.springframework.data.mongodb.core.index.Indexed;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
-@Entity
-@Table(name = "users")
 @Data
 @NoArgsConstructor
+@AllArgsConstructor
+@Document(collection = "users")
+public class UserInfo implements SequenceEntity {
+    public static final String SEQUENCE_NAME = "users_sequence";
 
-public class UserInfo {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int id;
+    private Long id;
     private String username;
-    @Column(nullable = false, unique = true, length = 191)
+
+    @Field("email")
+    @Indexed(unique = true)
     private String email;
     private String password;
     private String roles;
-
-    @Column(name = "phone", length = 10, nullable = true)
     private String phone;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @CreatedDate
+    @Field("created_at")
     private LocalDateTime createdAt;
 
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
-    @com.fasterxml.jackson.annotation.JsonIgnore
-    private Cart cart;
-
-    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
-    @com.fasterxml.jackson.annotation.JsonIgnore
-    private List<Order> orders;
-
-    public UserInfo(String username, String email, String password, String roles) {
-        this.username = username;
-        this.email = email;
-        this.password = password;
-        this.roles = roles;
-    }
-
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
+    @Override
+    public String getSequenceName() {
+        return SEQUENCE_NAME;
     }
 }

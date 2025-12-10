@@ -1,37 +1,36 @@
 package com.employee.Emp.Entity;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
-import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Transient;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
-@Entity
-@Table(name = "cart_items")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class CartItem {
+@Document(collection = "cart_items")
+public class CartItem implements SequenceEntity {
+    public static final String SEQUENCE_NAME = "cart_items_sequence";
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "cart_id",nullable = false)
-    @JsonBackReference
-    private Cart cart;
+    @Field("cart_id")
+    private Long cartId;
 
-    @ManyToOne
-    @JoinColumn(name = "product_id", nullable = false)
-    private Product product;
+    @Field("product_id")
+    private Long productId;
 
     private Integer quantity;
 
-    @PrePersist
-    @PreUpdate
-    public void updateCartTotal() {
-        if (cart != null) {
-            cart.calculateTotal();
-        }
+    @Transient
+    private Product product;
+
+    @Override
+    public String getSequenceName() {
+        return SEQUENCE_NAME;
     }
 }

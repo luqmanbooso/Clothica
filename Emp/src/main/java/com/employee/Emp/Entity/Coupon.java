@@ -3,13 +3,9 @@ package com.employee.Emp.Entity;
 import com.employee.Emp.Enum.DiscountValueType;
 import com.employee.Emp.filter.DiscountCalculationResult;
 import com.employee.Emp.filter.OrderContext;
-import jakarta.persistence.DiscriminatorValue;
-import jakarta.persistence.Entity;
 
 import java.math.BigDecimal;
 
-@Entity
-@DiscriminatorValue("COUPON")
 public class Coupon extends Discount {
     private String couponCode;
     private Boolean isSingleUse = false;

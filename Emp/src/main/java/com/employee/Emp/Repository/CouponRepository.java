@@ -1,7 +1,7 @@
 package com.employee.Emp.Repository;
 
 import com.employee.Emp.Entity.Coupon;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.mongodb.repository.MongoRepository;
 
-public interface CouponRepository extends JpaRepository<Coupon, Long> {
+public interface CouponRepository extends MongoRepository<Coupon, Long> {
 }

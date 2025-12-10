@@ -11,3 +11,5 @@
 - **Misc services**: email service (welcome/OTP/reset/order confirmation), file upload handling (`/uploads` static), health/status endpoints, and configuration via environment variables (database, JWT secrets, SMTP, Stripe keys, CORS).
 - **Frontend loyalty**: reintroduce loyalty program UI (dashboards, badges, spin wheel, promo sections) once backend support is available; currently removed/hidden.
 - **Campaign Hub**: restore full campaign/event tooling; currently reduced to a simple banner + sitewide discount stub with no backend wiring.
+- **Discount flow**: move discounts to a dedicated feature (UI + backend) instead of inline on product creation.
+- **Product ratings**: add a proper rating system (storage, moderation, and UI) instead of manual entry on product creation.

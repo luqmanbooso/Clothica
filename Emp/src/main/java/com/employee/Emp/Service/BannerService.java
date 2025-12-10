@@ -25,25 +25,35 @@ public class BannerService {
     // ========== Public Endpoints ==========
 
     public List<Banner> getActiveBanners() {
-        return bannerRepository.findActiveBanners(LocalDateTime.now());
+        List<Banner> banners = bannerRepository.findActiveBanners(LocalDateTime.now());
+        attachEventDetails(banners);
+        return banners;
     }
 
     public List<Banner> getActiveBannersByPosition(String position) {
-        return bannerRepository.findActiveBannersByPosition(position, LocalDateTime.now());
+        List<Banner> banners = bannerRepository.findActiveBannersByPosition(position, LocalDateTime.now());
+        attachEventDetails(banners);
+        return banners;
     }
 
     public List<Banner> getActiveBannersByEvent(Long eventId) {
-        return bannerRepository.findActiveBannersByEvent(eventId, LocalDateTime.now());
+        List<Banner> banners = bannerRepository.findActiveBannersByEvent(eventId, LocalDateTime.now());
+        attachEventDetails(banners);
+        return banners;
     }
 
     // ========== Admin Endpoints ==========
 
     public List<Banner> getAllBanners() {
-        return bannerRepository.findAllByOrderByPriorityDesc();
+        List<Banner> banners = bannerRepository.findAllByOrderByPriorityDesc();
+        attachEventDetails(banners);
+        return banners;
     }
 
     public Optional<Banner> getBannerById(Long id) {
-        return bannerRepository.findById(id);
+        Optional<Banner> banner = bannerRepository.findById(id);
+        banner.ifPresent(b -> attachEventDetails(List.of(b)));
+        return banner;
     }
 
     public Banner createBanner(Banner banner) {
@@ -53,7 +63,9 @@ public class BannerService {
         if (banner.getIsActive() == null) {
             banner.setIsActive(true);
         }
-        return bannerRepository.save(banner);
+        Banner saved = bannerRepository.save(banner);
+        attachEventDetails(List.of(saved));
+        return saved;
     }
 
     public Banner updateBanner(Long id, Banner bannerDetails) {
@@ -71,8 +83,8 @@ public class BannerService {
                     banner.setCtaText(bannerDetails.getCtaText());
                     banner.setCtaLink(bannerDetails.getCtaLink());
                     banner.setCtaTarget(bannerDetails.getCtaTarget());
-                    if (bannerDetails.getEvent() != null) {
-                        banner.setEvent(bannerDetails.getEvent());
+                    if (bannerDetails.getEventId() != null) {
+                        banner.setEventId(bannerDetails.getEventId());
                     }
                     return bannerRepository.save(banner);
                 })
@@ -117,6 +129,20 @@ public class BannerService {
             banner.setConversionCount(banner.getConversionCount() + 1);
             bannerRepository.save(banner);
         });
+    }
+
+    private void attachEventDetails(List<Banner> banners) {
+        for (Banner banner : banners) {
+            attachEvent(banner);
+        }
+    }
+
+    private void attachEvent(Banner banner) {
+        if (banner.getEventId() != null) {
+            eventRepository.findById(banner.getEventId()).ifPresent(banner::setEvent);
+        } else {
+            banner.setEvent(null);
+        }
     }
 
     // ========== Event Management ==========
